@@ -66,6 +66,7 @@ export class ICPayPayButton extends LitElement {
     if (changed.has('config') && this.pendingAction && this.config?.actorProvider) {
       const action = this.pendingAction;
       this.pendingAction = null;
+      try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: 'external' } })); } catch {}
       setTimeout(() => { if (action === 'pay') this.pay(); }, 0);
     }
   }
@@ -133,6 +134,7 @@ export class ICPayPayButton extends LitElement {
       const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
       if (!isConnected) throw new Error('Wallet connection was rejected');
       this.walletConnected = true;
+      try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
       this.config = { ...this.config, connectedWallet: result, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
       this.showWalletModal = false;
       const action = this.pendingAction; this.pendingAction = null;
@@ -180,6 +182,9 @@ export class ICPayPayButton extends LitElement {
     this.errorSeverity = null;
     this.errorAction = null;
 
+    // Emit method start to open progress modal and set first step
+    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'pay', type: 'sendUsd', amount: this.config?.amountUsd, currency: this.selectedSymbol || this.config?.defaultSymbol } })); } catch {}
+
     this.processing = true;
     try {
       const ready = await this.ensureWallet();
@@ -218,7 +223,7 @@ export class ICPayPayButton extends LitElement {
     const optionsCount = this.cryptoOptions?.length || 0;
     const hasMultiple = optionsCount > 1;
     const rawMode = (this.config?.showLedgerDropdown as any) as ('buttons'|'dropdown'|'none'|undefined);
-    const globalMode: 'buttons'|'dropdown'|'none' = rawMode === 'dropdown' ? 'dropdown' : rawMode === 'buttons' ? 'none' : 'none';
+    const globalMode: 'buttons'|'dropdown'|'none' = rawMode === 'dropdown' ? 'dropdown' : rawMode === 'none' ? 'none' : 'buttons';
     const showSelector = (globalMode !== 'none') && (hasMultiple || globalMode === 'dropdown');
     const tokenSelectorMode: 'buttons'|'dropdown'|'none' = globalMode === 'dropdown' ? 'dropdown' : (hasMultiple ? 'buttons' : 'none');
     const selectedSymbol = this.selectedSymbol || this.config?.defaultSymbol || 'ICP';

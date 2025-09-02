@@ -15,8 +15,14 @@ type Step = {
 
 const DEFAULT_STEPS: Step[] = [
   {
+    key: 'wallet',
+    label: 'Connect Wallet',
+    tooltip: 'Awaiting wallet connection',
+    status: 'pending'
+  },
+  {
     key: 'init',
-    label: 'Initialising icpay SDK',
+    label: 'Initialising ICPay',
     tooltip: 'Initializing payment',
     status: 'pending'
   },
@@ -350,7 +356,6 @@ export class ICPayProgressBar extends LitElement {
         methodName === 'unlock' || methodName === 'tip' ||
         methodName === 'donate' || methodName === 'order') {
 
-      // Always open as modal regardless of any provided mode
       this.open = true;
       this.activeIndex = 0;
       this.completed = false;
@@ -362,7 +367,7 @@ export class ICPayProgressBar extends LitElement {
       // Reset all steps to pending
       this.currentSteps = this.currentSteps.map(step => ({ ...step, status: 'pending' as StepStatus }));
 
-      // Update first step to loading (but don't start progression yet)
+      // Step 0: Wallet connect loading
       this.updateStepStatus(0, 'loading');
 
       // Update amount and currency if provided in event
@@ -387,7 +392,7 @@ export class ICPayProgressBar extends LitElement {
         });
       }
 
-      // Don't start automatic progression yet - wait for wallet confirmation
+      // Waiting for wallet confirmation event to proceed
       console.log('ICPay Progress: Waiting for wallet confirmation before starting progression');
 
       this.requestUpdate();
@@ -452,6 +457,18 @@ export class ICPayProgressBar extends LitElement {
         detail: { methodName, step: this.activeIndex },
         bubbles: true
       }));
+
+      // Nudge progression if we're early
+      if (!this.failed && !this.completed) {
+        // Complete current loading step and move next if available
+        if (this.currentSteps[this.activeIndex]?.status === 'loading') {
+          this.updateStepStatus(this.activeIndex, 'completed');
+          if (this.activeIndex < this.currentSteps.length - 1) {
+            this.activeIndex++;
+            this.updateStepStatus(this.activeIndex, 'loading');
+          }
+        }
+      }
     }
   };
 
@@ -459,6 +476,15 @@ export class ICPayProgressBar extends LitElement {
     const transactionId = e?.detail?.transactionId || e?.detail?.id;
 
     console.log('ICPay Progress: Transaction created event received:', e.detail);
+
+    // Progress to transfer step when tx created
+    if (!this.failed && !this.completed) {
+      if (this.activeIndex < this.currentSteps.length - 1) {
+        this.updateStepStatus(this.activeIndex, 'completed');
+        this.activeIndex++;
+        this.updateStepStatus(this.activeIndex, 'loading');
+      }
+    }
 
     // Dispatch transaction created event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-transaction-created', {
@@ -472,6 +498,11 @@ export class ICPayProgressBar extends LitElement {
     const transactionId = e?.detail?.transactionId || e?.detail?.id;
 
     console.log('ICPay Progress: Transaction updated event received:', e.detail);
+
+    // When pending turns to confirmed, we will complete progression in onTransactionCompleted
+    if (!this.failed && !this.completed && status === 'pending') {
+      // Keep current step loading
+    }
 
     // Dispatch transaction updated event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-transaction-updated', {
@@ -605,8 +636,14 @@ export class ICPayProgressBar extends LitElement {
 
     console.log('ICPay Progress: Wallet connected event received:', e.detail);
 
-    // Complete the first step (SDK initialization)
+    // Complete wallet connect step
     this.updateStepStatus(0, 'completed');
+
+    // Begin initializing/payment step
+    if (this.currentSteps[1]) {
+      this.activeIndex = 1;
+      this.updateStepStatus(1, 'loading');
+    }
 
     // Now start the automatic progression through remaining steps
     this.startAutomaticProgression();
