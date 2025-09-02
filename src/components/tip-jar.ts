@@ -172,7 +172,7 @@ export class ICPayTipJar extends LitElement {
     return Math.min((this.total / max) * 100, 100);
   }
 
-    private async tip() {
+  private async tip() {
     if (!isBrowser) return; // Skip in SSR
 
     debugLog(this.config?.debug || false, 'Tip button clicked!', { config: this.config, processing: this.processing });
@@ -285,9 +285,17 @@ export class ICPayTipJar extends LitElement {
       return html`<div class="card section">Loading...</div>`;
     }
 
+    // Determine token selector visibility/mode using new string-based setting
+    const optionsCount = this.cryptoOptions?.length || 0;
+    const hasMultiple = optionsCount > 1;
+    const rawMode = (this.config?.showLedgerDropdown as any) as ('buttons'|'dropdown'|'none'|undefined);
+    const globalMode: 'buttons'|'dropdown'|'none' = rawMode === 'dropdown' ? 'dropdown' : rawMode === 'none' ? 'none' : 'buttons';
+    const showSelector = (globalMode !== 'none') && (hasMultiple || globalMode === 'dropdown');
+    const tokenSelectorMode: 'buttons'|'dropdown'|'none' = globalMode === 'dropdown' ? 'dropdown' : (hasMultiple ? 'buttons' : 'none');
+
     return html`
       <div class="card section" style="text-align:center;">
-        ${this.config?.progressBar?.enabled !== false ? html`<icpay-progress-bar mode="${this.config?.progressBar?.mode || 'modal'}"></icpay-progress-bar>` : null}
+        ${this.config?.progressBar?.enabled !== false ? html`<icpay-progress-bar></icpay-progress-bar>` : null}
         <div class="jar"><div class="fill" style="height:${this.fillPercentage}%"></div></div>
         <div class="label">Total Tips: $${this.total}</div>
 
@@ -295,13 +303,13 @@ export class ICPayTipJar extends LitElement {
           ${this.amounts.map(a => html`<div class="chip ${this.selectedAmount===a?'selected':''}" @click=${() => this.selectAmount(a)}>$${a}</div>`)}
         </div>
 
-        ${this.config?.showLedgerDropdown === true ? html`
+        ${showSelector ? html`
           <div>
             <icpay-token-selector
               .options=${this.cryptoOptions}
               .value=${this.selectedSymbol || ''}
               .defaultSymbol=${this.config?.defaultSymbol || 'ICP'}
-              mode=${(this.config?.showLedgerDropdown || 'buttons')}
+              mode=${tokenSelectorMode}
               @icpay-token-change=${(e: any) => this.selectSymbol(e.detail.symbol)}
             ></icpay-token-selector>
           </div>
