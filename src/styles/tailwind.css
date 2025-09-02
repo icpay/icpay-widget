@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom CSS variables for the cobalt blue theme */
+:root {
+  --icpay-cobalt-blue: #0066FF;
+  --icpay-cobalt-blue-dark: #0052cc;
+  --icpay-background: #0b0f1a;
+  --icpay-surface: #1f2937;
+  --icpay-border: #263042;
+  --icpay-text: #e5e7eb;
+  --icpay-muted: #9ca3af;
+}
+
+/* Custom animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes zoom-in {
+  from { transform: scale(0.95); }
+  to { transform: scale(1); }
+}
+
+@keyframes zoom-out {
+  from { transform: scale(1); }
+  to { transform: scale(0.95); }
+}
+
+/* Custom utility classes */
+.animate-fade-in-0 {
+  animation: fade-in 0.5s ease-out;
+}
+
+.animate-fade-out-0 {
+  animation: fade-out 0.5s ease-in;
+}
+
+.animate-zoom-in-95 {
+  animation: zoom-in 0.2s ease-out;
+}
+
+.animate-zoom-out-95 {
+  animation: zoom-out 0.2s ease-in;
+}
+
+/* Focus ring styles */
+.focus-visible\:ring-ring\/50:focus-visible {
+  --tw-ring-color: rgb(0 102 255 / 0.5);
+}
+
+/* Custom button styles */
+.btn-primary {
+  @apply bg-[#0066FF] text-white hover:bg-[#0052cc] transition-colors;
+}
+
+.btn-outline {
+  @apply border border-[#263042] bg-[#0b0f1a] hover:bg-[#1f2937] hover:text-[#e5e7eb] transition-colors;
+}
+
+/* Custom progress bar styles */
+.progress-bar {
+  @apply bg-[#0066FF]/20 h-2 w-full overflow-hidden rounded-full;
+}
+
+.progress-fill {
+  @apply bg-[#0066FF] h-full transition-all duration-300 ease-out;
+} 

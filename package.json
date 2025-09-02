@@ -1,0 +1,45 @@
+{
+  "name": "@ic-pay/icpay-widget",
+  "version": "0.1.75",
+  "description": "ICPay embeddable payment widgets as framework-agnostic Web Components",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "unpkg": "dist/index.iife.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,iife --global-name ICPayWidget --dts --minify --sourcemap --clean --external @ic-pay/icpay-sdk && npm run build:css",
+    "build:css": "tailwindcss -i src/styles/tailwind.css -o dist/tailwind.css --minify",
+    "dev": "tsup src/index.ts --watch --format esm,iife --global-name ICPayWidget --dts --external @ic-pay/icpay-sdk",
+    "prepare": "pnpm build"
+  },
+  "peerDependencies": {
+    "@ic-pay/icpay-sdk": "*"
+  },
+  "dependencies": {
+    "@ic-pay/icpay-sdk": "^1.3.64",
+    "@windoge98/plug-n-play": "^0.0.70",
+    "lit": "^3.3.1"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/icpay.git"
+  }
+}
