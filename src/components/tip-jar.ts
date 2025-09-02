@@ -126,6 +126,7 @@ export class ICPayTipJar extends LitElement {
     if (changed.has('config') && this.pendingAction && this.config?.actorProvider) {
       const action = this.pendingAction;
       this.pendingAction = null;
+      try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: 'external' } })); } catch {}
       // Resume the original action after external wallet connected
       setTimeout(() => { if (action === 'tip') this.tip(); }, 0);
     }
@@ -171,7 +172,7 @@ export class ICPayTipJar extends LitElement {
     return Math.min((this.total / max) * 100, 100);
   }
 
-    private async tip() {
+  private async tip() {
     if (!isBrowser) return; // Skip in SSR
 
     debugLog(this.config?.debug || false, 'Tip button clicked!', { config: this.config, processing: this.processing });
@@ -181,6 +182,8 @@ export class ICPayTipJar extends LitElement {
     this.errorMessage = null;
     this.errorSeverity = null;
     this.errorAction = null;
+
+    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'tip', type: 'sendUsd', amount: this.selectedAmount, currency: this.selectedSymbol } })); } catch {}
 
     this.processing = true;
     try {
@@ -265,6 +268,7 @@ export class ICPayTipJar extends LitElement {
       const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
       if (!isConnected) throw new Error('Wallet connection was rejected');
       this.walletConnected = true;
+      try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
       this.config = { ...this.config, connectedWallet: result, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
       this.showWalletModal = false;
       const action = this.pendingAction; this.pendingAction = null;
@@ -281,9 +285,17 @@ export class ICPayTipJar extends LitElement {
       return html`<div class="card section">Loading...</div>`;
     }
 
+    // Determine token selector visibility/mode using new string-based setting
+    const optionsCount = this.cryptoOptions?.length || 0;
+    const hasMultiple = optionsCount > 1;
+    const rawMode = (this.config?.showLedgerDropdown as any) as ('buttons'|'dropdown'|'none'|undefined);
+    const globalMode: 'buttons'|'dropdown'|'none' = rawMode === 'dropdown' ? 'dropdown' : rawMode === 'none' ? 'none' : 'buttons';
+    const showSelector = (globalMode !== 'none') && (hasMultiple || globalMode === 'dropdown');
+    const tokenSelectorMode: 'buttons'|'dropdown'|'none' = globalMode === 'dropdown' ? 'dropdown' : (hasMultiple ? 'buttons' : 'none');
+
     return html`
       <div class="card section" style="text-align:center;">
-        ${this.config?.progressBar?.enabled !== false ? html`<icpay-progress-bar mode="${this.config?.progressBar?.mode || 'modal'}"></icpay-progress-bar>` : null}
+        ${this.config?.progressBar?.enabled !== false ? html`<icpay-progress-bar></icpay-progress-bar>` : null}
         <div class="jar"><div class="fill" style="height:${this.fillPercentage}%"></div></div>
         <div class="label">Total Tips: $${this.total}</div>
 
@@ -291,13 +303,13 @@ export class ICPayTipJar extends LitElement {
           ${this.amounts.map(a => html`<div class="chip ${this.selectedAmount===a?'selected':''}" @click=${() => this.selectAmount(a)}>$${a}</div>`)}
         </div>
 
-        ${this.config?.showLedgerDropdown === true ? html`
+        ${showSelector ? html`
           <div>
             <icpay-token-selector
               .options=${this.cryptoOptions}
               .value=${this.selectedSymbol || ''}
               .defaultSymbol=${this.config?.defaultSymbol || 'ICP'}
-              mode=${(this.config?.showLedgerDropdown || 'buttons')}
+              mode=${tokenSelectorMode}
               @icpay-token-change=${(e: any) => this.selectSymbol(e.detail.symbol)}
             ></icpay-token-selector>
           </div>

@@ -15,8 +15,14 @@ type Step = {
 
 const DEFAULT_STEPS: Step[] = [
   {
+    key: 'wallet',
+    label: 'Connect Wallet',
+    tooltip: 'Awaiting wallet connection',
+    status: 'pending'
+  },
+  {
     key: 'init',
-    label: 'Initialising icpay SDK',
+    label: 'Initialising ICPay',
     tooltip: 'Initializing payment',
     status: 'pending'
   },
@@ -350,7 +356,6 @@ export class ICPayProgressBar extends LitElement {
         methodName === 'unlock' || methodName === 'tip' ||
         methodName === 'donate' || methodName === 'order') {
 
-      // Always open as modal regardless of any provided mode
       this.open = true;
       this.activeIndex = 0;
       this.completed = false;
@@ -362,8 +367,8 @@ export class ICPayProgressBar extends LitElement {
       // Reset all steps to pending
       this.currentSteps = this.currentSteps.map(step => ({ ...step, status: 'pending' as StepStatus }));
 
-      // Update first step to loading (but don't start progression yet)
-      this.updateStepStatus(0, 'loading');
+      // Step 0: Wallet connect loading
+      this.setLoadingByKey('wallet');
 
       // Update amount and currency if provided in event
       if (e?.detail?.amount !== undefined) {
@@ -387,10 +392,19 @@ export class ICPayProgressBar extends LitElement {
         });
       }
 
-      // Don't start automatic progression yet - wait for wallet confirmation
+      // Waiting for wallet confirmation event to proceed
       console.log('ICPay Progress: Waiting for wallet confirmation before starting progression');
 
       this.requestUpdate();
+    }
+
+    // Mid-flow granular starts for internal SDK steps
+    if (!this.failed && !this.completed) {
+      if (methodName === 'sendFundsToLedger') {
+        this.setLoadingByKey('transfer');
+      } else if (methodName === 'notifyLedgerTransaction') {
+        this.setLoadingByKey('verify');
+      }
     }
   };
 
@@ -452,6 +466,23 @@ export class ICPayProgressBar extends LitElement {
         detail: { methodName, step: this.activeIndex },
         bubbles: true
       }));
+
+      // Map SDK method successes to step completions if relevant
+      if (!this.failed && !this.completed) {
+        if (methodName === 'getLedgerBalance') {
+          // balance ok → init completed
+          this.completeByKey('init');
+          this.setLoadingByKey('await');
+        } else if (methodName === 'sendFundsToLedger') {
+          // Mark transfer as completed when ledger transfer returns
+          this.completeByKey('transfer');
+          this.setLoadingByKey('verify');
+        } else if (methodName === 'notifyLedgerTransaction') {
+          // Canister notified → verify completed
+          this.completeByKey('verify');
+          this.setLoadingByKey('confirm');
+        }
+      }
     }
   };
 
@@ -459,6 +490,12 @@ export class ICPayProgressBar extends LitElement {
     const transactionId = e?.detail?.transactionId || e?.detail?.id;
 
     console.log('ICPay Progress: Transaction created event received:', e.detail);
+
+    // Await -> completed on intent created; start transfer loading
+    if (!this.failed && !this.completed) {
+      this.completeByKey('await');
+      this.setLoadingByKey('transfer');
+    }
 
     // Dispatch transaction created event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-transaction-created', {
@@ -472,6 +509,11 @@ export class ICPayProgressBar extends LitElement {
     const transactionId = e?.detail?.transactionId || e?.detail?.id;
 
     console.log('ICPay Progress: Transaction updated event received:', e.detail);
+
+    // When pending turns to confirmed, we will complete progression in onTransactionCompleted
+    if (!this.failed && !this.completed && status === 'pending') {
+      // Keep current step loading
+    }
 
     // Dispatch transaction updated event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-transaction-updated', {
@@ -492,15 +534,12 @@ export class ICPayProgressBar extends LitElement {
       showSuccess: this.showSuccess
     });
 
-    // Stop automatic progression
-    this.stopAutomaticProgression();
-
-    // Mark all remaining steps as completed
-    for (let i = this.activeIndex; i < this.currentSteps.length; i++) {
-      this.updateStepStatus(i, 'completed');
-    }
-
-    this.activeIndex = this.currentSteps.length - 1;
+    // Ensure remaining steps are completed in sequence before final success
+    this.completeByKey('transfer');
+    this.completeByKey('await');
+    this.completeByKey('init');
+    this.completeByKey('verify');
+    this.completeByKey('confirm');
     this.completed = true;
     this.showSuccess = true;
     this.showConfetti = true;
@@ -605,11 +644,11 @@ export class ICPayProgressBar extends LitElement {
 
     console.log('ICPay Progress: Wallet connected event received:', e.detail);
 
-    // Complete the first step (SDK initialization)
-    this.updateStepStatus(0, 'completed');
+    // Complete wallet step and set init to loading
+    this.completeByKey('wallet');
+    this.setLoadingByKey('init');
 
-    // Now start the automatic progression through remaining steps
-    this.startAutomaticProgression();
+    // Do not auto-progress; wait for subsequent events to advance steps
 
     // Dispatch wallet connected event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-wallet-connected', {
@@ -692,6 +731,17 @@ export class ICPayProgressBar extends LitElement {
       this.ledgerSymbol = ledgerSymbol;
     }
 
+    // Advance steps to success state (event-driven, no auto progression)
+    if (!this.failed) {
+      for (let i = this.activeIndex; i < this.currentSteps.length; i++) {
+        this.updateStepStatus(i, 'completed');
+      }
+      this.activeIndex = this.currentSteps.length - 1;
+      this.completed = true;
+      this.showSuccess = true;
+      this.showConfetti = true;
+    }
+
     // Dispatch widget payment event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-widget-payment', {
       detail: { amount, currency, ledgerSymbol, step: this.activeIndex },
@@ -726,6 +776,17 @@ export class ICPayProgressBar extends LitElement {
 
     console.log('ICPay Progress: Widget unlock event received:', e.detail);
 
+    // Complete steps and show success
+    if (!this.failed) {
+      for (let i = this.activeIndex; i < this.currentSteps.length; i++) {
+        this.updateStepStatus(i, 'completed');
+      }
+      this.activeIndex = this.currentSteps.length - 1;
+      this.completed = true;
+      this.showSuccess = true;
+      this.showConfetti = true;
+    }
+
     // Dispatch widget unlock event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-widget-unlock', {
       detail: { amount, currency, step: this.activeIndex },
@@ -738,6 +799,17 @@ export class ICPayProgressBar extends LitElement {
     const currency = e?.detail?.currency;
 
     console.log('ICPay Progress: Widget tip event received:', e.detail);
+
+    // Complete steps and show success
+    if (!this.failed) {
+      for (let i = this.activeIndex; i < this.currentSteps.length; i++) {
+        this.updateStepStatus(i, 'completed');
+      }
+      this.activeIndex = this.currentSteps.length - 1;
+      this.completed = true;
+      this.showSuccess = true;
+      this.showConfetti = true;
+    }
 
     // Dispatch widget tip event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-widget-tip', {
@@ -752,6 +824,17 @@ export class ICPayProgressBar extends LitElement {
 
     console.log('ICPay Progress: Widget donation event received:', e.detail);
 
+    // Complete steps and show success
+    if (!this.failed) {
+      for (let i = this.activeIndex; i < this.currentSteps.length; i++) {
+        this.updateStepStatus(i, 'completed');
+      }
+      this.activeIndex = this.currentSteps.length - 1;
+      this.completed = true;
+      this.showSuccess = true;
+      this.showConfetti = true;
+    }
+
     // Dispatch widget donation event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-widget-donation', {
       detail: { amount, currency, step: this.activeIndex },
@@ -764,6 +847,17 @@ export class ICPayProgressBar extends LitElement {
     const currency = e?.detail?.currency;
 
     console.log('ICPay Progress: Widget coffee event received:', e.detail);
+
+    // Complete steps and show success
+    if (!this.failed) {
+      for (let i = this.activeIndex; i < this.currentSteps.length; i++) {
+        this.updateStepStatus(i, 'completed');
+      }
+      this.activeIndex = this.currentSteps.length - 1;
+      this.completed = true;
+      this.showSuccess = true;
+      this.showConfetti = true;
+    }
 
     // Dispatch widget coffee event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-widget-coffee', {
@@ -827,6 +921,26 @@ export class ICPayProgressBar extends LitElement {
         return '✗'; // X mark
       default:
         return '○'; // Empty circle for pending
+    }
+  }
+
+  private getStepIndexByKey(key: string): number {
+    return this.currentSteps.findIndex(s => s.key === key);
+  }
+
+  private setLoadingByKey(key: string) {
+    const idx = this.getStepIndexByKey(key);
+    if (idx >= 0) {
+      this.activeIndex = idx;
+      this.updateStepStatus(idx, 'loading');
+    }
+  }
+
+  private completeByKey(key: string) {
+    const idx = this.getStepIndexByKey(key);
+    if (idx >= 0) {
+      this.updateStepStatus(idx, 'completed');
+      this.activeIndex = idx;
     }
   }
 
