@@ -397,6 +397,15 @@ export class ICPayProgressBar extends LitElement {
 
       this.requestUpdate();
     }
+
+    // Mid-flow granular starts for internal SDK steps
+    if (!this.failed && !this.completed) {
+      if (methodName === 'sendFundsToLedger') {
+        this.setLoadingByKey('transfer');
+      } else if (methodName === 'notifyLedgerTransaction') {
+        this.setLoadingByKey('verify');
+      }
+    }
   };
 
   private startAutomaticProgression() {
@@ -465,10 +474,11 @@ export class ICPayProgressBar extends LitElement {
           this.completeByKey('init');
           this.setLoadingByKey('await');
         } else if (methodName === 'sendFundsToLedger') {
-          // transfer result handled later; ensure transfer is loading
-          this.setLoadingByKey('transfer');
+          // Mark transfer as completed when ledger transfer returns
+          this.completeByKey('transfer');
+          this.setLoadingByKey('verify');
         } else if (methodName === 'notifyLedgerTransaction') {
-          // canister notified → verify completed
+          // Canister notified → verify completed
           this.completeByKey('verify');
           this.setLoadingByKey('confirm');
         }
@@ -524,11 +534,11 @@ export class ICPayProgressBar extends LitElement {
       showSuccess: this.showSuccess
     });
 
-    // Complete transfer and verify chains before success
+    // Ensure remaining steps are completed in sequence before final success
     this.completeByKey('transfer');
-    this.setLoadingByKey('verify');
+    this.completeByKey('await');
+    this.completeByKey('init');
     this.completeByKey('verify');
-    this.setLoadingByKey('confirm');
     this.completeByKey('confirm');
     this.completed = true;
     this.showSuccess = true;
