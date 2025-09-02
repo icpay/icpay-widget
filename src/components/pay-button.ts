@@ -209,19 +209,16 @@ export class ICPayPayButton extends LitElement {
       });
     } finally {
       this.processing = false;
-      // Allow retry after any outcome
-      this.pendingAction = null;
     }
   }
 
   render() {
     if (!this.config) return html`<div class="card section">Loading...</div>`;
 
-    const dropdownEnabled = this.config?.showLedgerDropdown === true;
     const optionsCount = this.cryptoOptions?.length || 0;
     const hasMultiple = optionsCount > 1;
     const rawMode = (this.config?.showLedgerDropdown as any) as ('buttons'|'dropdown'|'none'|undefined);
-    const globalMode: 'buttons'|'dropdown'|'none' = rawMode === 'dropdown' ? 'dropdown' : rawMode === 'none' ? 'none' : 'buttons';
+    const globalMode: 'buttons'|'dropdown'|'none' = rawMode === 'dropdown' ? 'dropdown' : rawMode === 'buttons' ? 'none' : 'none';
     const showSelector = (globalMode !== 'none') && (hasMultiple || globalMode === 'dropdown');
     const tokenSelectorMode: 'buttons'|'dropdown'|'none' = globalMode === 'dropdown' ? 'dropdown' : (hasMultiple ? 'buttons' : 'none');
     const selectedSymbol = this.selectedSymbol || this.config?.defaultSymbol || 'ICP';

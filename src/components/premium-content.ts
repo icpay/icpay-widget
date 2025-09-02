@@ -253,7 +253,6 @@ export class ICPayPremiumContent extends LitElement {
       });
     } finally {
       this.processing = false;
-      this.pendingAction = null;
     }
   }
 

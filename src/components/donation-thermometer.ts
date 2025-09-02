@@ -250,7 +250,6 @@ export class ICPayDonationThermometer extends LitElement {
       });
     } finally {
       this.processing = false;
-      this.pendingAction = null;
     }
   }
 
