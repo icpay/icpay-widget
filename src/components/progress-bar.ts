@@ -368,7 +368,7 @@ export class ICPayProgressBar extends LitElement {
       this.currentSteps = this.currentSteps.map(step => ({ ...step, status: 'pending' as StepStatus }));
 
       // Step 0: Wallet connect loading
-      this.updateStepStatus(0, 'loading');
+      this.setLoadingByKey('wallet');
 
       // Update amount and currency if provided in event
       if (e?.detail?.amount !== undefined) {
@@ -458,15 +458,19 @@ export class ICPayProgressBar extends LitElement {
         bubbles: true
       }));
 
-      // Nudge progression if we're early
+      // Map SDK method successes to step completions if relevant
       if (!this.failed && !this.completed) {
-        // Complete current loading step and move next if available
-        if (this.currentSteps[this.activeIndex]?.status === 'loading') {
-          this.updateStepStatus(this.activeIndex, 'completed');
-          if (this.activeIndex < this.currentSteps.length - 1) {
-            this.activeIndex++;
-            this.updateStepStatus(this.activeIndex, 'loading');
-          }
+        if (methodName === 'getLedgerBalance') {
+          // balance ok → init completed
+          this.completeByKey('init');
+          this.setLoadingByKey('await');
+        } else if (methodName === 'sendFundsToLedger') {
+          // transfer result handled later; ensure transfer is loading
+          this.setLoadingByKey('transfer');
+        } else if (methodName === 'notifyLedgerTransaction') {
+          // canister notified → verify completed
+          this.completeByKey('verify');
+          this.setLoadingByKey('confirm');
         }
       }
     }
@@ -477,13 +481,10 @@ export class ICPayProgressBar extends LitElement {
 
     console.log('ICPay Progress: Transaction created event received:', e.detail);
 
-    // Progress to transfer step when tx created
+    // Await -> completed on intent created; start transfer loading
     if (!this.failed && !this.completed) {
-      if (this.activeIndex < this.currentSteps.length - 1) {
-        this.updateStepStatus(this.activeIndex, 'completed');
-        this.activeIndex++;
-        this.updateStepStatus(this.activeIndex, 'loading');
-      }
+      this.completeByKey('await');
+      this.setLoadingByKey('transfer');
     }
 
     // Dispatch transaction created event for external listeners
@@ -523,15 +524,12 @@ export class ICPayProgressBar extends LitElement {
       showSuccess: this.showSuccess
     });
 
-    // Stop automatic progression
-    this.stopAutomaticProgression();
-
-    // Mark all remaining steps as completed
-    for (let i = this.activeIndex; i < this.currentSteps.length; i++) {
-      this.updateStepStatus(i, 'completed');
-    }
-
-    this.activeIndex = this.currentSteps.length - 1;
+    // Complete transfer and verify chains before success
+    this.completeByKey('transfer');
+    this.setLoadingByKey('verify');
+    this.completeByKey('verify');
+    this.setLoadingByKey('confirm');
+    this.completeByKey('confirm');
     this.completed = true;
     this.showSuccess = true;
     this.showConfetti = true;
@@ -636,14 +634,9 @@ export class ICPayProgressBar extends LitElement {
 
     console.log('ICPay Progress: Wallet connected event received:', e.detail);
 
-    // Complete wallet connect step
-    this.updateStepStatus(0, 'completed');
-
-    // Begin initializing/payment step
-    if (this.currentSteps[1]) {
-      this.activeIndex = 1;
-      this.updateStepStatus(1, 'loading');
-    }
+    // Complete wallet step and set init to loading
+    this.completeByKey('wallet');
+    this.setLoadingByKey('init');
 
     // Do not auto-progress; wait for subsequent events to advance steps
 
@@ -918,6 +911,26 @@ export class ICPayProgressBar extends LitElement {
         return '✗'; // X mark
       default:
         return '○'; // Empty circle for pending
+    }
+  }
+
+  private getStepIndexByKey(key: string): number {
+    return this.currentSteps.findIndex(s => s.key === key);
+  }
+
+  private setLoadingByKey(key: string) {
+    const idx = this.getStepIndexByKey(key);
+    if (idx >= 0) {
+      this.activeIndex = idx;
+      this.updateStepStatus(idx, 'loading');
+    }
+  }
+
+  private completeByKey(key: string) {
+    const idx = this.getStepIndexByKey(key);
+    if (idx >= 0) {
+      this.updateStepStatus(idx, 'completed');
+      this.activeIndex = idx;
     }
   }
 
