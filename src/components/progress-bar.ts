@@ -645,8 +645,7 @@ export class ICPayProgressBar extends LitElement {
       this.updateStepStatus(1, 'loading');
     }
 
-    // Now start the automatic progression through remaining steps
-    this.startAutomaticProgression();
+    // Do not auto-progress; wait for subsequent events to advance steps
 
     // Dispatch wallet connected event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-wallet-connected', {
@@ -729,6 +728,17 @@ export class ICPayProgressBar extends LitElement {
       this.ledgerSymbol = ledgerSymbol;
     }
 
+    // Advance steps to success state (event-driven, no auto progression)
+    if (!this.failed) {
+      for (let i = this.activeIndex; i < this.currentSteps.length; i++) {
+        this.updateStepStatus(i, 'completed');
+      }
+      this.activeIndex = this.currentSteps.length - 1;
+      this.completed = true;
+      this.showSuccess = true;
+      this.showConfetti = true;
+    }
+
     // Dispatch widget payment event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-widget-payment', {
       detail: { amount, currency, ledgerSymbol, step: this.activeIndex },
@@ -763,6 +773,17 @@ export class ICPayProgressBar extends LitElement {
 
     console.log('ICPay Progress: Widget unlock event received:', e.detail);
 
+    // Complete steps and show success
+    if (!this.failed) {
+      for (let i = this.activeIndex; i < this.currentSteps.length; i++) {
+        this.updateStepStatus(i, 'completed');
+      }
+      this.activeIndex = this.currentSteps.length - 1;
+      this.completed = true;
+      this.showSuccess = true;
+      this.showConfetti = true;
+    }
+
     // Dispatch widget unlock event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-widget-unlock', {
       detail: { amount, currency, step: this.activeIndex },
@@ -775,6 +796,17 @@ export class ICPayProgressBar extends LitElement {
     const currency = e?.detail?.currency;
 
     console.log('ICPay Progress: Widget tip event received:', e.detail);
+
+    // Complete steps and show success
+    if (!this.failed) {
+      for (let i = this.activeIndex; i < this.currentSteps.length; i++) {
+        this.updateStepStatus(i, 'completed');
+      }
+      this.activeIndex = this.currentSteps.length - 1;
+      this.completed = true;
+      this.showSuccess = true;
+      this.showConfetti = true;
+    }
 
     // Dispatch widget tip event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-widget-tip', {
@@ -789,6 +821,17 @@ export class ICPayProgressBar extends LitElement {
 
     console.log('ICPay Progress: Widget donation event received:', e.detail);
 
+    // Complete steps and show success
+    if (!this.failed) {
+      for (let i = this.activeIndex; i < this.currentSteps.length; i++) {
+        this.updateStepStatus(i, 'completed');
+      }
+      this.activeIndex = this.currentSteps.length - 1;
+      this.completed = true;
+      this.showSuccess = true;
+      this.showConfetti = true;
+    }
+
     // Dispatch widget donation event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-widget-donation', {
       detail: { amount, currency, step: this.activeIndex },
@@ -801,6 +844,17 @@ export class ICPayProgressBar extends LitElement {
     const currency = e?.detail?.currency;
 
     console.log('ICPay Progress: Widget coffee event received:', e.detail);
+
+    // Complete steps and show success
+    if (!this.failed) {
+      for (let i = this.activeIndex; i < this.currentSteps.length; i++) {
+        this.updateStepStatus(i, 'completed');
+      }
+      this.activeIndex = this.currentSteps.length - 1;
+      this.completed = true;
+      this.showSuccess = true;
+      this.showConfetti = true;
+    }
 
     // Dispatch widget coffee event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-widget-coffee', {
