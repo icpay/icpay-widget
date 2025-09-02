@@ -126,6 +126,7 @@ export class ICPayTipJar extends LitElement {
     if (changed.has('config') && this.pendingAction && this.config?.actorProvider) {
       const action = this.pendingAction;
       this.pendingAction = null;
+      try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: 'external' } })); } catch {}
       // Resume the original action after external wallet connected
       setTimeout(() => { if (action === 'tip') this.tip(); }, 0);
     }
@@ -181,6 +182,8 @@ export class ICPayTipJar extends LitElement {
     this.errorMessage = null;
     this.errorSeverity = null;
     this.errorAction = null;
+
+    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'tip', type: 'sendUsd', amount: this.selectedAmount, currency: this.selectedSymbol } })); } catch {}
 
     this.processing = true;
     try {
@@ -265,6 +268,7 @@ export class ICPayTipJar extends LitElement {
       const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
       if (!isConnected) throw new Error('Wallet connection was rejected');
       this.walletConnected = true;
+      try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
       this.config = { ...this.config, connectedWallet: result, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
       this.showWalletModal = false;
       const action = this.pendingAction; this.pendingAction = null;
