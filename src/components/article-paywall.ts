@@ -6,6 +6,7 @@ import type { ArticlePaywallConfig, CryptoOption } from '../types';
 import { createSdk } from '../utils/sdk';
 import './progress-bar';
 import './token-selector';
+import { renderWalletSelectorModal } from './wallet-selector-modal';
 
 // Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';
@@ -64,6 +65,15 @@ export class ICPayArticlePaywall extends LitElement {
   @property({ type: String }) title: string = 'Article Title';
   @property({ type: String }) preview: string = '';
   @property({ type: String }) lockedContent: string = '';
+  private get obfuscatedLockedContent(): string {
+    try {
+      const s = this.lockedContent || '';
+      // Replace all non-whitespace characters with 'x' to avoid leaking content
+      return s.replace(/[^\s]/g, 'x');
+    } catch {
+      return 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+    }
+  }
   @state() private selectedSymbol = 'ICP';
   @state() private unlocked = false;
   @state() private succeeded = false;
@@ -292,7 +302,7 @@ export class ICPayArticlePaywall extends LitElement {
         <div class="container">
           <div class="title">${this.title}</div>
           <div class="preview">${this.preview}</div>
-          <div class="${this.unlocked ? 'unlocked' : 'locked'}">${this.lockedContent}</div>
+          <div class="${this.unlocked ? 'unlocked' : 'locked'}">${this.unlocked ? this.lockedContent : this.obfuscatedLockedContent}</div>
         </div>
         <div class="pricing" style="text-align:center;">
           <div class="price">$${Number(this.config?.priceUsd ?? 0).toFixed(2)}</div>
@@ -326,29 +336,15 @@ export class ICPayArticlePaywall extends LitElement {
           </div>
         ` : ''}
         ${(() => {
-          const wallets = (this as any).pnp?.getEnabledWallets?.() || [];
-          return (this.showWalletModal && this.pnp) ? html`
-            <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);z-index:9999">
-              <div class="card section" style="width:380px;border-radius:12px">
-                <div class="label" style="font-weight:700;margin-bottom:12px;text-align:center">Choose Wallet</div>
-                <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:12px">
-                  ${wallets.map((w:any)=>{
-                    const id = this.getWalletId(w);
-                    const label = this.getWalletLabel(w);
-                    const icon = this.getWalletIcon(w);
-                    return html`
-                      <button class="pay-button" style="display:flex;align-items:center;gap:10px;justify-content:center;padding:12px" @click=${() => this.connectWithWallet(id)}>
-                        ${icon ? html`<img src="${icon}" alt="${label}" style="width:20px;height:20px;border-radius:4px;object-fit:contain;background:transparent" />` : ''}
-                        <span>${label}</span>
-                      </button>`;
-                  })}
-                </div>
-                <button class="pay-button" style="background:#6b7280;color:#f9fafb" @click=${() => { this.showWalletModal = false; }}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ` : null;
+          const walletsRaw = (this as any).pnp?.getEnabledWallets?.() || [];
+          const wallets = walletsRaw.map((w:any)=>({ id: this.getWalletId(w), label: this.getWalletLabel(w), icon: this.getWalletIcon(w) }));
+          return renderWalletSelectorModal({
+            visible: !!(this.showWalletModal && this.pnp),
+            wallets,
+            isConnecting: false,
+            onSelect: (walletId: string) => this.connectWithWallet(walletId),
+            onClose: () => { this.showWalletModal = false; }
+          });
         })()}
       </div>
     `;
