@@ -1,6 +1,6 @@
 {
   "name": "@ic-pay/icpay-widget",
-  "version": "0.1.76",
+  "version": "0.1.77",
   "description": "ICPay embeddable payment widgets as framework-agnostic Web Components",
   "homepage": "https://github.com/icpay/icpay-widget#readme",
   "bugs": {

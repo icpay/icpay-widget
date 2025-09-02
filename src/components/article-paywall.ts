@@ -251,7 +251,6 @@ export class ICPayArticlePaywall extends LitElement {
       });
     } finally {
       this.processing = false;
-      this.pendingAction = null;
     }
   }
 
