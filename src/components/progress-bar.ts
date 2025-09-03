@@ -1133,12 +1133,25 @@ export class ICPayProgressBar extends LitElement {
     `;
   }
 
+  private get isWalletConnectLoading(): boolean {
+    try {
+      const idx = this.currentSteps.findIndex(s => (s as any).key === 'wallet');
+      if (idx < 0) return false;
+      return this.currentSteps[idx].status === 'loading' && !this.failed && !this.showSuccess;
+    } catch {
+      return false;
+    }
+  }
+
   render() {
     return html`
       ${this.open ? html`
         ${this.renderConfetti()}
         <div class="modal-overlay active">
           <div class="modal-container">
+            ${this.isWalletConnectLoading ? html`
+              <button class="close-button" @click=${() => this.closeProgress()} aria-label="Close" title="Close">✕</button>
+            ` : null}
             ${this.renderProgressContent()}
           </div>
         </div>
