@@ -16,15 +16,14 @@ export const baseStyles = css`
     font-family: var(--icpay-font);
   }
 
-  .card {
+  .icpay-card {
     background: var(--icpay-surface);
     border: 1px solid var(--icpay-border);
     border-radius: 16px;
     box-shadow: 0 25px 50px rgba(0, 0, 0, 0.35);
-    overflow: hidden;
   }
 
-  .section {
+  .icpay-section {
     padding: 20px;
   }
 

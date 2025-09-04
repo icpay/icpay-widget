@@ -283,7 +283,7 @@ export class ICPayTipJar extends LitElement {
 
   render() {
     if (!this.config) {
-      return html`<div class="card section">Loading...</div>`;
+      return html`<div class="icpay-card icpay-section">Loading...</div>`;
     }
 
     // Determine token selector visibility/mode using new string-based setting
@@ -295,7 +295,7 @@ export class ICPayTipJar extends LitElement {
     const tokenSelectorMode: 'buttons'|'dropdown'|'none' = globalMode === 'dropdown' ? 'dropdown' : (hasMultiple ? 'buttons' : 'none');
 
     return html`
-      <div class="card section" style="text-align:center;">
+      <div class="icpay-card icpay-section" style="text-align:center;">
         ${this.config?.progressBar?.enabled !== false ? html`<icpay-progress-bar></icpay-progress-bar>` : null}
         <div class="jar"><div class="fill" style="height:${this.fillPercentage}%"></div></div>
         <div class="label">Total Tips: $${this.total}</div>

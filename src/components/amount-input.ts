@@ -24,14 +24,24 @@ function debugLog(debug: boolean, message: string, data?: any): void {
 @customElement('icpay-amount-input')
 export class ICPayAmountInput extends LitElement {
   static styles = [baseStyles, css`
-    .row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; }
-    input[type="number"] { background: var(--icpay-surface-alt); border: 1px solid var(--icpay-border); color: var(--icpay-text); border-radius: 8px; padding: 10px; font-weight: 600; }
+    .row { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: stretch; }
+    .top-row { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; align-items: center; }
+    icpay-token-selector { width: 100%; }
+    .amount-field { position: relative; width: 100%; }
+    .amount-field .currency-prefix { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--icpay-muted, #a3a3a3); font-weight: 600; pointer-events: none; z-index: 2; }
+    .amount-field input[type="number"] { padding-left: 32px; position: relative; z-index: 1; }
+    input[type="number"] { background: var(--icpay-surface-alt); border: 1px solid var(--icpay-border); color: var(--icpay-text); border-radius: 8px; padding: 10px; font-weight: 600; width: 100%; box-sizing: border-box; height: 54px; }
     select { background: var(--icpay-surface-alt); border: 1px solid var(--icpay-border); color: var(--icpay-text); border-radius: 8px; padding: 10px; font-weight: 600; }
+    .pay-button { width: 100%; }
     .error-message { border: 1px solid; font-weight: 500; }
     .error-message.info { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.3); color: #3b82f6; }
     .error-message.warning { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: #f59e0b; }
     .error-message.error { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #ef4444; }
     .hint { font-size: 12px; color: var(--icpay-muted); margin-top: 6px; }
+
+    @media (max-width: 520px) {
+      .top-row { grid-template-columns: 1fr; }
+    }
   `];
 
   @property({ type: Object }) config!: AmountInputConfig;
@@ -228,7 +238,7 @@ export class ICPayAmountInput extends LitElement {
   }
 
   render() {
-    if (!this.config) return html`<div class="card section">Loading...</div>`;
+    if (!this.config) return html`<div class="icpay-card icpay-section">Loading...</div>`;
     const placeholder = this.config?.placeholder || 'Enter amount in USD';
     const payLabelRaw = this.config?.buttonLabel || 'Pay ${amount} with {symbol}';
     const payLabel = payLabelRaw
@@ -246,22 +256,28 @@ export class ICPayAmountInput extends LitElement {
     const showProgressBar = progressEnabled && (mode === 'modal' ? true : this.processing);
 
     return html`
-      <div class="card section">
+      <div class="icpay-card icpay-section">
         ${showProgressBar ? html`<icpay-progress-bar mode="${mode}"></icpay-progress-bar>` : null}
 
         <div class="row">
-          <input type="number" min="0" step="${Number(this.config?.stepUsd ?? 0.5)}" .value=${String(this.amountUsd || '')} placeholder="${placeholder}" @input=${(e: any) => this.onInputChange(e)} />
-          ${globalMode !== 'none' ? html`
-            <icpay-token-selector
-              .options=${this.cryptoOptions}
-              .value=${this.selectedSymbol || ''}
-              .defaultSymbol=${this.config?.defaultSymbol || 'ICP'}
-              mode=${globalMode}
-              @icpay-token-change=${(e: any) => this.selectSymbol(e.detail.symbol)}
-            ></icpay-token-selector>
-          ` : html`
-            <div class="label" style="padding: 10px;">${selectedLabel}</div>
-          `}
+          <div class="top-row">
+            <div class="amount-field">
+              <span class="currency-prefix">$</span>
+              <input type="number" min="0" step="${Number(this.config?.stepUsd ?? 0.5)}" .value=${String(this.amountUsd || '')} placeholder="${placeholder}" @input=${(e: any) => this.onInputChange(e)} />
+            </div>
+            ${globalMode !== 'none' ? html`
+              <icpay-token-selector
+                .options=${this.cryptoOptions}
+                .value=${this.selectedSymbol || ''}
+                .defaultSymbol=${this.config?.defaultSymbol || 'ICP'}
+                mode=${globalMode}
+                .showLabel=${false}
+                @icpay-token-change=${(e: any) => this.selectSymbol(e.detail.symbol)}
+              ></icpay-token-selector>
+            ` : html`
+              <div class="label" style="padding: 10px;">${selectedLabel}</div>
+            `}
+          </div>
           <button class="pay-button ${this.processing?'processing':''}"
             ?disabled=${this.processing || (this.config?.disablePaymentButton === true) || (this.succeeded && this.config?.disableAfterSuccess === true)}
             @click=${() => this.pay()}>

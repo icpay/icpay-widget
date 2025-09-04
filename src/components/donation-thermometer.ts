@@ -283,11 +283,11 @@ export class ICPayDonationThermometer extends LitElement {
 
   render() {
     if (!this.config) {
-      return html`<div class="card section">Loading...</div>`;
+      return html`<div class="icpay-card icpay-section">Loading...</div>`;
     }
 
     return html`
-      <div class="card section" style="text-align:center;">
+      <div class="icpay-card icpay-section" style="text-align:center;">
         ${this.config?.progressBar?.enabled !== false ? html`<icpay-progress-bar mode="${this.config?.progressBar?.mode || 'modal'}"></icpay-progress-bar>` : null}
         <div class="thermo"><div class="fill" style="height:${this.fillPercentage}%"></div></div>
         <div class="total">$${Number(this.raised).toFixed(0)} / $${Number(this.config?.goalUsd ?? 0).toFixed(2)}</div>

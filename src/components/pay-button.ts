@@ -205,7 +205,7 @@ export class ICPayPayButton extends LitElement {
   }
 
   render() {
-    if (!this.config) return html`<div class="card section">Loading...</div>`;
+    if (!this.config) return html`<div class="icpay-card icpay-section">Loading...</div>`;
 
     const optionsCount = this.cryptoOptions?.length || 0;
     const hasMultiple = optionsCount > 1;
@@ -221,7 +221,7 @@ export class ICPayPayButton extends LitElement {
     const showProgressBar = progressEnabled;
 
     return html`
-      <div class="card section">
+      <div class="icpay-card icpay-section">
         ${showProgressBar ? html`
           <icpay-progress-bar></icpay-progress-bar>
         ` : null}
