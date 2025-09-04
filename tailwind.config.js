@@ -9,8 +9,8 @@ export default {
       colors: {
         background: '#0b0f1a',
         foreground: '#e5e7eb',
-        card: '#0b0f1a',
-        'card-foreground': '#e5e7eb',
+        'icpay-card': '#0b0f1a',
+        'icpay-card-foreground': '#e5e7eb',
         popover: '#0b0f1a',
         'popover-foreground': '#e5e7eb',
         primary: '#0066FF',
@@ -64,4 +64,4 @@ export default {
     },
   },
   plugins: [],
-} 
+}

@@ -290,11 +290,11 @@ export class ICPayPremiumContent extends LitElement {
 
   render() {
     if (!this.config) {
-      return html`<div class="card section">Loading...</div>`;
+      return html`<div class="icpay-card icpay-section">Loading...</div>`;
     }
 
     return html`
-      <div class="card section">
+      <div class="icpay-card icpay-section">
         ${this.config?.progressBar?.enabled !== false ? html`<icpay-progress-bar mode="${this.config?.progressBar?.mode || 'modal'}"></icpay-progress-bar>` : null}
         <div class="image-container">
           <div class="locked-image ${this.unlocked ? 'unlocked' : ''}" style="background-image:url('${this.config.imageUrl || ''}')"></div>
