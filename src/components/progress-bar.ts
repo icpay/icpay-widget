@@ -574,11 +574,11 @@ export class ICPayProgressBar extends LitElement {
     }));
 
     // Auto-close after 2 seconds if user hasn't closed it manually
-    setTimeout(() => {
+    /*setTimeout(() => {
       if (this.open && this.showSuccess && !this.failed) {
         this.open = false;
       }
-    }, 2000);
+    }, 2000);*/
 
     // Only hide confetti after 3 seconds
     setTimeout(() => {
