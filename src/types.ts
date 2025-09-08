@@ -49,6 +49,8 @@ export type CommonConfig = {
   disableAfterSuccess?: boolean;
   // Global control for token selector rendering: 'buttons' | 'dropdown' | 'none'
   showLedgerDropdown?: 'buttons' | 'dropdown' | 'none';
+  // Optional onramp (Transak) configuration
+  onramp?: OnrampConfig;
 };
 
 export type CryptoOption = {
@@ -115,6 +117,21 @@ export type DonationThermometerConfig = CommonConfig & {
   // Optional: default selected symbol
   defaultSymbol?: string;
   onSuccess?: (tx: { id: number; status: string; raised: number }) => void;
+};
+
+
+// Onramp (Transak) configuration subset to drive the Transak modal
+export type OnrampConfig = {
+  environment?: 'STAGING' | 'PRODUCTION';
+  apiKey?: string | null; // Transak public API key (for double iframe fallback)
+  width?: number | string;
+  height?: number | string;
+  // If true, automatically open Transak modal when onramp starts
+  autoOpen?: boolean;
+  // Optional label override for the wallet modal CTA
+  creditCardLabel?: string;
+  // Enable/disable onramp (Transak) option in wallet selector (default: enabled)
+  enabled?: boolean;
 };
 
 

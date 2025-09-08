@@ -11,6 +11,11 @@ type Options = {
   isConnecting?: boolean;
   onSelect: (walletId: string) => void;
   onClose: () => void;
+  // Optional onramp (credit card) entry at the end
+  onCreditCard?: () => void;
+  creditCardLabel?: string;
+  showCreditCard?: boolean;
+  creditCardTooltip?: string | null;
 };
 
 export function renderWalletSelectorModal(opts: Options): TemplateResult | null {
@@ -43,6 +48,18 @@ export function renderWalletSelectorModal(opts: Options): TemplateResult | null 
             </button>
           `)}
         </div>
+        ${opts.showCreditCard !== false ? html`
+          <div style="margin:12px 0;height:1px;background:rgba(255,255,255,0.08)"></div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <button
+              @click=${() => { if (opts.onCreditCard) opts.onCreditCard(); }}
+              style="width:100%;padding:12px 16px;background:linear-gradient(135deg,#3b82f6 0%,#10b981 100%);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;text-align:center;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px">
+              <span>💳</span>
+              <span style="font-weight:600">${opts.creditCardLabel || 'Pay with credit card'}</span>
+            </button>
+            ${opts.creditCardTooltip ? html`<div style="font-size:12px;color:#f5d78a;text-align:center">${opts.creditCardTooltip}</div>` : null}
+          </div>
+        ` : null}
       </div>
     </div>
   `;
