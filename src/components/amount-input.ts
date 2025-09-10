@@ -26,7 +26,8 @@ function debugLog(debug: boolean, message: string, data?: any): void {
 export class ICPayAmountInput extends LitElement {
   static styles = [baseStyles, css`
     .row { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: stretch; }
-    .top-row { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; align-items: center; }
+    .top-row { display: grid; grid-template-columns: 1fr; gap: 10px; align-items: center; }
+    .top-row.with-selector { grid-template-columns: 1fr 2fr; }
     icpay-token-selector { width: 100%; }
     .amount-field { position: relative; width: 100%; }
     .amount-field .currency-prefix { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--icpay-muted, #a3a3a3); font-weight: 600; pointer-events: none; z-index: 2; }
@@ -336,14 +337,17 @@ export class ICPayAmountInput extends LitElement {
     const payLabel = payLabelRaw
       .replace('{amount}', this.amountUsd ? `${Number(this.amountUsd).toFixed(2)}` : '$0.00')
       .replace('{symbol}', this.selectedSymbol || (this.config?.defaultSymbol || 'ICP'));
-    const dropdownEnabled = this.config?.showLedgerDropdown === true;
     const selectedLabel =
       (this.cryptoOptions.find(o => o.symbol === (this.selectedSymbol||''))?.label)
       || (this.cryptoOptions[0]?.label)
       || (this.config?.defaultSymbol || 'ICP');
     const mode = this.config?.progressBar?.mode || 'modal';
-    const rawMode = (this.config?.showLedgerDropdown as any) as ('buttons'|'dropdown'|'none'|undefined);
+    const rawMode = (this.config?.showLedgerDropdown as any) as ('buttons'|'dropdown'|'none'|boolean|undefined);
     const globalMode: 'buttons'|'dropdown'|'none' = rawMode === 'buttons' ? 'buttons' : rawMode === 'none' ? 'none' : 'dropdown';
+    const optionsCount = this.cryptoOptions?.length || 0;
+    const hasMultiple = optionsCount > 1;
+    const showSelector = (globalMode !== 'none') && (hasMultiple || globalMode === 'dropdown');
+    const tokenSelectorMode: 'buttons'|'dropdown'|'none' = globalMode === 'dropdown' ? 'dropdown' : (hasMultiple ? 'buttons' : 'none');
     const progressEnabled = this.config?.progressBar?.enabled !== false;
     const showProgressBar = progressEnabled && (mode === 'modal' ? true : this.processing);
 
@@ -352,23 +356,21 @@ export class ICPayAmountInput extends LitElement {
         ${showProgressBar ? html`<icpay-progress-bar mode="${mode}"></icpay-progress-bar>` : null}
 
         <div class="row">
-          <div class="top-row">
+          <div class="top-row ${showSelector ? 'with-selector' : ''}">
             <div class="amount-field">
               <span class="currency-prefix">$</span>
               <input type="number" min="0" step="${Number(this.config?.stepUsd ?? 0.5)}" .value=${String(this.amountUsd || '')} placeholder="${placeholder}" @input=${(e: any) => this.onInputChange(e)} />
             </div>
-            ${globalMode !== 'none' ? html`
+            ${showSelector ? html`
               <icpay-token-selector
                 .options=${this.cryptoOptions}
                 .value=${this.selectedSymbol || ''}
                 .defaultSymbol=${this.config?.defaultSymbol || 'ICP'}
-                mode=${globalMode}
+                mode=${tokenSelectorMode}
                 .showLabel=${false}
                 @icpay-token-change=${(e: any) => this.selectSymbol(e.detail.symbol)}
               ></icpay-token-selector>
-            ` : html`
-              <div class="label" style="padding: 10px;">${selectedLabel}</div>
-            `}
+            ` : null}
           </div>
           <button class="pay-button ${this.processing?'processing':''}"
             ?disabled=${this.processing || (this.config?.disablePaymentButton === true) || (this.succeeded && this.config?.disableAfterSuccess === true)}
