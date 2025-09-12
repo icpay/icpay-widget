@@ -365,7 +365,12 @@ export class ICPayPayButton extends LitElement {
     return html`
       <div class="icpay-card icpay-section">
         ${showProgressBar ? html`
-          <icpay-progress-bar></icpay-progress-bar>
+          <icpay-progress-bar
+            .debug=${!!this.config?.debug}
+            .theme=${this.config?.theme}
+            .amount=${Number(this.config?.amountUsd || 0)}
+            .ledgerSymbol=${selectedSymbol}
+          ></icpay-progress-bar>
         ` : null}
 
         <div class="row ${showSelector ? '' : 'single'}">

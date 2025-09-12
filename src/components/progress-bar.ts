@@ -2,6 +2,17 @@ import { LitElement, html, css } from 'lit';
 import { applyThemeVars } from '../styles';
 import { customElement, property, state } from 'lit/decorators.js';
 
+// Debug logger utility (mirrors other widgets)
+function debugLog(debug: boolean, message: string, data?: any): void {
+  if (debug) {
+    if (data !== undefined) {
+      console.log(message, data);
+    } else {
+      console.log(message);
+    }
+  }
+}
+
 type StepStatus = 'pending' | 'loading' | 'completed' | 'error';
 
 type Step = {
@@ -248,6 +259,7 @@ export class ICPayProgressBar extends LitElement {
   @property({ type: Number }) amount = 0;
   @property({ type: String }) currency = '';
   @property({ type: String }) ledgerSymbol = '';
+  @property({ type: Boolean }) debug = false;
   @state() private activeIndex = 0;
   @state() private completed = false;
   @state() private failed = false;
@@ -351,7 +363,7 @@ export class ICPayProgressBar extends LitElement {
     const methodName = e?.detail?.name || '';
     const methodType = e?.detail?.type || '';
 
-    console.log('ICPay Progress: Method start event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: Method start event received:', e.detail);
 
     // Handle different payment methods (top-level starts)
     if (methodName === 'sendFunds' || methodName === 'sendFundsUsd' ||
@@ -388,17 +400,17 @@ export class ICPayProgressBar extends LitElement {
       if (e?.detail?.amount !== undefined) {
         this.currentAmount = e.detail.amount;
         this.amount = e.detail.amount;
-        console.log('ICPay Progress: Amount updated to:', e.detail.amount);
+        debugLog(this.debug, 'ICPay Progress: Amount updated to:', e.detail.amount);
       }
       if (e?.detail?.currency) {
         this.currentCurrency = e.detail.currency;
         this.currency = e.detail.currency;
-        console.log('ICPay Progress: Currency updated to:', e.detail.currency);
+        debugLog(this.debug, 'ICPay Progress: Currency updated to:', e.detail.currency);
       }
       if (e?.detail?.ledgerSymbol) {
         this.currentLedgerSymbol = e.detail.ledgerSymbol;
         this.ledgerSymbol = e.detail.ledgerSymbol;
-        console.log('ICPay Progress: Current state after method start:', {
+        debugLog(this.debug, 'ICPay Progress: Current state after method start:', {
           activeIndex: this.activeIndex,
           currentAmount: this.currentAmount,
           currentCurrency: this.currentCurrency,
@@ -407,7 +419,7 @@ export class ICPayProgressBar extends LitElement {
       }
 
       // Waiting for wallet confirmation event to proceed
-      console.log('ICPay Progress: Waiting for wallet confirmation before starting progression');
+      debugLog(this.debug, 'ICPay Progress: Waiting for wallet confirmation before starting progression');
 
       this.requestUpdate();
     }
@@ -439,7 +451,7 @@ export class ICPayProgressBar extends LitElement {
     this.activeIndex = 1;
     this.updateStepStatus(this.activeIndex, 'loading');
 
-    console.log('ICPay Progress: Starting automatic progression from step:', this.activeIndex);
+    debugLog(this.debug, 'ICPay Progress: Starting automatic progression from step:', this.activeIndex);
 
     // Progress through steps every 3 seconds
     this.progressionTimer = setInterval(() => {
@@ -448,7 +460,7 @@ export class ICPayProgressBar extends LitElement {
         return;
       }
 
-      console.log('ICPay Progress: Processing step:', this.activeIndex);
+      debugLog(this.debug, 'ICPay Progress: Processing step:', this.activeIndex);
 
       // Complete current step
       this.updateStepStatus(this.activeIndex, 'completed');
@@ -457,11 +469,11 @@ export class ICPayProgressBar extends LitElement {
       if (this.activeIndex < this.currentSteps.length - 1) {
         this.activeIndex++;
         this.updateStepStatus(this.activeIndex, 'loading');
-        console.log('ICPay Progress: Auto-progressed to step:', this.activeIndex);
+        debugLog(this.debug, 'ICPay Progress: Auto-progressed to step:', this.activeIndex);
       } else {
         // All steps completed, stop progression and wait for transaction completion
         this.stopAutomaticProgression();
-        console.log('ICPay Progress: All steps completed, waiting for transaction completion');
+        debugLog(this.debug, 'ICPay Progress: All steps completed, waiting for transaction completion');
       }
 
       this.requestUpdate();
@@ -515,7 +527,7 @@ export class ICPayProgressBar extends LitElement {
   private onTransactionCreated = (e: any) => {
     const transactionId = e?.detail?.transactionId || e?.detail?.id;
 
-    console.log('ICPay Progress: Transaction created event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: Transaction created event received:', e.detail);
 
     // Await -> completed on intent created; start transfer loading
     if (!this.failed && !this.completed) {
@@ -536,7 +548,7 @@ export class ICPayProgressBar extends LitElement {
     const status = e?.detail?.status || 'pending';
     const transactionId = e?.detail?.transactionId || e?.detail?.id;
 
-    console.log('ICPay Progress: Transaction updated event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: Transaction updated event received:', e.detail);
 
     // When pending turns to confirmed, we will complete progression in onTransactionCompleted
     if (!this.failed && !this.completed && status === 'pending') {
@@ -554,8 +566,8 @@ export class ICPayProgressBar extends LitElement {
     const transactionId = e?.detail?.transactionId || e?.detail?.id;
     const status = e?.detail?.status || 'completed';
 
-    console.log('ICPay Progress: Transaction completed event received:', e.detail);
-    console.log('ICPay Progress: Current state when transaction completed:', {
+    debugLog(this.debug, 'ICPay Progress: Transaction completed event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: Current state when transaction completed:', {
       activeIndex: this.activeIndex,
       completed: this.completed,
       failed: this.failed,
@@ -602,7 +614,7 @@ export class ICPayProgressBar extends LitElement {
     const errorCode = e?.detail?.error?.code || e?.detail?.code || 'UNKNOWN_ERROR';
     const transactionId = e?.detail?.transactionId || e?.detail?.id;
 
-    console.log('ICPay Progress: Transaction failed event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: Transaction failed event received:', e.detail);
 
     // Mark as failed and keep modal open with error message
     this.failed = true;
@@ -624,7 +636,7 @@ export class ICPayProgressBar extends LitElement {
     const paidAmount = e?.detail?.paidAmount;
     const transactionId = e?.detail?.transactionId || e?.detail?.id;
 
-    //console.log('ICPay Progress: Transaction mismatched event received:', e.detail);
+    //debugLog(this.debug, 'ICPay Progress: Transaction mismatched event received:', e.detail);
 
     // Treat as failure with specific message
     this.failed = true;
@@ -648,7 +660,7 @@ export class ICPayProgressBar extends LitElement {
     const errorMessage = e?.detail?.error?.message || e?.detail?.message || 'An error occurred';
     const errorCode = e?.detail?.error?.code || e?.detail?.code || 'METHOD_ERROR';
 
-    console.log('ICPay Progress: Method error event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: Method error event received:', e.detail);
 
     if (methodName?.startsWith('sendFunds') || methodName === 'sendUsd' ||
         methodName === 'pay' || methodName === 'unlock' ||
@@ -674,7 +686,7 @@ export class ICPayProgressBar extends LitElement {
     const errorMessage = e?.detail?.message || 'SDK error occurred';
     const errorCode = e?.detail?.code || 'SDK_ERROR';
 
-    console.log('ICPay Progress: SDK error event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: SDK error event received:', e.detail);
 
     // Mark as failed and keep modal open with error message
     this.failed = true;
@@ -694,7 +706,7 @@ export class ICPayProgressBar extends LitElement {
   private onWalletConnected = (e: any) => {
     const walletType = e?.detail?.walletType || 'unknown';
 
-    console.log('ICPay Progress: Wallet connected event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: Wallet connected event received:', e.detail);
 
     // Complete wallet step and set init to loading
     this.completeByKey('wallet');
@@ -712,7 +724,7 @@ export class ICPayProgressBar extends LitElement {
   private onWalletDisconnected = (e: any) => {
     const walletType = e?.detail?.walletType || 'unknown';
 
-    console.log('ICPay Progress: Wallet disconnected event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: Wallet disconnected event received:', e.detail);
 
     // Dispatch wallet disconnected event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-wallet-disconnected', {
@@ -725,7 +737,7 @@ export class ICPayProgressBar extends LitElement {
     const hasBalance = e?.detail?.hasBalance || false;
     const balance = e?.detail?.balance || 0;
 
-    console.log('ICPay Progress: Balance check event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: Balance check event received:', e.detail);
 
     // Handle insufficient balance error
     if (!hasBalance) {
@@ -746,7 +758,7 @@ export class ICPayProgressBar extends LitElement {
     const ledgerId = e?.detail?.ledgerId || e?.detail?.canisterId;
     const symbol = e?.detail?.symbol || 'unknown';
 
-    console.log('ICPay Progress: Ledger verified event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: Ledger verified event received:', e.detail);
 
     // Update ledger symbol if provided
     if (symbol && symbol !== 'unknown') {
@@ -767,7 +779,7 @@ export class ICPayProgressBar extends LitElement {
     const currency = e?.detail?.currency;
     const ledgerSymbol = e?.detail?.ledgerSymbol;
 
-    console.log('ICPay Progress: Widget payment event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: Widget payment event received:', e.detail);
 
     // Update dynamic values if provided
     if (amount !== undefined) {
@@ -805,7 +817,7 @@ export class ICPayProgressBar extends LitElement {
     const errorMessage = e?.detail?.message || 'Widget error occurred';
     const errorCode = e?.detail?.code || 'WIDGET_ERROR';
 
-    console.log('ICPay Progress: Widget error event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: Widget error event received:', e.detail);
 
     // Mark as failed and keep modal open with error message
     this.failed = true;
@@ -826,7 +838,7 @@ export class ICPayProgressBar extends LitElement {
     const amount = e?.detail?.amount;
     const currency = e?.detail?.currency;
 
-    console.log('ICPay Progress: Widget unlock event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: Widget unlock event received:', e.detail);
 
     // Complete steps and show success
     if (!this.failed) {
@@ -850,7 +862,7 @@ export class ICPayProgressBar extends LitElement {
     const amount = e?.detail?.amount;
     const currency = e?.detail?.currency;
 
-    console.log('ICPay Progress: Widget tip event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: Widget tip event received:', e.detail);
 
     // Complete steps and show success
     if (!this.failed) {
@@ -874,7 +886,7 @@ export class ICPayProgressBar extends LitElement {
     const amount = e?.detail?.amount;
     const currency = e?.detail?.currency;
 
-    console.log('ICPay Progress: Widget donation event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: Widget donation event received:', e.detail);
 
     // Complete steps and show success
     if (!this.failed) {
@@ -898,7 +910,7 @@ export class ICPayProgressBar extends LitElement {
     const amount = e?.detail?.amount;
     const currency = e?.detail?.currency;
 
-    console.log('ICPay Progress: Widget coffee event received:', e.detail);
+    debugLog(this.debug, 'ICPay Progress: Widget coffee event received:', e.detail);
 
     // Complete steps and show success
     if (!this.failed) {
@@ -931,7 +943,7 @@ export class ICPayProgressBar extends LitElement {
         step.errorMessage = this.transformErrorMessage(errorMessage);
       }
 
-      console.log(`ICPay Progress: Step ${stepIndex} (${step.label}) status changed from ${oldStatus} to ${status}`);
+      debugLog(this.debug, `ICPay Progress: Step ${stepIndex} (${step.label}) status changed from ${oldStatus} to ${status}`);
 
       this.requestUpdate();
     }
@@ -1036,7 +1048,7 @@ export class ICPayProgressBar extends LitElement {
     const displayAmount = this.currentAmount || this.amount;
     const displayCurrency = this.currentLedgerSymbol || this.currentCurrency || this.currency;
 
-    console.log('ICPay Progress: Rendering success state with:', {
+    debugLog(this.debug, 'ICPay Progress: Rendering success state with:', {
       displayAmount,
       displayCurrency,
       currentAmount: this.currentAmount,
@@ -1055,7 +1067,7 @@ export class ICPayProgressBar extends LitElement {
           </svg>
         </div>
         <h2 class="success-title">Payment Complete!</h2>
-        <p class="success-message">Your payment of ${displayAmount} ${displayCurrency} has been successfully processed.</p>
+        <p class="success-message">Your payment of ${displayAmount} USD has been successfully processed.</p>
         <div class="success-actions">
           <button class="btn btn-primary" @click=${() => { this.open = false; }}>Close</button>
         </div>

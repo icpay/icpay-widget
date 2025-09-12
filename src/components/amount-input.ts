@@ -353,7 +353,14 @@ export class ICPayAmountInput extends LitElement {
 
     return html`
       <div class="icpay-card icpay-section">
-        ${showProgressBar ? html`<icpay-progress-bar mode="${mode}"></icpay-progress-bar>` : null}
+        ${showProgressBar ? html`
+          <icpay-progress-bar
+            .debug=${!!this.config?.debug}
+            .theme=${this.config?.theme}
+            .amount=${Number(this.amountUsd || 0)}
+            .ledgerSymbol=${this.selectedSymbol || this.config?.defaultSymbol || 'ICP'}
+          ></icpay-progress-bar>
+        ` : null}
 
         <div class="row">
           <div class="top-row ${showSelector ? 'with-selector' : ''}">
