@@ -9,5 +9,7 @@ export * from './components/donation-thermometer';
 export * from './components/pay-button';
 export * from './components/amount-input';
 
+export { renderTransakOnrampModal } from './components/transak-onramp-modal';
+
 
 

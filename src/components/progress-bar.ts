@@ -258,6 +258,7 @@ export class ICPayProgressBar extends LitElement {
   @state() private currentAmount = 0;
   @state() private currentCurrency = '';
   @state() private currentLedgerSymbol = '';
+  @state() private confirmLoadingStartedAt: number | null = null;
   private progressionTimer: number | null = null;
 
   @property({ type: Object }) theme?: { primaryColor?: string; secondaryColor?: string };
@@ -299,6 +300,7 @@ export class ICPayProgressBar extends LitElement {
     window.addEventListener('icpay-sdk-transaction-updated', this.onTransactionUpdated as EventListener);
     window.addEventListener('icpay-sdk-transaction-completed', this.onTransactionCompleted as EventListener);
     window.addEventListener('icpay-sdk-transaction-failed', this.onTransactionFailed as EventListener);
+    window.addEventListener('icpay-sdk-transaction-mismatched', this.onTransactionMismatched as EventListener);
 
     // Additional SDK events
     window.addEventListener('icpay-sdk-error', this.onSDKError as EventListener);
@@ -327,6 +329,7 @@ export class ICPayProgressBar extends LitElement {
     window.removeEventListener('icpay-sdk-transaction-updated', this.onTransactionUpdated as EventListener);
     window.removeEventListener('icpay-sdk-transaction-completed', this.onTransactionCompleted as EventListener);
     window.removeEventListener('icpay-sdk-transaction-failed', this.onTransactionFailed as EventListener);
+    window.removeEventListener('icpay-sdk-transaction-mismatched', this.onTransactionMismatched as EventListener);
 
     // Additional SDK events
     window.removeEventListener('icpay-sdk-error', this.onSDKError as EventListener);
@@ -350,7 +353,7 @@ export class ICPayProgressBar extends LitElement {
 
     console.log('ICPay Progress: Method start event received:', e.detail);
 
-    // Handle different payment methods
+    // Handle different payment methods (top-level starts)
     if (methodName === 'sendFunds' || methodName === 'sendFundsUsd' ||
         methodName === 'sendUsd' || methodName === 'pay' ||
         methodName === 'unlock' || methodName === 'tip' ||
@@ -367,7 +370,18 @@ export class ICPayProgressBar extends LitElement {
       // Reset all steps to pending
       this.currentSteps = this.currentSteps.map(step => ({ ...step, status: 'pending' as StepStatus }));
 
-      // Step 0: Wallet connect loading
+      // Step 0: Wallet connect loading (rename if onramp)
+      if (methodType === 'onramp') {
+        // Update wallet step copy for onramp flow
+        const idx = this.getStepIndexByKey('wallet');
+        if (idx >= 0) {
+          this.currentSteps[idx] = {
+            ...this.currentSteps[idx],
+            label: 'Transak Started',
+            tooltip: 'Awaiting Transak information',
+          } as any;
+        }
+      }
       this.setLoadingByKey('wallet');
 
       // Update amount and currency if provided in event
@@ -398,7 +412,7 @@ export class ICPayProgressBar extends LitElement {
       this.requestUpdate();
     }
 
-    // Mid-flow granular starts for internal SDK steps
+    // Mid-flow granular starts for internal SDK steps (independent of top-level starts)
     if (!this.failed && !this.completed) {
       if (methodName === 'sendFundsToLedger') {
         this.completeByKey('wallet');
@@ -473,30 +487,27 @@ export class ICPayProgressBar extends LitElement {
         detail: { methodName, step: this.activeIndex },
         bubbles: true
       }));
+    }
 
-      // Map SDK method successes to step completions if relevant
-      if (!this.failed && !this.completed) {
-        if (methodName === 'getLedgerBalance') {
-          // balance ok → init completed
-          this.completeByKey('wallet');
-          this.completeByKey('init');
-          this.setLoadingByKey('await');
-        } else if (methodName === 'sendFundsToLedger') {
-          // Mark transfer as completed when ledger transfer returns
-          this.completeByKey('wallet');
-          this.completeByKey('init');
-          this.completeByKey('await');
-          this.completeByKey('transfer');
-          this.setLoadingByKey('verify');
-        } else if (methodName === 'notifyLedgerTransaction') {
-          // Canister notified → verify completed
-          this.completeByKey('wallet');
-          this.completeByKey('init');
-          this.completeByKey('await');
-          this.completeByKey('transfer');
-          this.completeByKey('verify');
-          this.setLoadingByKey('confirm');
-        }
+    // Map SDK method successes to step completions (mid-flow methods)
+    if (!this.failed && !this.completed) {
+      if (methodName === 'getLedgerBalance') {
+        this.completeByKey('wallet');
+        this.completeByKey('init');
+        this.setLoadingByKey('await');
+      } else if (methodName === 'sendFundsToLedger') {
+        this.completeByKey('wallet');
+        this.completeByKey('init');
+        this.completeByKey('await');
+        this.completeByKey('transfer');
+        this.setLoadingByKey('verify');
+      } else if (methodName === 'notifyLedgerTransaction') {
+        this.completeByKey('wallet');
+        this.completeByKey('init');
+        this.completeByKey('await');
+        this.completeByKey('transfer');
+        this.completeByKey('verify');
+        this.setLoadingByKey('confirm');
       }
     }
   };
@@ -574,11 +585,11 @@ export class ICPayProgressBar extends LitElement {
     }));
 
     // Auto-close after 2 seconds if user hasn't closed it manually
-    setTimeout(() => {
+    /*setTimeout(() => {
       if (this.open && this.showSuccess && !this.failed) {
         this.open = false;
       }
-    }, 2000);
+    }, 2000);*/
 
     // Only hide confetti after 3 seconds
     setTimeout(() => {
@@ -604,6 +615,30 @@ export class ICPayProgressBar extends LitElement {
     // Dispatch transaction failed event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-failed', {
       detail: { errorMessage, errorCode, transactionId, step: this.activeIndex },
+      bubbles: true
+    }));
+  };
+
+  private onTransactionMismatched = (e: any) => {
+    const requestedAmount = e?.detail?.requestedAmount;
+    const paidAmount = e?.detail?.paidAmount;
+    const transactionId = e?.detail?.transactionId || e?.detail?.id;
+
+    //console.log('ICPay Progress: Transaction mismatched event received:', e.detail);
+
+    // Treat as failure with specific message
+    this.failed = true;
+    const requested = requestedAmount != null ? String(requestedAmount) : 'unknown';
+    const paid = paidAmount != null ? String(paidAmount) : 'unknown';
+    this.errorMessage = `Amount mismatch. Requested ${requested}, paid ${paid}.`;
+    this.showSuccess = false;
+    this.updateStepStatus(this.activeIndex, 'error', this.errorMessage);
+    this.stopAutomaticProgression();
+    this.open = true;
+
+    // Dispatch failed event with mismatch context
+    this.dispatchEvent(new CustomEvent('icpay-progress-failed', {
+      detail: { errorMessage: this.errorMessage, errorCode: 'MISMATCHED_AMOUNT', transactionId, step: this.activeIndex, requestedAmount, paidAmount },
       bubbles: true
     }));
   };
@@ -950,6 +985,9 @@ export class ICPayProgressBar extends LitElement {
     if (idx >= 0) {
       this.activeIndex = idx;
       this.updateStepStatus(idx, 'loading');
+      if (key === 'confirm') {
+        this.confirmLoadingStartedAt = Date.now();
+      }
     }
   }
 
@@ -1054,6 +1092,7 @@ export class ICPayProgressBar extends LitElement {
         <div class="progress-header">
           <h2 class="progress-title">Processing Payment</h2>
           <p class="progress-subtitle">Please wait while we process your transaction</p>
+          ${this.renderConfirmTip()}
         </div>
         <div class="progress-steps">
           ${this.currentSteps.map((step, index) => html`
@@ -1079,6 +1118,21 @@ export class ICPayProgressBar extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  private renderConfirmTip() {
+    try {
+      const confirmIdx = this.getStepIndexByKey('confirm');
+      if (confirmIdx < 0) return null as any;
+      const isConfirmLoading = this.activeIndex === confirmIdx && this.currentSteps[confirmIdx]?.status === 'loading';
+      if (!isConfirmLoading) return null as any;
+      const started = this.confirmLoadingStartedAt || 0;
+      const elapsed = started ? (Date.now() - started) : 0;
+      if (elapsed < 30000) return null as any;
+      return html`<p class="progress-subtitle" style="margin-top:8px;color:#93c5fd">Verification can take from 30 seconds up to 10 minutes depending on the amount. Please wait…</p>`;
+    } catch {
+      return null as any;
+    }
   }
 
   private retryTransaction() {

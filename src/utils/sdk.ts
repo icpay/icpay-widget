@@ -19,6 +19,8 @@ export type WidgetSdk = {
   client: InstanceType<typeof Icpay>;
   quoteUsd(usdAmount: number, ledgerCanisterId: string): Promise<PriceCalculationResult>;
   sendUsd(usdAmount: number, ledgerCanisterId: string, metadata?: Record<string, any>): Promise<any>;
+  startOnrampUsd(usdAmount: number, ledgerCanisterId: string, metadata?: Record<string, any>): Promise<any>;
+  notifyIntentUntilComplete(paymentIntentId: string, intervalMs?: number, orderId?: string): { stop: () => void };
 };
 
 export function createSdk(config: CommonConfig): WidgetSdk {
@@ -27,7 +29,9 @@ export function createSdk(config: CommonConfig): WidgetSdk {
     return {
       client: {} as any,
       quoteUsd: async () => ({ tokenAmountDecimals: '0' } as any),
-      sendUsd: async () => ({ transactionId: '0', status: 'pending' } as any)
+      sendUsd: async () => ({ transactionId: '0', status: 'pending' } as any),
+      startOnrampUsd: async () => ({ transactionId: '0', status: 'pending', metadata: { onramp: { sessionId: null } } } as any),
+      notifyIntentUntilComplete: () => ({ stop: () => {} })
     };
   }
 
@@ -88,7 +92,17 @@ export function createSdk(config: CommonConfig): WidgetSdk {
       return (client as any).sendFundsUsd({ usdAmount, ledgerCanisterId, metadata });
     }
 
-    return { client, quoteUsd, sendUsd };
+    async function startOnrampUsd(usdAmount: number, ledgerCanisterId: string, metadata?: Record<string, any>) {
+      // Trigger onramp flow through SDK; SDK returns onramp data in metadata.onramp
+      return (client as any).sendFundsUsd({ usdAmount, ledgerCanisterId, metadata, onrampPayment: true });
+    }
+
+
+    function notifyIntentUntilComplete(paymentIntentId: string, intervalMs?: number, orderId?: string) {
+      return (client as any).notifyPaymentIntentOnRamp({ paymentIntentId, intervalMs, orderId });
+    }
+
+    return { client, quoteUsd, sendUsd, startOnrampUsd, notifyIntentUntilComplete };
   } catch (error) {
     debugLog(config.debug || false, 'Error creating SDK:', error);
     throw error;

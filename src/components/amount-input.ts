@@ -7,6 +7,7 @@ import { createSdk } from '../utils/sdk';
 import './progress-bar';
 import './token-selector';
 import { renderWalletSelectorModal } from './wallet-selector-modal';
+import { renderTransakOnrampModal, TransakOnrampOptions } from './transak-onramp-modal';
 
 const isBrowser = typeof window !== 'undefined';
 let PlugNPlay: any = null;
@@ -24,14 +25,25 @@ function debugLog(debug: boolean, message: string, data?: any): void {
 @customElement('icpay-amount-input')
 export class ICPayAmountInput extends LitElement {
   static styles = [baseStyles, css`
-    .row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; }
-    input[type="number"] { background: var(--icpay-surface-alt); border: 1px solid var(--icpay-border); color: var(--icpay-text); border-radius: 8px; padding: 10px; font-weight: 600; }
+    .row { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: stretch; }
+    .top-row { display: grid; grid-template-columns: 1fr; gap: 10px; align-items: center; }
+    .top-row.with-selector { grid-template-columns: 1fr 2fr; }
+    icpay-token-selector { width: 100%; }
+    .amount-field { position: relative; width: 100%; }
+    .amount-field .currency-prefix { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--icpay-muted, #a3a3a3); font-weight: 600; pointer-events: none; z-index: 2; }
+    .amount-field input[type="number"] { padding-left: 32px; position: relative; z-index: 1; }
+    input[type="number"] { background: var(--icpay-surface-alt); border: 1px solid var(--icpay-border); color: var(--icpay-text); border-radius: 8px; padding: 10px; font-weight: 600; width: 100%; box-sizing: border-box; height: 54px; }
     select { background: var(--icpay-surface-alt); border: 1px solid var(--icpay-border); color: var(--icpay-text); border-radius: 8px; padding: 10px; font-weight: 600; }
+    .pay-button { width: 100%; }
     .error-message { border: 1px solid; font-weight: 500; }
     .error-message.info { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.3); color: #3b82f6; }
     .error-message.warning { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: #f59e0b; }
     .error-message.error { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #ef4444; }
     .hint { font-size: 12px; color: var(--icpay-muted); margin-top: 6px; }
+
+    @media (max-width: 520px) {
+      .top-row { grid-template-columns: 1fr; }
+    }
   `];
 
   @property({ type: Object }) config!: AmountInputConfig;
@@ -47,7 +59,15 @@ export class ICPayAmountInput extends LitElement {
   @state() private walletConnected = false;
   @state() private pendingAction: 'pay' | null = null;
   @state() private showWalletModal = false;
+  @state() private showOnrampModal = false;
+  @state() private onrampSessionId: string | null = null;
+  @state() private onrampPaymentIntentId: string | null = null;
+  @state() private onrampErrorMessage: string | null = null;
   private pnp: any | null = null;
+  private transakMessageHandlerBound: any | null = null;
+  private onrampPollTimer: number | null = null;
+  private onrampPollingActive: boolean = false;
+  private onrampNotifyController: { stop: () => void } | null = null;
 
   private get cryptoOptions(): CryptoOption[] {
     if (this.config?.cryptoOptions?.length) return this.config.cryptoOptions;
@@ -179,6 +199,89 @@ export class ICPayAmountInput extends LitElement {
     }
   }
 
+  private attachTransakMessageListener() {
+    if (this.transakMessageHandlerBound) return;
+    this.transakMessageHandlerBound = (event: MessageEvent) => this.onTransakMessage(event);
+    try { window.addEventListener('message', this.transakMessageHandlerBound as any); } catch {}
+  }
+
+  private detachTransakMessageListener() {
+    if (this.transakMessageHandlerBound) {
+      try { window.removeEventListener('message', this.transakMessageHandlerBound as any); } catch {}
+      this.transakMessageHandlerBound = null;
+    }
+  }
+
+  private onTransakMessage(event: MessageEvent) {
+    const data: any = event?.data;
+    const eventId: string | undefined = data?.event_id || data?.eventId || data?.id;
+    if (!eventId || typeof eventId !== 'string') return;
+
+    if (eventId === 'TRANSAK_ORDER_SUCCESSFUL') {
+      this.detachTransakMessageListener();
+      if (this.onrampPollingActive) return;
+      // Close modal and start our own flow
+      this.showOnrampModal = false;
+      const orderId = (data?.data?.id) || (data?.id) || (data?.webhookData?.id) || null;
+      this.startOnrampPolling(orderId || undefined);
+    }
+  }
+
+  private startOnramp() {
+    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'sendFundsUsd', type: 'onramp' } })); } catch {}
+    this.showWalletModal = false;
+    setTimeout(() => this.createOnrampIntent(), 0);
+  }
+
+  private async createOnrampIntent() {
+    try {
+      const sdk = createSdk(this.config);
+      const symbol = this.selectedSymbol || 'ICP';
+      const opt = this.cryptoOptions.find(o => o.symbol === symbol);
+      const canisterId = opt?.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(symbol);
+      const amountUsd = Number(this.amountUsd);
+      const resp = await (sdk as any).startOnrampUsd(amountUsd, canisterId, { context: 'amount-input:onramp' });
+      const sessionId = resp?.metadata?.onramp?.sessionId || resp?.metadata?.onramp?.session_id || null;
+      const paymentIntentId = resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
+      const errorMessage = resp?.metadata?.onramp?.errorMessage || null;
+      this.onrampPaymentIntentId = paymentIntentId;
+      if (sessionId) {
+        this.onrampSessionId = sessionId;
+        this.onrampErrorMessage = null;
+        this.showOnrampModal = true;
+        this.attachTransakMessageListener();
+      } else {
+        this.onrampSessionId = null;
+        this.onrampErrorMessage = errorMessage || 'Failed to obtain onramp sessionId';
+        this.showOnrampModal = true;
+      }
+    } catch (e) {
+      this.onrampSessionId = null;
+      this.onrampErrorMessage = (e as any)?.message || 'Failed to obtain onramp sessionId';
+      this.showOnrampModal = true;
+    }
+  }
+
+  private startOnrampPolling(orderId?: string) {
+    if (this.onrampPollTimer) { try { clearInterval(this.onrampPollTimer); } catch {}; this.onrampPollTimer = null; }
+    if (this.onrampNotifyController) { try { this.onrampNotifyController.stop(); } catch {}; this.onrampNotifyController = null; }
+
+    const paymentIntentId = this.onrampPaymentIntentId;
+    if (!paymentIntentId) return;
+
+    const sdk = createSdk(this.config);
+    const handleComplete = () => {
+      this.detachTransakMessageListener();
+      if (this.onrampNotifyController) { try { this.onrampNotifyController.stop(); } catch {} }
+      this.onrampNotifyController = null;
+      this.onrampPollingActive = false;
+    };
+    try { window.addEventListener('icpay-sdk-transaction-completed', (() => handleComplete()) as any, { once: true } as any); } catch {}
+    this.onrampPollingActive = true;
+    this.onrampNotifyController = (sdk as any).notifyIntentUntilComplete(paymentIntentId, 5000, orderId);
+    this.onrampPollTimer = 1 as any;
+  }
+
   private async pay() {
     if (!isBrowser || this.processing) return;
 
@@ -228,40 +331,47 @@ export class ICPayAmountInput extends LitElement {
   }
 
   render() {
-    if (!this.config) return html`<div class="card section">Loading...</div>`;
+    if (!this.config) return html`<div class="icpay-card icpay-section">Loading...</div>`;
     const placeholder = this.config?.placeholder || 'Enter amount in USD';
     const payLabelRaw = this.config?.buttonLabel || 'Pay ${amount} with {symbol}';
     const payLabel = payLabelRaw
       .replace('{amount}', this.amountUsd ? `${Number(this.amountUsd).toFixed(2)}` : '$0.00')
       .replace('{symbol}', this.selectedSymbol || (this.config?.defaultSymbol || 'ICP'));
-    const dropdownEnabled = this.config?.showLedgerDropdown === true;
     const selectedLabel =
       (this.cryptoOptions.find(o => o.symbol === (this.selectedSymbol||''))?.label)
       || (this.cryptoOptions[0]?.label)
       || (this.config?.defaultSymbol || 'ICP');
     const mode = this.config?.progressBar?.mode || 'modal';
-    const rawMode = (this.config?.showLedgerDropdown as any) as ('buttons'|'dropdown'|'none'|undefined);
+    const rawMode = (this.config?.showLedgerDropdown as any) as ('buttons'|'dropdown'|'none'|boolean|undefined);
     const globalMode: 'buttons'|'dropdown'|'none' = rawMode === 'buttons' ? 'buttons' : rawMode === 'none' ? 'none' : 'dropdown';
+    const optionsCount = this.cryptoOptions?.length || 0;
+    const hasMultiple = optionsCount > 1;
+    const showSelector = (globalMode !== 'none') && (hasMultiple || globalMode === 'dropdown');
+    const tokenSelectorMode: 'buttons'|'dropdown'|'none' = globalMode === 'dropdown' ? 'dropdown' : (hasMultiple ? 'buttons' : 'none');
     const progressEnabled = this.config?.progressBar?.enabled !== false;
     const showProgressBar = progressEnabled && (mode === 'modal' ? true : this.processing);
 
     return html`
-      <div class="card section">
+      <div class="icpay-card icpay-section">
         ${showProgressBar ? html`<icpay-progress-bar mode="${mode}"></icpay-progress-bar>` : null}
 
         <div class="row">
-          <input type="number" min="0" step="${Number(this.config?.stepUsd ?? 0.5)}" .value=${String(this.amountUsd || '')} placeholder="${placeholder}" @input=${(e: any) => this.onInputChange(e)} />
-          ${globalMode !== 'none' ? html`
-            <icpay-token-selector
-              .options=${this.cryptoOptions}
-              .value=${this.selectedSymbol || ''}
-              .defaultSymbol=${this.config?.defaultSymbol || 'ICP'}
-              mode=${globalMode}
-              @icpay-token-change=${(e: any) => this.selectSymbol(e.detail.symbol)}
-            ></icpay-token-selector>
-          ` : html`
-            <div class="label" style="padding: 10px;">${selectedLabel}</div>
-          `}
+          <div class="top-row ${showSelector ? 'with-selector' : ''}">
+            <div class="amount-field">
+              <span class="currency-prefix">$</span>
+              <input type="number" min="0" step="${Number(this.config?.stepUsd ?? 0.5)}" .value=${String(this.amountUsd || '')} placeholder="${placeholder}" @input=${(e: any) => this.onInputChange(e)} />
+            </div>
+            ${showSelector ? html`
+              <icpay-token-selector
+                .options=${this.cryptoOptions}
+                .value=${this.selectedSymbol || ''}
+                .defaultSymbol=${this.config?.defaultSymbol || 'ICP'}
+                mode=${tokenSelectorMode}
+                .showLabel=${false}
+                @icpay-token-change=${(e: any) => this.selectSymbol(e.detail.symbol)}
+              ></icpay-token-selector>
+            ` : null}
+          </div>
           <button class="pay-button ${this.processing?'processing':''}"
             ?disabled=${this.processing || (this.config?.disablePaymentButton === true) || (this.succeeded && this.config?.disableAfterSuccess === true)}
             @click=${() => this.pay()}>
@@ -284,9 +394,27 @@ export class ICPayAmountInput extends LitElement {
             wallets,
             isConnecting: false,
             onSelect: (walletId: string) => this.connectWithWallet(walletId),
-            onClose: () => { this.showWalletModal = false; }
+            onClose: () => { this.showWalletModal = false; },
+            onCreditCard: (this.config?.onramp?.enabled !== false) ? () => this.startOnramp() : undefined,
+            creditCardLabel: this.config?.onramp?.creditCardLabel || 'Pay with credit card',
+            showCreditCard: (this.config?.onramp?.enabled !== false),
+            creditCardTooltip: (() => {
+              const min = 5; const amt = Number(this.amountUsd || 0); if (amt > 0 && amt < min && (this.config?.onramp?.enabled !== false)) { const d = (min - amt).toFixed(2); return `Note: Minimum card amount is $${min}. You will pay about $${d} more.`; } return null;
+            })(),
           });
         })()}
+
+        ${this.showOnrampModal ? renderTransakOnrampModal({
+          visible: this.showOnrampModal,
+          sessionId: this.onrampSessionId,
+          errorMessage: this.onrampErrorMessage,
+          apiKey: this.config?.onramp?.apiKey,
+          environment: (this.config?.onramp?.environment || 'STAGING') as any,
+          width: this.config?.onramp?.width,
+          height: this.config?.onramp?.height,
+          onClose: () => { this.showOnrampModal = false; },
+          onBack: () => { this.showOnrampModal = false; this.showWalletModal = true; }
+        } as TransakOnrampOptions) : null}
       </div>
     `;
   }
