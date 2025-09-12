@@ -1,3 +1,4 @@
+import './jsx.d.ts';
 export * from './types';
 export * from './styles';
 export * from './utils/sdk';
