@@ -382,7 +382,14 @@ export class ICPayTipJar extends LitElement {
 
     return html`
       <div class="icpay-card icpay-section" style="text-align:center;">
-        ${this.config?.progressBar?.enabled !== false ? html`<icpay-progress-bar></icpay-progress-bar>` : null}
+        ${this.config?.progressBar?.enabled !== false ? html`
+          <icpay-progress-bar
+            .debug=${!!this.config?.debug}
+            .theme=${this.config?.theme}
+            .amount=${Number(this.selectedAmount || 0)}
+            .ledgerSymbol=${this.selectedSymbol || this.config?.defaultSymbol || 'ICP'}
+          ></icpay-progress-bar>
+        ` : null}
         <div class="jar"><div class="fill" style="height:${this.fillPercentage}%"></div></div>
         <div class="label">Total Tips: $${this.total}</div>
 

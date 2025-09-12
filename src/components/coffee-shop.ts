@@ -342,7 +342,14 @@ export class ICPayCoffeeShop extends LitElement {
 
     return html`
       <div class="icpay-card icpay-section">
-        ${this.config?.progressBar?.enabled !== false ? html`<icpay-progress-bar mode="${this.config?.progressBar?.mode || 'modal'}"></icpay-progress-bar>` : null}
+        ${this.config?.progressBar?.enabled !== false ? html`
+          <icpay-progress-bar
+            .debug=${!!this.config?.debug}
+            .theme=${this.config?.theme}
+            .amount=${Number(this.selectedItem?.priceUsd || 0)}
+            .ledgerSymbol=${this.selectedSymbol || this.config?.defaultSymbol || 'ICP'}
+          ></icpay-progress-bar>
+        ` : null}
         <div class="menu">
           ${this.config.items.map((it, i) => html`
             <div class="item ${this.selectedIndex===i?'selected':''}" @click=${() => this.selectItem(i)}>

@@ -384,7 +384,14 @@ export class ICPayArticlePaywall extends LitElement {
 
     return html`
       <div class="icpay-card icpay-section">
-        ${this.config?.progressBar?.enabled !== false ? html`<icpay-progress-bar mode="${this.config?.progressBar?.mode || 'modal'}"></icpay-progress-bar>` : null}
+        ${this.config?.progressBar?.enabled !== false ? html`
+          <icpay-progress-bar
+            .debug=${!!this.config?.debug}
+            .theme=${this.config?.theme}
+            .amount=${Number(this.config?.priceUsd || 0)}
+            .ledgerSymbol=${this.selectedSymbol || this.config?.defaultSymbol || 'ICP'}
+          ></icpay-progress-bar>
+        ` : null}
         <div class="container">
           <div class="title">${this.title}</div>
           <div class="preview">${this.preview}</div>
