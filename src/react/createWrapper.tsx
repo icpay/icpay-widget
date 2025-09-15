@@ -6,7 +6,8 @@ type AnyProps = Record<string, unknown> & { children?: React.ReactNode };
 // - Assigns all non-React props as properties on the underlying element
 // - Leaves events to be handled via config callbacks (recommended)
 export function createWebComponent<TElement extends HTMLElement, TProps extends AnyProps>(
-  tagName: string
+  tagName: string,
+  options?: { eventMap?: Record<string, string> }
 ) {
   const Component = forwardRef<TElement, TProps>((props, ref) => {
     const innerRef = useRef<TElement | null>(null);
@@ -37,6 +38,26 @@ export function createWebComponent<TElement extends HTMLElement, TProps extends 
         }
       }
     }, [props]);
+
+    // Wire custom-element events from props via eventMap
+    useEffect(() => {
+      const el = innerRef.current as unknown as HTMLElement | null;
+      if (!el || !options?.eventMap) return;
+      const cleanup: Array<() => void> = [];
+      for (const [propName, eventName] of Object.entries(options.eventMap)) {
+        const handler = (props as any)[propName];
+        if (typeof handler === 'function') {
+          const listener = (e: Event) => {
+            const ce = e as CustomEvent;
+            if (ce && 'detail' in ce) handler(ce.detail);
+            else handler(e);
+          };
+          el.addEventListener(eventName, listener as EventListener);
+          cleanup.push(() => el.removeEventListener(eventName, listener as EventListener));
+        }
+      }
+      return () => { cleanup.forEach(fn => fn()); };
+    }, [props, options?.eventMap]);
 
     // Merge forwarded ref
     const setRef = (node: TElement | null) => {
