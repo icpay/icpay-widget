@@ -49,6 +49,8 @@ export type CommonConfig = {
   disableAfterSuccess?: boolean;
   // Global control for token selector rendering: 'buttons' | 'dropdown' | 'none'
   showLedgerDropdown?: 'buttons' | 'dropdown' | 'none';
+  // Temporary kill switch: disable card onramp across all components
+  onrampDisabled?: boolean;
   // Optional onramp (Transak) configuration
   onramp?: OnrampConfig;
 };

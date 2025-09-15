@@ -52,6 +52,8 @@ export function createSdk(config: CommonConfig): WidgetSdk {
   if (config.icHost) sdkConfig.icHost = config.icHost;
   if (config.actorProvider) sdkConfig.actorProvider = config.actorProvider;
   if (config.connectedWallet) sdkConfig.connectedWallet = config.connectedWallet;
+  // Propagate kill switch to SDK (defaults to true inside SDK)
+  if (config.onrampDisabled !== undefined) (sdkConfig as any).onrampDisabled = config.onrampDisabled;
 
   // Pass debug configuration to SDK if specified
   if (config.debug !== undefined) {
