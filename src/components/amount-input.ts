@@ -228,7 +228,7 @@ export class ICPayAmountInput extends LitElement {
   }
 
   private startOnramp() {
-    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'sendFundsUsd', type: 'onramp' } })); } catch {}
+    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'createPaymentUsd', type: 'onramp' } })); } catch {}
     this.showWalletModal = false;
     setTimeout(() => this.createOnrampIntent(), 0);
   }

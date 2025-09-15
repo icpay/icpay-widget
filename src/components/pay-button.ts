@@ -196,7 +196,7 @@ export class ICPayPayButton extends LitElement {
 
   private startOnramp() {
     // Signal to progress bar that onramp flow is starting
-    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'sendFundsUsd', type: 'onramp' } })); } catch {}
+    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'createPaymentUsd', type: 'onramp' } })); } catch {}
     this.showWalletModal = false;
     // Kick off onramp intent creation through SDK and open Transak with returned sessionId
     setTimeout(() => this.createOnrampIntent(), 0);

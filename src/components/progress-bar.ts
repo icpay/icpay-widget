@@ -366,7 +366,7 @@ export class ICPayProgressBar extends LitElement {
     debugLog(this.debug, 'ICPay Progress: Method start event received:', e.detail);
 
     // Handle different payment methods (top-level starts)
-    if (methodName === 'sendFunds' || methodName === 'sendFundsUsd' ||
+    if (methodName === 'createPayment' || methodName === 'createPaymentUsd' ||
         methodName === 'sendUsd' || methodName === 'pay' ||
         methodName === 'unlock' || methodName === 'tip' ||
         methodName === 'donate' || methodName === 'order') {
@@ -489,7 +489,7 @@ export class ICPayProgressBar extends LitElement {
 
   private onMethodSuccess = (e: any) => {
     const methodName = e?.detail?.name || '';
-    if (methodName === 'sendFunds' || methodName === 'sendFundsUsd' ||
+    if (methodName === 'createPayment' || methodName === 'createPaymentUsd' ||
         methodName === 'sendUsd' || methodName === 'pay' ||
         methodName === 'unlock' || methodName === 'tip' ||
         methodName === 'donate' || methodName === 'order') {
@@ -662,7 +662,7 @@ export class ICPayProgressBar extends LitElement {
 
     debugLog(this.debug, 'ICPay Progress: Method error event received:', e.detail);
 
-    if (methodName?.startsWith('sendFunds') || methodName === 'sendUsd' ||
+    if (methodName?.startsWith('createPayment') || methodName === 'sendUsd' ||
         methodName === 'pay' || methodName === 'unlock' ||
         methodName === 'tip' || methodName === 'donate' ||
         methodName === 'order') {
