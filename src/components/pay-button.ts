@@ -175,7 +175,7 @@ export class ICPayPayButton extends LitElement {
     if (!this.showWalletModal || !this.pnp) return null as any;
     const walletsRaw = this.pnp.getEnabledWallets() || [];
     const wallets = walletsRaw.map((w: any) => ({ id: this.getWalletId(w), label: this.getWalletLabel(w), icon: this.getWalletIcon(w) }));
-    const onrampEnabled = this.config?.onramp?.enabled !== false;
+    const onrampEnabled = (this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true);
     const minOnramp = 5;
     const amountUsd = Number(this.config?.amountUsd ?? 0);
     const showTooltip = onrampEnabled && amountUsd > 0 && amountUsd < minOnramp;

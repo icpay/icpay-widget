@@ -394,11 +394,11 @@ export class ICPayCoffeeShop extends LitElement {
             isConnecting: false,
             onSelect: (walletId: string) => this.connectWithWallet(walletId),
             onClose: () => { this.showWalletModal = false; },
-            onCreditCard: (this.config?.onramp?.enabled !== false) ? () => this.startOnramp() : undefined,
+            onCreditCard: ((this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true)) ? () => this.startOnramp() : undefined,
             creditCardLabel: this.config?.onramp?.creditCardLabel || 'Pay with credit card',
-            showCreditCard: (this.config?.onramp?.enabled !== false),
+            showCreditCard: (this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true),
             creditCardTooltip: (() => {
-              const min = 5; const i = this.config?.defaultItemIndex ?? 0; const amt = Number((this.config?.items?.[i]?.priceUsd) || 0); if (amt > 0 && amt < min && (this.config?.onramp?.enabled !== false)) { const d = (min - amt).toFixed(2); return `Note: Minimum card amount is $${min}. You will pay about $${d} more.`; } return null;
+              const min = 5; const i = this.config?.defaultItemIndex ?? 0; const amt = Number((this.config?.items?.[i]?.priceUsd) || 0); if (amt > 0 && amt < min && ((this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true))) { const d = (min - amt).toFixed(2); return `Note: Minimum card amount is $${min}. You will pay about $${d} more.`; } return null;
             })(),
           });
         })()}
