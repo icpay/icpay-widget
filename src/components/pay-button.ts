@@ -175,7 +175,7 @@ export class ICPayPayButton extends LitElement {
     if (!this.showWalletModal || !this.pnp) return null as any;
     const walletsRaw = this.pnp.getEnabledWallets() || [];
     const wallets = walletsRaw.map((w: any) => ({ id: this.getWalletId(w), label: this.getWalletLabel(w), icon: this.getWalletIcon(w) }));
-    const onrampEnabled = this.config?.onramp?.enabled !== false;
+    const onrampEnabled = (this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true);
     const minOnramp = 5;
     const amountUsd = Number(this.config?.amountUsd ?? 0);
     const showTooltip = onrampEnabled && amountUsd > 0 && amountUsd < minOnramp;
@@ -196,7 +196,7 @@ export class ICPayPayButton extends LitElement {
 
   private startOnramp() {
     // Signal to progress bar that onramp flow is starting
-    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'sendFundsUsd', type: 'onramp' } })); } catch {}
+    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'createPaymentUsd', type: 'onramp' } })); } catch {}
     this.showWalletModal = false;
     // Kick off onramp intent creation through SDK and open Transak with returned sessionId
     setTimeout(() => this.createOnrampIntent(), 0);
@@ -365,7 +365,12 @@ export class ICPayPayButton extends LitElement {
     return html`
       <div class="icpay-card icpay-section">
         ${showProgressBar ? html`
-          <icpay-progress-bar></icpay-progress-bar>
+          <icpay-progress-bar
+            .debug=${!!this.config?.debug}
+            .theme=${this.config?.theme}
+            .amount=${Number(this.config?.amountUsd || 0)}
+            .ledgerSymbol=${selectedSymbol}
+          ></icpay-progress-bar>
         ` : null}
 
         <div class="row ${showSelector ? '' : 'single'}">

@@ -228,7 +228,7 @@ export class ICPayAmountInput extends LitElement {
   }
 
   private startOnramp() {
-    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'sendFundsUsd', type: 'onramp' } })); } catch {}
+    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'createPaymentUsd', type: 'onramp' } })); } catch {}
     this.showWalletModal = false;
     setTimeout(() => this.createOnrampIntent(), 0);
   }
@@ -353,7 +353,14 @@ export class ICPayAmountInput extends LitElement {
 
     return html`
       <div class="icpay-card icpay-section">
-        ${showProgressBar ? html`<icpay-progress-bar mode="${mode}"></icpay-progress-bar>` : null}
+        ${showProgressBar ? html`
+          <icpay-progress-bar
+            .debug=${!!this.config?.debug}
+            .theme=${this.config?.theme}
+            .amount=${Number(this.amountUsd || 0)}
+            .ledgerSymbol=${this.selectedSymbol || this.config?.defaultSymbol || 'ICP'}
+          ></icpay-progress-bar>
+        ` : null}
 
         <div class="row">
           <div class="top-row ${showSelector ? 'with-selector' : ''}">
@@ -395,11 +402,11 @@ export class ICPayAmountInput extends LitElement {
             isConnecting: false,
             onSelect: (walletId: string) => this.connectWithWallet(walletId),
             onClose: () => { this.showWalletModal = false; },
-            onCreditCard: (this.config?.onramp?.enabled !== false) ? () => this.startOnramp() : undefined,
+            onCreditCard: ((this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true)) ? () => this.startOnramp() : undefined,
             creditCardLabel: this.config?.onramp?.creditCardLabel || 'Pay with credit card',
-            showCreditCard: (this.config?.onramp?.enabled !== false),
+            showCreditCard: (this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true),
             creditCardTooltip: (() => {
-              const min = 5; const amt = Number(this.amountUsd || 0); if (amt > 0 && amt < min && (this.config?.onramp?.enabled !== false)) { const d = (min - amt).toFixed(2); return `Note: Minimum card amount is $${min}. You will pay about $${d} more.`; } return null;
+              const min = 5; const amt = Number(this.amountUsd || 0); if (amt > 0 && amt < min && ((this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true))) { const d = (min - amt).toFixed(2); return `Note: Minimum card amount is $${min}. You will pay about $${d} more.`; } return null;
             })(),
           });
         })()}

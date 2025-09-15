@@ -52,6 +52,8 @@ export function createSdk(config: CommonConfig): WidgetSdk {
   if (config.icHost) sdkConfig.icHost = config.icHost;
   if (config.actorProvider) sdkConfig.actorProvider = config.actorProvider;
   if (config.connectedWallet) sdkConfig.connectedWallet = config.connectedWallet;
+  // Propagate kill switch to SDK (defaults to true inside SDK)
+  if (config.onrampDisabled !== undefined) (sdkConfig as any).onrampDisabled = config.onrampDisabled;
 
   // Pass debug configuration to SDK if specified
   if (config.debug !== undefined) {
@@ -89,12 +91,12 @@ export function createSdk(config: CommonConfig): WidgetSdk {
 
     async function sendUsd(usdAmount: number, ledgerCanisterId: string, metadata?: Record<string, any>) {
       // Use direct USD-based API for simplicity in widgets
-      return (client as any).sendFundsUsd({ usdAmount, ledgerCanisterId, metadata });
+      return (client as any).createPaymentUsd({ usdAmount, ledgerCanisterId, metadata });
     }
 
     async function startOnrampUsd(usdAmount: number, ledgerCanisterId: string, metadata?: Record<string, any>) {
       // Trigger onramp flow through SDK; SDK returns onramp data in metadata.onramp
-      return (client as any).sendFundsUsd({ usdAmount, ledgerCanisterId, metadata, onrampPayment: true });
+      return (client as any).createPaymentUsd({ usdAmount, ledgerCanisterId, metadata, onrampPayment: true });
     }
 
 
