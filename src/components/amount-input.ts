@@ -185,6 +185,9 @@ export class ICPayAmountInput extends LitElement {
     if (!this.pnp) return;
     try {
       if (!walletId) throw new Error('No wallet ID provided');
+      if ((walletId || '').toLowerCase() === 'ii') {
+        try { await this.pnp.disconnect(); } catch {}
+      }
       const result = await this.pnp.connect(walletId);
       const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
       if (!isConnected) throw new Error('Wallet connection was rejected');
