@@ -95,7 +95,9 @@ export class ICPayTipJar extends LitElement {
         const module = await import('@windoge98/plug-n-play');
         PlugNPlay = module.PNP;
       }
-      const pnp = new PlugNPlay(this.config?.plugNPlay || {});
+      const _cfg1: any = { ...(this.config?.plugNPlay || {}) };
+      try { if (typeof window !== 'undefined') _cfg1.derivationOrigin = window.location.origin; } catch {}
+      const pnp = new PlugNPlay(_cfg1);
       // Do not call connect here; just hydrate saved principal for UI/history.
       // Keep walletConnected false so pressing pay triggers real connect.
       this.walletConnected = false;
@@ -211,7 +213,9 @@ export class ICPayTipJar extends LitElement {
           debugLog(this.config?.debug || false, 'Connecting to wallet via Plug N Play');
           try {
             if (!PlugNPlay) { const module = await import('@windoge98/plug-n-play'); PlugNPlay = module.PNP; }
-            this.pnp = new PlugNPlay(this.config?.plugNPlay || {});
+            const _cfg2: any = { ...(this.config?.plugNPlay || {}) };
+            try { if (typeof window !== 'undefined') _cfg2.derivationOrigin = window.location.origin; } catch {}
+            this.pnp = new PlugNPlay(_cfg2);
             const availableWallets = this.pnp.getEnabledWallets();
             debugLog(this.config?.debug || false, 'Available wallets', availableWallets);
             if (!availableWallets?.length) throw new Error('No wallets available');

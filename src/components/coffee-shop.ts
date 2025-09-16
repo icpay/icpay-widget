@@ -180,7 +180,9 @@ export class ICPayCoffeeShop extends LitElement {
           debugLog(this.config?.debug || false, 'Connecting to wallet via Plug N Play');
           try {
             if (!PlugNPlay) { const module = await import('@windoge98/plug-n-play'); PlugNPlay = module.PNP; }
-            this.pnp = new PlugNPlay(this.config?.plugNPlay || {});
+            const _cfg: any = { ...(this.config?.plugNPlay || {}) };
+            try { if (typeof window !== 'undefined') _cfg.derivationOrigin = window.location.origin; } catch {}
+            this.pnp = new PlugNPlay(_cfg);
             const availableWallets = this.pnp.getEnabledWallets();
             debugLog(this.config?.debug || false, 'Available wallets', availableWallets);
             if (!availableWallets?.length) throw new Error('No wallets available');
