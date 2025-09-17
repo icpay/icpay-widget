@@ -96,7 +96,12 @@ export class ICPayDonationThermometer extends LitElement {
         PlugNPlay = module.PNP;
       }
       const _cfg1: any = { ...(this.config?.plugNPlay || {}) };
-      try { if (typeof window !== 'undefined') _cfg1.derivationOrigin = window.location.origin; } catch {}
+      try {
+        if (typeof window !== 'undefined') {
+          const { resolveDerivationOrigin } = await import('../utils/origin');
+          _cfg1.derivationOrigin = this.config?.derivationOrigin || resolveDerivationOrigin();
+        }
+      } catch {}
       const pnp = new PlugNPlay(_cfg1);
       // Hydrate saved principal for UI/history; require connect on pay
       this.walletConnected = false;
@@ -127,6 +132,7 @@ export class ICPayDonationThermometer extends LitElement {
 
     if (this.config && typeof this.config.defaultAmountUsd === 'number') this.selectedAmount = this.config.defaultAmountUsd;
     this.tryAutoConnectPNP();
+    try { window.addEventListener('icpay-switch-account', this.onSwitchAccount as EventListener); } catch {}
     if (!(this.config?.cryptoOptions && this.config.cryptoOptions.length > 0)) {
       this.loadVerifiedLedgers();
     }
@@ -140,6 +146,21 @@ export class ICPayDonationThermometer extends LitElement {
       setTimeout(() => { if (action === 'donate') this.donate(); }, 0);
     }
   }
+
+  private onSwitchAccount = async (e: any) => {
+    try {
+      if (!this.pnp) return;
+      await this.pnp.disconnect();
+      const type = (e?.detail?.walletType || '').toLowerCase();
+      if (type === 'ii') {
+        try { window.open('https://identity.ic0.app/', '_blank', 'noopener,noreferrer'); } catch {}
+      }
+      this.pendingAction = 'donate';
+      this.walletConnected = false;
+      this.showWalletModal = true;
+      this.requestUpdate();
+    } catch {}
+  };
 
   private async loadVerifiedLedgers() {
     if (!isBrowser || !this.config?.publishableKey) {
@@ -214,7 +235,12 @@ export class ICPayDonationThermometer extends LitElement {
           try {
             if (!PlugNPlay) { const module = await import('@windoge98/plug-n-play'); PlugNPlay = module.PNP; }
             const _cfg2: any = { ...(this.config?.plugNPlay || {}) };
-            try { if (typeof window !== 'undefined') _cfg2.derivationOrigin = window.location.origin; } catch {}
+            try {
+              if (typeof window !== 'undefined') {
+                const { resolveDerivationOrigin } = await import('../utils/origin');
+                _cfg2.derivationOrigin = this.config?.derivationOrigin || resolveDerivationOrigin();
+              }
+            } catch {}
             this.pnp = new PlugNPlay(_cfg2);
             const availableWallets = this.pnp.getEnabledWallets();
             debugLog(this.config?.debug || false, 'Available wallets', availableWallets);
@@ -355,9 +381,6 @@ export class ICPayDonationThermometer extends LitElement {
     if (!this.pnp) return;
     try {
       if (!walletId) throw new Error('No wallet ID provided');
-      if ((walletId || '').toLowerCase() === 'ii') {
-        try { await this.pnp.disconnect(); } catch {}
-      }
       const result = await this.pnp.connect(walletId);
       const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
       if (!isConnected) throw new Error('Wallet connection was rejected');
