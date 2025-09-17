@@ -272,6 +272,7 @@ export class ICPayProgressBar extends LitElement {
   @state() private currentLedgerSymbol = '';
   @state() private confirmLoadingStartedAt: number | null = null;
   private progressionTimer: number | null = null;
+  @state() private currentWalletType: string | null = null;
 
   @property({ type: Object }) theme?: { primaryColor?: string; secondaryColor?: string };
 
@@ -719,6 +720,7 @@ export class ICPayProgressBar extends LitElement {
       detail: { walletType, step: this.activeIndex },
       bubbles: true
     }));
+    this.currentWalletType = walletType;
   };
 
   private onWalletDisconnected = (e: any) => {
@@ -731,6 +733,7 @@ export class ICPayProgressBar extends LitElement {
       detail: { walletType, step: this.activeIndex },
       bubbles: true
     }));
+    this.currentWalletType = null;
   };
 
   private onBalanceCheck = (e: any) => {
@@ -1083,11 +1086,19 @@ export class ICPayProgressBar extends LitElement {
           <h4>Transaction Failed</h4>
           <p>${this.errorMessage}</p>
           <div class="success-actions" style="margin-top:12px;">
+            <button class="btn btn-secondary" @click=${() => this.requestSwitchAccount()} title="Switch to a different account">Switch account</button>
             <button class="btn btn-primary" @click=${() => { this.open = false; }}>Close</button>
           </div>
         </div>
       </div>
     `;
+  }
+
+  private requestSwitchAccount() {
+    try {
+      const walletType = this.currentWalletType || 'unknown';
+      window.dispatchEvent(new CustomEvent('icpay-switch-account', { detail: { walletType } } as any));
+    } catch {}
   }
 
   private renderProgressContent() {

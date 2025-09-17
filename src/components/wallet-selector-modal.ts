@@ -69,22 +69,37 @@ export function renderWalletSelectorModal(opts: Options): TemplateResult | null 
         <h3 style="color:#fff;margin:0 48px 16px 0;font-size:18px;font-weight:600">Choose Wallet</h3>
         <div style="display:flex;flex-direction:column;gap:8px">
           ${normalizedWallets.map(w => {
+            const id = (w.id || '').toLowerCase();
             const displayName = getWalletFriendlyName(w.id, w.label);
-            return html`
-            <button
-              @click=${() => onSelect(w.id)}
-              style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;text-align:left;cursor:pointer;font-size:14px;opacity:${isConnecting?0.5:1};display:flex;align-items:center;gap:12px">
-              ${w.icon ? html`
-                <div style="width:48px;height:48px;display:flex;align-items:center;justify-content:center">
-                  <img src="${sanitizeDataUrl(w.icon)}" alt="${displayName} logo" style="width:40px;height:40px;object-fit:cover;border-radius:12px" />
-                </div>
-              ` : html`
-                <div style="width:48px;height:48px;background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold">
-                  ${displayName}
-                </div>
-              `}
-              <div><div style="font-weight:500">${displayName}</div></div>
-            </button>`;
+            const mainButton = html`
+              <button
+                @click=${() => onSelect(w.id)}
+                style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;text-align:left;cursor:pointer;font-size:14px;opacity:${isConnecting?0.5:1};display:flex;align-items:center;gap:12px">
+                ${w.icon ? html`
+                  <div style="width:48px;height:48px;display:flex;align-items:center;justify-content:center">
+                    <img src="${sanitizeDataUrl(w.icon)}" alt="${displayName} logo" style="width:40px;height:40px;object-fit:cover;border-radius:12px" />
+                  </div>
+                ` : html`
+                  <div style="width:48px;height:48px;background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold">
+                    ${displayName}
+                  </div>
+                `}
+                <div><div style="font-weight:500">${displayName}</div></div>
+              </button>`;
+            if (id === 'ii') {
+              return html`
+                <div style="display:flex;gap:8px;align-items:center;width:100%">
+                  ${mainButton}
+                  <button
+                    @click=${() => { try { window.open('https://identity.ic0.app/','_blank','noopener,noreferrer'); } catch {} }}
+                    title="Use a different Internet Identity"
+                    aria-label="Use a different Internet Identity"
+                    style="width:56px;height:72px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#9ca3af;cursor:pointer;">
+                    <span style="font-size:20px" aria-hidden="true">🔄</span>
+                  </button>
+                </div>`;
+            }
+            return html`<div style="width:100%">${mainButton}</div>`;
           })}
         </div>
         ${creditCardSection}
