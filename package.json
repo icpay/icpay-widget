@@ -1,6 +1,6 @@
 {
   "name": "@ic-pay/icpay-widget",
-  "version": "1.1.12",
+  "version": "1.1.13",
   "description": "ICPay embeddable payment widgets as framework-agnostic Web Components",
   "homepage": "https://github.com/icpay/icpay-widget#readme",
   "bugs": {
@@ -36,7 +36,7 @@
     "prepare": "pnpm build"
   },
   "dependencies": {
-    "@ic-pay/icpay-sdk": "^1.3.83",
+    "@ic-pay/icpay-sdk": "^1.3.84",
     "@windoge98/plug-n-play": "^0.0.70",
     "lit": "^3.3.1"
   },
@@ -48,9 +48,9 @@
     "typescript": "^5.9.2"
   },
   "peerDependencies": {
+    "@ic-pay/icpay-sdk": "*",
     "react": ">=18",
-    "react-dom": ">=18",
-    "@ic-pay/icpay-sdk": "*"
+    "react-dom": ">=18"
   },
   "module": "dist/index.js",
   "unpkg": "dist/index.iife.js"
