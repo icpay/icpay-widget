@@ -79,6 +79,7 @@ export class ICPayPayButton extends LitElement {
     }
     // Initialize default symbol
     if (this.config?.defaultSymbol) this.selectedSymbol = this.config.defaultSymbol;
+    try { window.addEventListener('icpay-switch-account', this.onSwitchAccount as EventListener); } catch {}
   }
 
   protected updated(changed: Map<string, unknown>): void {
@@ -94,6 +95,21 @@ export class ICPayPayButton extends LitElement {
       this.sdk = null;
     }
   }
+
+  private onSwitchAccount = async (e: any) => {
+    try {
+      if (!this.pnp) return;
+      await this.pnp.disconnect();
+      const type = (e?.detail?.walletType || '').toLowerCase();
+      if (type === 'ii') {
+        try { window.open('https://identity.ic0.app/', '_blank', 'noopener,noreferrer'); } catch {}
+      }
+      this.pendingAction = 'pay';
+      this.walletConnected = false;
+      this.showWalletModal = true;
+      this.requestUpdate();
+    } catch {}
+  };
 
   private async loadVerifiedLedgers() {
     if (!isBrowser || !this.config?.publishableKey) return;
@@ -129,7 +145,14 @@ export class ICPayPayButton extends LitElement {
         const module = await import('@windoge98/plug-n-play');
         PlugNPlay = module.PNP;
       }
-      this.pnp = new PlugNPlay(this.config?.plugNPlay || {});
+      const _cfg: any = { ...(this.config?.plugNPlay || {}) };
+      try {
+        if (typeof window !== 'undefined') {
+          const { resolveDerivationOrigin } = await import('../utils/origin');
+          _cfg.derivationOrigin = this.config?.derivationOrigin || resolveDerivationOrigin();
+        }
+      } catch {}
+      this.pnp = new PlugNPlay(_cfg);
       const availableWallets = this.pnp.getEnabledWallets();
       debugLog(this.config?.debug || false, 'Available wallets', availableWallets);
       if (!availableWallets?.length) throw new Error('No wallets available');

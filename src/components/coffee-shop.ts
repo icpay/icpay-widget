@@ -101,6 +101,7 @@ export class ICPayCoffeeShop extends LitElement {
     if (!(this.config?.cryptoOptions && this.config.cryptoOptions.length > 0)) {
       this.loadVerifiedLedgers();
     }
+    try { window.addEventListener('icpay-switch-account', this.onSwitchAccount as EventListener); } catch {}
   }
 
   protected updated(changed: Map<string, unknown>): void {
@@ -111,6 +112,21 @@ export class ICPayCoffeeShop extends LitElement {
       setTimeout(() => { if (action === 'order') this.order(); }, 0);
     }
   }
+
+  private onSwitchAccount = async (e: any) => {
+    try {
+      if (!this.pnp) return;
+      await this.pnp.disconnect();
+      const type = (e?.detail?.walletType || '').toLowerCase();
+      if (type === 'ii') {
+        try { window.open('https://identity.ic0.app/', '_blank', 'noopener,noreferrer'); } catch {}
+      }
+      this.pendingAction = 'order';
+      this.walletConnected = false;
+      this.showWalletModal = true;
+      this.requestUpdate();
+    } catch {}
+  };
 
   private async loadVerifiedLedgers() {
     if (!isBrowser || !this.config?.publishableKey) {
@@ -180,7 +196,14 @@ export class ICPayCoffeeShop extends LitElement {
           debugLog(this.config?.debug || false, 'Connecting to wallet via Plug N Play');
           try {
             if (!PlugNPlay) { const module = await import('@windoge98/plug-n-play'); PlugNPlay = module.PNP; }
-            this.pnp = new PlugNPlay(this.config?.plugNPlay || {});
+            const _cfg: any = { ...(this.config?.plugNPlay || {}) };
+            try {
+              if (typeof window !== 'undefined') {
+                const { resolveDerivationOrigin } = await import('../utils/origin');
+                _cfg.derivationOrigin = this.config?.derivationOrigin || resolveDerivationOrigin();
+              }
+            } catch {}
+            this.pnp = new PlugNPlay(_cfg);
             const availableWallets = this.pnp.getEnabledWallets();
             debugLog(this.config?.debug || false, 'Available wallets', availableWallets);
             if (!availableWallets?.length) throw new Error('No wallets available');

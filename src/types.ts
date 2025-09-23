@@ -36,6 +36,8 @@ export type CommonConfig = {
   publishableKey: string; // from icpay-sdk
   apiUrl?: string;
   icHost?: string;
+  // Optional derivation origin override used by wallet connectors like Internet Identity
+  derivationOrigin?: string;
   actorProvider?: (canisterId: string, idl: any) => any;
   connectedWallet?: any;
   useOwnWallet?: boolean; // If true, widget will not handle wallet connection
@@ -79,7 +81,7 @@ export type TipJarConfig = CommonConfig & {
   // Optional: default selected symbol (e.g., 'ICP')
   defaultSymbol?: string;
   // Optional: render a ledger selector; if only one option, it will be auto-selected
-  showLedgerDropdown?: boolean;
+  showLedgerDropdown?: string;
   // Optional: customize button label with template variables {amount} and {symbol}
   buttonLabel?: string;
   onSuccess?: (tx: { id: number; status: string; total?: number }) => void;
@@ -144,7 +146,7 @@ export type PayButtonConfig = CommonConfig & {
   // Optional: show or override available ledgers; if omitted, use verified ledgers from SDK
   cryptoOptions?: CryptoOption[];
   // Optional: controls whether to render a ledger dropdown; default: false
-  showLedgerDropdown?: boolean;
+  showLedgerDropdown?: string;
   // Optional: default selected symbol, e.g. 'ICP'
   defaultSymbol?: string;
   // Optional: override button label when amountUsd is not provided
@@ -161,7 +163,7 @@ export type AmountInputConfig = CommonConfig & {
   // Ledgers
   cryptoOptions?: CryptoOption[];
   // Optional: controls whether to render a ledger dropdown; default: false
-  showLedgerDropdown?: boolean;
+  showLedgerDropdown?: string;
   defaultSymbol?: string; // e.g., 'ICP'
   // Validation
   minUsd?: number; // default: 0.5

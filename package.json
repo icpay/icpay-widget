@@ -1,6 +1,6 @@
 {
   "name": "@ic-pay/icpay-widget",
-  "version": "1.1.3",
+  "version": "1.1.14",
   "description": "ICPay embeddable payment widgets as framework-agnostic Web Components",
   "homepage": "https://github.com/icpay/icpay-widget#readme",
   "bugs": {
@@ -17,6 +17,10 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./react": {
+      "import": "./dist/react/index.js",
+      "types": "./dist/react/index.d.ts"
     }
   },
   "main": "dist/index.js",
@@ -25,14 +29,14 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm,iife --global-name ICPayWidget --dts --minify --sourcemap --clean --external @ic-pay/icpay-sdk && pnpm build:css",
+    "build": "tsup src/index.ts src/react/index.ts --format esm --dts --minify --sourcemap --clean --external @ic-pay/icpay-sdk,react,react-dom && pnpm build:css",
     "build:css": "tailwindcss -i src/styles/tailwind.css -o dist/tailwind.css --minify",
     "dev": "tsup src/index.ts --watch --format esm,iife --global-name ICPayWidget --dts --external @ic-pay/icpay-sdk",
     "build:embed": "tsup src/index.ts --format iife --global-name ICPayWidget --minify --sourcemap --no-splitting --platform=browser && node -e \"const fs=require('fs');if(fs.existsSync('dist/index.global.js')){fs.renameSync('dist/index.global.js','dist/index.embed.js');if(fs.existsSync('dist/index.global.js.map'))fs.renameSync('dist/index.global.js.map','dist/index.embed.js.map');}\"",
     "prepare": "pnpm build"
   },
   "dependencies": {
-    "@ic-pay/icpay-sdk": "^1.3.83",
+    "@ic-pay/icpay-sdk": "^1.3.84",
     "@windoge98/plug-n-play": "^0.0.70",
     "lit": "^3.3.1"
   },
@@ -44,7 +48,9 @@
     "typescript": "^5.9.2"
   },
   "peerDependencies": {
-    "@ic-pay/icpay-sdk": "*"
+    "@ic-pay/icpay-sdk": "*",
+    "react": ">=18",
+    "react-dom": ">=18"
   },
   "module": "dist/index.js",
   "unpkg": "dist/index.iife.js"

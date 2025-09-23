@@ -46,6 +46,22 @@ export function renderWalletSelectorModal(opts: Options): TemplateResult | null 
       icon: id === 'nfid' ? NFID_ICON_DATA_URL : (w.icon ?? null),
     };
   });
+  // onramp-start: Temporarily disable Credit Card (Transak) option in wallet selector
+  const creditCardSection: TemplateResult | null = null;
+  /*
+  // Original credit card section (re-enable by replacing `${creditCardSection}` with this block):
+  <div style="margin:12px 0;height:1px;background:rgba(255,255,255,0.08)"></div>
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <button
+      @click=${() => { if (opts.onCreditCard) opts.onCreditCard(); }}
+      style="width:100%;padding:12px 16px;background:linear-gradient(135deg,#3b82f6 0%,#10b981 100%);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;text-align:center;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px">
+      <span>💳</span>
+      <span style="font-weight:600">${opts.creditCardLabel || 'Pay with credit card'}</span>
+    </button>
+    ${opts.creditCardTooltip ? html`<div style="font-size:12px;color:#f5d78a;text-align:center">${opts.creditCardTooltip}</div>` : null}
+  </div>
+  */
+  // onramp-end
   return html`
     <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);z-index:10000">
       <div style="background:#1f2937;border-radius:12px;padding:24px;max-width:400px;width:90%;border:1px solid rgba(255,255,255,0.1);position:relative">
@@ -53,36 +69,40 @@ export function renderWalletSelectorModal(opts: Options): TemplateResult | null 
         <h3 style="color:#fff;margin:0 48px 16px 0;font-size:18px;font-weight:600">Choose Wallet</h3>
         <div style="display:flex;flex-direction:column;gap:8px">
           ${normalizedWallets.map(w => {
+            const id = (w.id || '').toLowerCase();
             const displayName = getWalletFriendlyName(w.id, w.label);
-            return html`
-            <button
-              @click=${() => onSelect(w.id)}
-              style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;text-align:left;cursor:pointer;font-size:14px;opacity:${isConnecting?0.5:1};display:flex;align-items:center;gap:12px">
-              ${w.icon ? html`
-                <div style="width:48px;height:48px;display:flex;align-items:center;justify-content:center">
-                  <img src="${sanitizeDataUrl(w.icon)}" alt="${displayName} logo" style="width:40px;height:40px;object-fit:cover;border-radius:12px" />
-                </div>
-              ` : html`
-                <div style="width:48px;height:48px;background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold">
-                  ${displayName}
-                </div>
-              `}
-              <div><div style="font-weight:500">${displayName}</div></div>
-            </button>`;
+            const mainButton = html`
+              <button
+                @click=${() => onSelect(w.id)}
+                style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;text-align:left;cursor:pointer;font-size:14px;opacity:${isConnecting?0.5:1};display:flex;align-items:center;gap:12px">
+                ${w.icon ? html`
+                  <div style="width:48px;height:48px;display:flex;align-items:center;justify-content:center">
+                    <img src="${sanitizeDataUrl(w.icon)}" alt="${displayName} logo" style="width:40px;height:40px;object-fit:cover;border-radius:12px" />
+                  </div>
+                ` : html`
+                  <div style="width:48px;height:48px;background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold">
+                    ${displayName}
+                  </div>
+                `}
+                <div><div style="font-weight:500">${displayName}</div></div>
+              </button>`;
+            if (id === 'ii') {
+              return html`
+                <div style="display:flex;gap:8px;align-items:center;width:100%">
+                  ${mainButton}
+                  <button
+                    @click=${() => { try { window.open('https://identity.ic0.app/','_blank','noopener,noreferrer'); } catch {} }}
+                    title="Use a different Internet Identity"
+                    aria-label="Use a different Internet Identity"
+                    style="width:56px;height:72px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#9ca3af;cursor:pointer;">
+                    <span style="font-size:20px" aria-hidden="true">🔄</span>
+                  </button>
+                </div>`;
+            }
+            return html`<div style="width:100%">${mainButton}</div>`;
           })}
         </div>
-        ${opts.showCreditCard !== false ? html`
-          <div style="margin:12px 0;height:1px;background:rgba(255,255,255,0.08)"></div>
-          <div style="display:flex;flex-direction:column;gap:6px">
-            <button
-              @click=${() => { if (opts.onCreditCard) opts.onCreditCard(); }}
-              style="width:100%;padding:12px 16px;background:linear-gradient(135deg,#3b82f6 0%,#10b981 100%);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;text-align:center;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px">
-              <span>💳</span>
-              <span style="font-weight:600">${opts.creditCardLabel || 'Pay with credit card'}</span>
-            </button>
-            ${opts.creditCardTooltip ? html`<div style="font-size:12px;color:#f5d78a;text-align:center">${opts.creditCardTooltip}</div>` : null}
-          </div>
-        ` : null}
+        ${creditCardSection}
       </div>
     </div>
   `;
