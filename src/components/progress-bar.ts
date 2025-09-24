@@ -70,7 +70,43 @@ export class ICPayProgressBar extends LitElement {
     :host {
       display: block;
       font-family: var(--icpay-font, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-      color: #ffffff;
+      color: var(--icpay-text-primary, #ffffff);
+      
+      /* Theme variables for better composability */
+      --icpay-bg-primary: #1f2937;
+      --icpay-bg-secondary: rgba(255, 255, 255, 0.05);
+      --icpay-bg-secondary-hover: rgba(255, 255, 255, 0.08);
+      --icpay-bg-success: rgba(16, 185, 129, 0.1);
+      --icpay-bg-error: rgba(239, 68, 68, 0.1);
+      
+      --icpay-text-primary: #ffffff;
+      --icpay-text-secondary: #9ca3af;
+      --icpay-text-muted: #6b7280;
+      
+      --icpay-border-primary: rgba(255, 255, 255, 0.1);
+      --icpay-border-secondary: rgba(255, 255, 255, 0.2);
+      --icpay-border-success: rgba(16, 185, 129, 0.3);
+      --icpay-border-error: rgba(239, 68, 68, 0.3);
+      
+      --icpay-accent-primary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      --icpay-accent-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      --icpay-accent-error: #ef4444;
+      
+      --icpay-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --icpay-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --icpay-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+      --icpay-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
+      
+      --icpay-radius-sm: 6px;
+      --icpay-radius-md: 8px;
+      --icpay-radius-lg: 12px;
+      --icpay-radius-xl: 16px;
+      
+      --icpay-spacing-xs: 4px;
+      --icpay-spacing-sm: 8px;
+      --icpay-spacing-md: 12px;
+      --icpay-spacing-lg: 16px;
+      --icpay-spacing-xl: 24px;
     }
 
     .modal-overlay {
@@ -79,8 +115,8 @@ export class ICPayProgressBar extends LitElement {
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(10px);
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -90,21 +126,99 @@ export class ICPayProgressBar extends LitElement {
       transition: opacity 0.3s ease, visibility 0.3s ease;
     }
 
+    .modal-content {
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .modal-content.transitioning {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .wallet-selector-container {
+      width: 100%;
+    }
+
+    .wallet-selector-title {
+      color: var(--icpay-text-primary);
+      margin: 0 48px var(--icpay-spacing-lg) 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .wallet-options {
+      display: flex;
+      flex-direction: column;
+      gap: var(--icpay-spacing-sm);
+    }
+
+    .wallet-option {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-sizing: border-box;
+    }
+
+    .wallet-option:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .wallet-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .wallet-icon img {
+      width: 40px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 12px;
+    }
+
+    .wallet-icon-placeholder {
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .wallet-label {
+      font-weight: 500;
+      font-size: 14px;
+      color: #ffffff;
+    }
+
     .modal-overlay.active {
       opacity: 1;
       visibility: visible;
     }
 
     .modal-container {
-      background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 24px;
-      padding: 48px;
-      max-width: 480px;
+      background: var(--icpay-bg-primary);
+      border: 1px solid var(--icpay-border-primary);
+      border-radius: var(--icpay-radius-lg);
+      padding: var(--icpay-spacing-xl);
+      max-width: 400px;
       width: 90%;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      box-shadow: var(--icpay-shadow-xl);
       transform: translateY(20px);
       transition: transform 0.3s ease;
+      position: relative;
     }
 
     .modal-overlay.active .modal-container {
@@ -113,73 +227,305 @@ export class ICPayProgressBar extends LitElement {
 
     .close-button {
       position: absolute;
-      top: 16px;
-      right: 16px;
-      background: none;
-      border: none;
-      color: #666666;
+      top: var(--icpay-spacing-lg);
+      right: var(--icpay-spacing-lg);
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--icpay-text-secondary);
       cursor: pointer;
-      padding: 8px;
-      border-radius: 6px;
+      border: none;
+      background: transparent;
+      font-size: 20px;
       transition: all 0.2s;
-      font-size: 18px;
-      line-height: 1;
     }
 
     .close-button:hover {
-      background: #1a1a1a;
-      color: #ffffff;
+      color: var(--icpay-text-primary);
     }
 
-    .progress-header { text-align: center; margin-bottom: 40px; }
+    .progress-header { text-align: left; margin-bottom: var(--icpay-spacing-lg); }
     .progress-title {
-      font-size: 24px;
+      font-size: 18px;
       font-weight: 600;
-      margin-bottom: 8px;
-      background: linear-gradient(135deg, #ffffff 0%, #888888 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      margin: 0 48px var(--icpay-spacing-sm) 0;
+      color: var(--icpay-text-primary);
     }
-    .progress-subtitle { color: #666666; font-size: 14px; }
-    .progress-steps { margin-bottom: 40px; }
-    .step { display: flex; align-items: center; margin-bottom: 24px; opacity: 0.3; transition: opacity 0.3s ease; }
-    .step.active { opacity: 1; }
-    .step.completed { opacity: 0.7; }
-    .step-icon { width: 40px; height: 40px; border-radius: 50%; background: #1a1a1a; border: 2px solid #333333; display: flex; align-items: center; justify-content: center; margin-right: 16px; transition: all 0.3s ease; position: relative; }
-    .step.active .step-icon { background: #1a1a1a; border-color: #4a9eff; box-shadow: 0 0 0 4px rgba(74, 158, 255, 0.2); }
-    .step.completed .step-icon { background: #0d7c3d; border-color: #0d7c3d; }
-    .step-icon svg { width: 20px; height: 20px; stroke: #666666; transition: stroke 0.3s ease; }
-    .step.active .step-icon svg { stroke: #4a9eff; }
-    .step.completed .step-icon svg { stroke: #ffffff; }
-    .step-content { flex: 1; }
-    .step-title { font-weight: 500; font-size: 16px; margin-bottom: 4px; color: #999999; transition: color 0.3s ease; }
-    .step.active .step-title { color: #ffffff; }
-    .step-description { font-size: 14px; color: #666666; }
-    .loading-spinner { display: none; width: 20px; height: 20px; border: 2px solid rgba(74, 158, 255, 0.2); border-top-color: #4a9eff; border-radius: 50%; animation: spin 1s linear infinite; position: absolute; }
+    .progress-subtitle { color: var(--icpay-text-secondary); font-size: 14px; }
+    .progress-steps { 
+      margin-bottom: var(--icpay-spacing-xl); 
+      display: flex; 
+      flex-direction: column; 
+      gap: var(--icpay-spacing-sm);
+    }
+    .step { 
+      width: 100%; 
+      padding: 12px 16px; 
+      background: rgba(255, 255, 255, 0.05); 
+      border: 1px solid rgba(255, 255, 255, 0.1); 
+      border-radius: 8px; 
+      display: flex; 
+      align-items: center; 
+      gap: 12px; 
+      opacity: 0.3; 
+      transition: all 0.3s ease; 
+      cursor: default;
+      box-sizing: border-box;
+    }
+    .step.active { 
+      opacity: 1; 
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+    .step.completed { 
+      opacity: 0.7; 
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+    
+    .step.error { 
+      opacity: 1; 
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+    .step-icon { 
+      width: 48px; 
+      height: 48px; 
+      border-radius: 12px; 
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      transition: all 0.3s ease; 
+      position: relative; 
+      flex-shrink: 0;
+    }
+    .step.active .step-icon { 
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); 
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    }
+    .step.completed .step-icon { 
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+    }
+    
+    .step.error .step-icon { 
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
+    }
+    .step-icon svg { 
+      width: 20px; 
+      height: 20px; 
+      stroke: var(--icpay-text-primary); 
+      transition: stroke 0.3s ease; 
+    }
+    .step-content { 
+      flex: 1; 
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .step-title { 
+      font-weight: 500; 
+      font-size: 14px; 
+      color: #ffffff; 
+      transition: color 0.3s ease; 
+      margin: 0;
+    }
+    .step-description { 
+      font-size: 12px; 
+      color: #9ca3af; 
+      margin: 0;
+    }
+    
+    .step-error-message {
+      font-size: 11px;
+      color: #fca5a5;
+      margin-top: 4px;
+      padding: 4px 8px;
+      background: rgba(239, 68, 68, 0.1);
+      border-radius: 4px;
+      border-left: 3px solid #ef4444;
+    }
+    .loading-spinner { 
+      display: none; 
+      width: 20px; 
+      height: 20px; 
+      border: 2px solid rgba(255, 255, 255, 0.2); 
+      border-top-color: var(--icpay-text-primary); 
+      border-radius: 50%; 
+      animation: spin 1s linear infinite; 
+      position: absolute; 
+    }
     .step.active .loading-spinner { display: block; }
+
+    .error-container { 
+      text-align: center; 
+    }
+    
+    .error-icon-large { 
+      width: 64px; 
+      height: 64px; 
+      margin: 0 auto var(--icpay-spacing-lg); 
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
+      border-radius: var(--icpay-radius-xl); 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+    }
+    
+    .error-icon-large svg { 
+      width: 32px; 
+      height: 32px; 
+      stroke: var(--icpay-text-primary); 
+      stroke-width: 2; 
+    }
+    
+    .error-title { 
+      font-size: 20px; 
+      font-weight: 600; 
+      margin-bottom: var(--icpay-spacing-sm); 
+      color: var(--icpay-text-primary); 
+    }
+    
+    .error-message-text { 
+      color: var(--icpay-text-secondary); 
+      margin-bottom: var(--icpay-spacing-xl); 
+      font-size: 14px; 
+    }
+    
+    .error-details {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: var(--icpay-radius-md);
+      padding: var(--icpay-spacing-lg);
+      margin-bottom: var(--icpay-spacing-xl);
+      text-align: left;
+    }
+    
+    .error-detail-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--icpay-spacing-sm);
+    }
+    
+    .error-detail-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .error-detail-label {
+      font-size: 14px;
+      color: var(--icpay-text-secondary);
+      font-weight: 500;
+    }
+    
+    .error-detail-value {
+      font-size: 14px;
+      color: var(--icpay-text-primary);
+      font-weight: 600;
+    }
+    
+    .error-actions { 
+      display: flex; 
+      gap: var(--icpay-spacing-sm); 
+      justify-content: center; 
+    }
+
+    .insufficient-funds-container {
+      width: 100%;
+    }
+
+    .payment-summary {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: var(--icpay-radius-md);
+      padding: var(--icpay-spacing-lg);
+      margin-bottom: var(--icpay-spacing-lg);
+      text-align: center;
+    }
+
+    .payment-amount {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--icpay-text-primary);
+    }
+
+    .error-notification {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid #f59e0b;
+      border-radius: var(--icpay-radius-md);
+      padding: var(--icpay-spacing-lg);
+      margin-bottom: var(--icpay-spacing-xl);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--icpay-spacing-lg);
+    }
+
+    .error-content {
+      display: flex;
+      align-items: center;
+      gap: var(--icpay-spacing-md);
+      flex: 1;
+    }
+
+    .error-icon-small {
+      width: 20px;
+      height: 20px;
+      color: #f59e0b;
+      flex-shrink: 0;
+    }
+
+    .error-icon-small svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .error-text {
+      font-size: 14px;
+      font-weight: 500;
+      color: #f59e0b;
+    }
+
+    .add-funds-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: var(--icpay-radius-sm);
+      padding: 8px 16px;
+      color: var(--icpay-text-primary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      flex-shrink: 0;
+    }
+
+    .add-funds-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
 
     .error-message {
       display: flex;
       align-items: flex-start;
-      gap: 12px;
-      padding: 16px;
-      background: #0a0a0a;
-      border: 1px solid #dc2626;
-      border-radius: 8px;
-      margin-top: 8px;
+      gap: var(--icpay-spacing-md);
+      padding: var(--icpay-spacing-lg);
+      background: var(--icpay-bg-error);
+      border: 1px solid var(--icpay-border-error);
+      border-radius: var(--icpay-radius-md);
+      margin-top: var(--icpay-spacing-sm);
     }
 
     .error-icon {
       flex-shrink: 0;
       width: 20px;
       height: 20px;
-      background: #dc2626;
+      background: var(--icpay-accent-error);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #ffffff;
+      color: var(--icpay-text-primary);
       font-size: 12px;
       font-weight: bold;
     }
@@ -188,27 +534,80 @@ export class ICPayProgressBar extends LitElement {
       margin: 0 0 4px 0;
       font-size: 14px;
       font-weight: 600;
-      color: #ffffff;
+      color: var(--icpay-text-primary);
     }
 
     .error-content p {
       margin: 0;
       font-size: 12px;
-      color: #f87171;
+      color: #fca5a5;
       line-height: 1.4;
     }
 
     .success-container { text-align: center; }
-    .success-icon { width: 80px; height: 80px; margin: 0 auto 24px; background: linear-gradient(135deg, #0d7c3d 0%, #0fa855 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-    .success-icon svg { width: 40px; height: 40px; stroke: #ffffff; stroke-width: 3; }
-    .success-title { font-size: 28px; font-weight: 600; margin-bottom: 12px; background: linear-gradient(135deg, #0fa855 0%, #0d7c3d 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    .success-message { color: #999999; margin-bottom: 24px; font-size: 16px; }
-    .success-actions { display: flex; gap: 12px; justify-content: center; }
-    .btn { padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
-    .btn-primary { background: linear-gradient(135deg, #4a9eff 0%, #3a7edf 100%); color: #ffffff; border: none; }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(74, 158, 255, 0.3); }
-    .btn-secondary { background: transparent; color: #999999; border: 1px solid #333333; }
-    .btn-secondary:hover { background: rgba(255, 255, 255, 0.05); border-color: #555555; color: #ffffff; }
+    .success-icon { 
+      width: 64px; 
+      height: 64px; 
+      margin: 0 auto var(--icpay-spacing-lg); 
+      background: var(--icpay-accent-success); 
+      border-radius: var(--icpay-radius-xl); 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+    }
+    .success-icon svg { 
+      width: 32px; 
+      height: 32px; 
+      stroke: var(--icpay-text-primary); 
+      stroke-width: 2; 
+    }
+    .success-title { 
+      font-size: 20px; 
+      font-weight: 600; 
+      margin-bottom: var(--icpay-spacing-sm); 
+      color: var(--icpay-text-primary); 
+    }
+    .success-message { 
+      color: var(--icpay-text-secondary); 
+      margin-bottom: 20px; 
+      font-size: 14px; 
+    }
+    .success-actions { 
+      display: flex; 
+      gap: var(--icpay-spacing-sm); 
+      justify-content: center; 
+    }
+    .btn { 
+      padding: 10px 20px; 
+      border-radius: var(--icpay-radius-md); 
+      font-size: 14px; 
+      font-weight: 500; 
+      cursor: pointer; 
+      transition: all 0.3s ease; 
+      text-decoration: none; 
+      display: inline-flex; 
+      align-items: center; 
+      gap: var(--icpay-spacing-sm); 
+    }
+    .btn-primary { 
+      background: var(--icpay-accent-primary); 
+      color: var(--icpay-text-primary); 
+      border: none; 
+    }
+    .btn-primary:hover { 
+      transform: translateY(-1px); 
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); 
+    }
+    .btn-secondary { 
+      background: transparent; 
+      color: var(--icpay-text-secondary); 
+      border: 1px solid var(--icpay-border-primary); 
+    }
+    .btn-secondary:hover { 
+      background: var(--icpay-bg-secondary); 
+      border-color: var(--icpay-border-secondary); 
+      color: var(--icpay-text-primary); 
+    }
 
     .confetti {
       position: fixed;
@@ -273,6 +672,8 @@ export class ICPayProgressBar extends LitElement {
   @state() private confirmLoadingStartedAt: number | null = null;
   private progressionTimer: number | null = null;
   @state() private currentWalletType: string | null = null;
+  @state() private showWalletSelector = false;
+  @state() private isTransitioning = false;
 
   @property({ type: Object }) theme?: { primaryColor?: string; secondaryColor?: string };
 
@@ -379,6 +780,10 @@ export class ICPayProgressBar extends LitElement {
       this.errorMessage = null;
       this.showSuccess = false;
       this.showConfetti = false;
+
+      // Show wallet selector first, then transition to progress
+      this.showWalletSelector = true;
+      this.isTransitioning = false;
 
       // Reset all steps to pending
       this.currentSteps = this.currentSteps.map(step => ({ ...step, status: 'pending' as StepStatus }));
@@ -713,7 +1118,8 @@ export class ICPayProgressBar extends LitElement {
     this.completeByKey('wallet');
     this.setLoadingByKey('init');
 
-    // Do not auto-progress; wait for subsequent events to advance steps
+    // Start transition from wallet selector to progress bar
+    this.startTransitionToProgress();
 
     // Dispatch wallet connected event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-wallet-connected', {
@@ -748,6 +1154,7 @@ export class ICPayProgressBar extends LitElement {
       this.errorMessage = 'Insufficient balance for transaction';
       this.updateStepStatus(this.activeIndex, 'error', 'Insufficient balance for transaction');
       this.stopAutomaticProgression();
+      this.showWalletSelector = false; // Ensure we're in progress view for error
 
       // Dispatch insufficient balance event
       this.dispatchEvent(new CustomEvent('icpay-progress-insufficient-balance', {
@@ -981,13 +1388,19 @@ export class ICPayProgressBar extends LitElement {
   private getStepIcon(step: Step): string | any {
     switch (step.status) {
       case 'loading':
-        return html`<div class="spinner"></div>`; // Proper CSS spinner
+        return html`<div class="loading-spinner"></div>`; // Use the styled loading spinner
       case 'completed':
-        return '✓'; // Checkmark
+        return html`<svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>`; // Checkmark icon
       case 'error':
-        return '✗'; // X mark
+        return html`<svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>`; // X mark icon
       default:
-        return '○'; // Empty circle for pending
+        return html`<svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+        </svg>`; // Process icon for pending
     }
   }
 
@@ -1079,16 +1492,80 @@ export class ICPayProgressBar extends LitElement {
   }
 
   private renderErrorState() {
+    const isInsufficientFunds = this.errorMessage?.includes('Insufficient balance') || false;
+    
+    if (isInsufficientFunds) {
+      return this.renderInsufficientFundsError();
+    }
+    
+    return this.renderGenericError();
+  }
+
+  private renderInsufficientFundsError() {
+    const displayAmount = this.currentAmount || this.amount;
+    const displayCurrency = this.currentLedgerSymbol || this.currentCurrency || this.currency;
+    
     return html`
-      <div class="error-message">
-        <div class="error-icon">⚠</div>
-        <div class="error-content">
-          <h4>Transaction Failed</h4>
-          <p>${this.errorMessage}</p>
-          <div class="success-actions" style="margin-top:12px;">
-            <button class="btn btn-secondary" @click=${() => this.requestSwitchAccount()} title="Switch to a different account">Switch account</button>
-            <button class="btn btn-primary" @click=${() => { this.open = false; }}>Close</button>
+      <div class="insufficient-funds-container">
+        <div class="payment-summary">
+          <div class="payment-amount">Pay $${displayAmount} with ${displayCurrency}</div>
+        </div>
+        
+        <div class="error-notification">
+          <div class="error-content">
+            <div class="error-icon-small">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <div class="error-text">Insufficient balance for this transaction</div>
           </div>
+          <button class="add-funds-btn" @click=${() => this.handleAddFunds()}>
+            Add Funds
+          </button>
+        </div>
+        
+        <div class="error-actions">
+          <button class="btn btn-secondary" @click=${() => this.requestSwitchAccount()} title="Switch to a different account">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 16px; height: 16px;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            Switch Account
+          </button>
+          <button class="btn btn-primary" @click=${() => { this.open = false; }}>
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 16px; height: 16px;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Close
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderGenericError() {
+    return html`
+      <div class="error-container">
+        <div class="error-icon-large">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h2 class="error-title">Transaction Failed</h2>
+        <p class="error-message-text">${this.errorMessage}</p>
+        <div class="error-actions">
+          <button class="btn btn-secondary" @click=${() => this.requestSwitchAccount()} title="Switch to a different account">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 16px; height: 16px;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            Switch Account
+          </button>
+          <button class="btn btn-primary" @click=${() => { this.open = false; }}>
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 16px; height: 16px;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Close
+          </button>
         </div>
       </div>
     `;
@@ -1099,6 +1576,89 @@ export class ICPayProgressBar extends LitElement {
       const walletType = this.currentWalletType || 'unknown';
       window.dispatchEvent(new CustomEvent('icpay-switch-account', { detail: { walletType } } as any));
     } catch {}
+  }
+
+  private handleAddFunds() {
+    try {
+      // Dispatch add funds event for external handling
+      window.dispatchEvent(new CustomEvent('icpay-add-funds', { 
+        detail: { 
+          amount: this.currentAmount || this.amount,
+          currency: this.currentLedgerSymbol || this.currentCurrency || this.currency
+        } 
+      }));
+      
+      // Close the modal to allow external handling
+      this.open = false;
+    } catch (error) {
+      console.error('Error handling add funds:', error);
+    }
+  }
+
+  private startTransitionToProgress() {
+    this.isTransitioning = true;
+    this.requestUpdate();
+
+    // After transition animation completes, switch to progress view
+    setTimeout(() => {
+      this.showWalletSelector = false;
+      this.isTransitioning = false;
+      this.requestUpdate();
+    }, 400);
+  }
+
+  private showWalletSelectorModal() {
+    this.showWalletSelector = true;
+    this.isTransitioning = false;
+    this.requestUpdate();
+  }
+
+  private hideWalletSelectorModal() {
+    this.showWalletSelector = false;
+    this.requestUpdate();
+  }
+
+  private renderWalletSelector() {
+    // Import wallet selector functionality
+    const wallets = [
+      { id: 'ii', label: 'Internet Identity', icon: null },
+      { id: 'nfid', label: 'NFID', icon: null },
+      { id: 'plug', label: 'Plug', icon: null },
+      { id: 'oisy', label: 'Oisy', icon: null }
+    ];
+
+    return html`
+      <div class="wallet-selector-container">
+        <h3 class="wallet-selector-title">Choose Wallet</h3>
+        <div class="wallet-options">
+          ${wallets.map(wallet => html`
+            <button 
+              class="wallet-option"
+              @click=${() => this.handleWalletSelection(wallet.id)}
+            >
+              <div class="wallet-icon">
+                ${wallet.icon ? html`
+                  <img src="${wallet.icon}" alt="${wallet.label} logo" />
+                ` : html`
+                  <div class="wallet-icon-placeholder">${wallet.label.charAt(0)}</div>
+                `}
+              </div>
+              <div class="wallet-label">${wallet.label}</div>
+            </button>
+          `)}
+        </div>
+      </div>
+    `;
+  }
+
+  private handleWalletSelection(walletId: string) {
+    // Dispatch wallet selection event
+    window.dispatchEvent(new CustomEvent('icpay-wallet-selected', {
+      detail: { walletId }
+    }));
+    
+    // Start transition to progress bar
+    this.startTransitionToProgress();
   }
 
   private renderProgressContent() {
@@ -1113,18 +1673,22 @@ export class ICPayProgressBar extends LitElement {
     return html`
       <div class="progress-container">
         <div class="progress-header">
-          <h2 class="progress-title">Processing Payment</h2>
+          <h3 class="progress-title">Processing Payment</h3>
           <p class="progress-subtitle">Please wait while we process your transaction</p>
           ${this.renderConfirmTip()}
         </div>
         <div class="progress-steps">
           ${this.currentSteps.map((step, index) => html`
-            <div class="step ${index === this.activeIndex ? 'active' : ''} ${step.status === 'completed' ? 'completed' : ''}">
+            <div class="step ${index === this.activeIndex ? 'active' : ''} ${step.status === 'completed' ? 'completed' : ''} ${step.status === 'error' ? 'error' : ''}">
               <div class="step-icon">
                 ${step.status === 'loading' ? html`<div class="loading-spinner"></div>` : ''}
                 ${step.status === 'completed' ? html`
                   <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                ` : step.status === 'error' ? html`
+                  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 ` : html`
                   <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1135,6 +1699,9 @@ export class ICPayProgressBar extends LitElement {
               <div class="step-content">
                 <div class="step-title">${step.label}</div>
                 <div class="step-description">${step.tooltip}</div>
+                ${step.status === 'error' && step.errorMessage ? html`
+                  <div class="step-error-message">${step.errorMessage}</div>
+                ` : ''}
               </div>
             </div>
           `)}
@@ -1152,7 +1719,7 @@ export class ICPayProgressBar extends LitElement {
       const started = this.confirmLoadingStartedAt || 0;
       const elapsed = started ? (Date.now() - started) : 0;
       if (elapsed < 30000) return null as any;
-      return html`<p class="progress-subtitle" style="margin-top:8px;color:#93c5fd">Verification can take from 30 seconds up to 10 minutes depending on the amount. Please wait…</p>`;
+      return html`<p class="progress-subtitle" style="margin-top:8px;color:#60a5fa">Verification can take from 30 seconds up to 10 minutes depending on the amount. Please wait…</p>`;
     } catch {
       return null as any;
     }
@@ -1184,6 +1751,8 @@ export class ICPayProgressBar extends LitElement {
 
   private closeProgress() {
     this.open = false;
+    this.showWalletSelector = false;
+    this.isTransitioning = false;
   }
 
   private renderStep(step: Step, index: number) {
@@ -1226,10 +1795,10 @@ export class ICPayProgressBar extends LitElement {
         ${this.renderConfetti()}
         <div class="modal-overlay active">
           <div class="modal-container">
-            ${this.isWalletConnectLoading ? html`
-              <button class="close-button" @click=${() => this.closeProgress()} aria-label="Close" title="Close">✕</button>
-            ` : null}
-            ${this.renderProgressContent()}
+            <button class="close-button" @click=${() => this.closeProgress()} aria-label="Close" title="Close">✕</button>
+            <div class="modal-content ${this.isTransitioning ? 'transitioning' : ''}">
+              ${this.showWalletSelector ? this.renderWalletSelector() : this.renderProgressContent()}
+            </div>
           </div>
         </div>
       ` : null}
