@@ -4,6 +4,7 @@ import { baseStyles } from '../styles';
 import { handleWidgetError, getErrorMessage, shouldShowErrorToUser, getErrorAction, getErrorSeverity, ErrorSeverity } from '../error-handling';
 import type { AmountInputConfig, CryptoOption } from '../types';
 import { createSdk } from '../utils/sdk';
+import { hidePnPDefaultModal } from '../utils/pnp';
 import './progress-bar';
 import './token-selector';
 import { renderWalletSelectorModal } from './wallet-selector-modal';
@@ -186,6 +187,7 @@ export class ICPayAmountInput extends LitElement {
         }
       } catch {}
       this.pnp = new PlugNPlay(_cfg);
+      this.tryHideDefaultWalletModal();
       const availableWallets = this.pnp.getEnabledWallets();
       if (!availableWallets?.length) throw new Error('No wallets available');
       this.pendingAction = 'pay';
@@ -202,11 +204,15 @@ export class ICPayAmountInput extends LitElement {
   private getWalletLabel(w: any): string { return (w && (w.label || w.name || w.title || w.id)) || 'Wallet'; }
   private getWalletIcon(w: any): string | null { return (w && (w.icon || w.logo || w.image)) || null; }
 
+  private tryHideDefaultWalletModal() { hidePnPDefaultModal(); }
+
   private async connectWithWallet(walletId: string) {
     if (!this.pnp) return;
     try {
       if (!walletId) throw new Error('No wallet ID provided');
+      this.tryHideDefaultWalletModal();
       const result = await this.pnp.connect(walletId);
+      this.tryHideDefaultWalletModal();
       const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
       if (!isConnected) throw new Error('Wallet connection was rejected');
       this.walletConnected = true;
@@ -259,7 +265,7 @@ export class ICPayAmountInput extends LitElement {
   private async createOnrampIntent() {
     try {
       const sdk = createSdk(this.config);
-      const symbol = this.selectedSymbol || 'ICP';
+      const symbol = this.selectedSymbol || this.config?.defaultSymbol || 'ICP';
       const opt = this.cryptoOptions.find(o => o.symbol === symbol);
       const canisterId = opt?.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(symbol);
       const amountUsd = Number(this.amountUsd);
@@ -327,7 +333,7 @@ export class ICPayAmountInput extends LitElement {
       if (!ready) return;
 
       const sdk = createSdk(this.config);
-      const symbol = this.selectedSymbol || 'ICP';
+      const symbol = this.selectedSymbol || this.config?.defaultSymbol || 'ICP';
       const opt = this.cryptoOptions.find(o => o.symbol === symbol);
       const canisterId = opt?.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(symbol);
       const amountUsd = Number(this.amountUsd);

@@ -4,6 +4,7 @@ import { baseStyles } from '../styles';
 import { handleWidgetError, getErrorMessage, shouldShowErrorToUser, getErrorAction, getErrorSeverity, ErrorSeverity } from '../error-handling';
 import type { DonationThermometerConfig, CryptoOption } from '../types';
 import { createSdk } from '../utils/sdk';
+import { hidePnPDefaultModal } from '../utils/pnp';
 import './progress-bar';
 import './token-selector';
 import { renderWalletSelectorModal } from './wallet-selector-modal';
@@ -64,7 +65,7 @@ export class ICPayDonationThermometer extends LitElement {
 
   @property({ type: Object }) config!: DonationThermometerConfig;
   @state() private selectedAmount = 10;
-  @state() private selectedSymbol = 'ICP';
+  @state() private selectedSymbol: string | null = null;
   @state() private raised = 0;
   @state() private processing = false;
   @state() private succeeded = false;
@@ -176,9 +177,9 @@ export class ICPayDonationThermometer extends LitElement {
         label: ledger.name,
         canisterId: ledger.canisterId
       }));
-      // Set default selection to first available ledger
-      if (this.availableLedgers.length > 0 && !this.selectedSymbol) {
-        this.selectedSymbol = this.availableLedgers[0].symbol;
+      // Set default selection to defaultSymbol or first available ledger
+      if (!this.selectedSymbol) {
+        this.selectedSymbol = this.config?.defaultSymbol || (this.availableLedgers[0]?.symbol || 'ICP');
       }
     } catch (error) {
       console.warn('Failed to load verified ledgers:', error);
@@ -187,7 +188,7 @@ export class ICPayDonationThermometer extends LitElement {
         { symbol: 'ICP', label: 'ICP', canisterId: 'ryjl3-tyaaa-aaaaa-aaaba-cai' }
       ];
       if (!this.selectedSymbol) {
-        this.selectedSymbol = 'ICP';
+        this.selectedSymbol = this.config?.defaultSymbol || 'ICP';
       }
     }
   }
@@ -217,7 +218,7 @@ export class ICPayDonationThermometer extends LitElement {
     this.errorSeverity = null;
     this.errorAction = null;
 
-    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'donate', type: 'sendUsd', amount: this.selectedAmount, currency: this.selectedSymbol } })); } catch {}
+    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'donate', type: 'sendUsd', amount: this.selectedAmount, currency: this.selectedSymbol || this.config?.defaultSymbol } })); } catch {}
 
     this.processing = true;
     try {
@@ -242,6 +243,7 @@ export class ICPayDonationThermometer extends LitElement {
               }
             } catch {}
             this.pnp = new PlugNPlay(_cfg2);
+            this.tryHideDefaultWalletModal();
             const availableWallets = this.pnp.getEnabledWallets();
             debugLog(this.config?.debug || false, 'Available wallets', availableWallets);
             if (!availableWallets?.length) throw new Error('No wallets available');
@@ -261,12 +263,13 @@ export class ICPayDonationThermometer extends LitElement {
       debugLog(this.config?.debug || false, 'Creating SDK for payment');
       const sdk = createSdk(this.config);
 
-      const opt = this.cryptoOptions.find(o => o.symbol === this.selectedSymbol)!;
-      const canisterId = opt.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(this.selectedSymbol);
+      const symbol = this.selectedSymbol || this.config?.defaultSymbol || 'ICP';
+      const opt = this.cryptoOptions.find(o => o.symbol === symbol)!;
+      const canisterId = opt.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(symbol);
 
       debugLog(this.config?.debug || false, 'Donation payment details', {
         amount: this.selectedAmount,
-        selectedSymbol: this.selectedSymbol,
+        selectedSymbol: symbol,
         canisterId
       });
 
@@ -331,8 +334,9 @@ export class ICPayDonationThermometer extends LitElement {
   private async createOnrampIntent() {
     try {
       const sdk = createSdk(this.config);
-      const opt = this.cryptoOptions.find(o => o.symbol === this.selectedSymbol)!;
-      const canisterId = opt.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(this.selectedSymbol);
+      const symbol = this.selectedSymbol || this.config?.defaultSymbol || 'ICP';
+      const opt = this.cryptoOptions.find(o => o.symbol === symbol)!;
+      const canisterId = opt.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(symbol);
       const resp = await (sdk as any).startOnrampUsd(this.selectedAmount, canisterId, { context: 'donation:onramp' });
       const sessionId = resp?.metadata?.onramp?.sessionId || resp?.metadata?.onramp?.session_id || null;
       const paymentIntentId = resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
@@ -376,12 +380,15 @@ export class ICPayDonationThermometer extends LitElement {
   private getWalletId(w: any): string { return (w && (w.id || w.provider || w.key)) || ''; }
   private getWalletLabel(w: any): string { return (w && (w.label || w.name || w.title || w.id)) || 'Wallet'; }
   private getWalletIcon(w: any): string | null { return (w && (w.icon || w.logo || w.image)) || null; }
+  private tryHideDefaultWalletModal() { hidePnPDefaultModal(); }
 
   private async connectWithWallet(walletId: string) {
     if (!this.pnp) return;
     try {
       if (!walletId) throw new Error('No wallet ID provided');
+      this.tryHideDefaultWalletModal();
       const result = await this.pnp.connect(walletId);
+      this.tryHideDefaultWalletModal();
       const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
       if (!isConnected) throw new Error('Wallet connection was rejected');
       this.walletConnected = true;
@@ -435,7 +442,7 @@ export class ICPayDonationThermometer extends LitElement {
           ${this.succeeded && this.config?.disableAfterSuccess ? 'Donated' : (this.processing ? 'Processing…' : (
             (this.config?.buttonLabel || 'Donate {amount} with {symbol}')
               .replace('{amount}', `${this.selectedAmount}`)
-              .replace('{symbol}', this.selectedSymbol)
+              .replace('{symbol}', (this.selectedSymbol || this.config?.defaultSymbol || 'ICP'))
           ))}
         </button>
 
