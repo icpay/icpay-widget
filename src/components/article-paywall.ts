@@ -4,6 +4,7 @@ import { baseStyles } from '../styles';
 import { handleWidgetError, getErrorMessage, shouldShowErrorToUser, getErrorAction, getErrorSeverity, ErrorSeverity } from '../error-handling';
 import type { ArticlePaywallConfig, CryptoOption } from '../types';
 import { createSdk } from '../utils/sdk';
+import { hidePnPDefaultModal } from '../utils/pnp';
 import './progress-bar';
 import './token-selector';
 import { renderWalletSelectorModal } from './wallet-selector-modal';
@@ -75,7 +76,7 @@ export class ICPayArticlePaywall extends LitElement {
       return 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
     }
   }
-  @state() private selectedSymbol = 'ICP';
+  @state() private selectedSymbol: string | null = null;
   @state() private unlocked = false;
   @state() private succeeded = false;
   @state() private processing = false;
@@ -158,8 +159,9 @@ export class ICPayArticlePaywall extends LitElement {
   private async createOnrampIntent() {
     try {
       const sdk = createSdk(this.config);
-      const opt = this.cryptoOptions.find(o => o.symbol === this.selectedSymbol)!;
-      const canisterId = opt.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(this.selectedSymbol);
+      const symbol = this.selectedSymbol || this.config?.defaultSymbol || 'ICP';
+      const opt = this.cryptoOptions.find(o => o.symbol === symbol)!;
+      const canisterId = opt.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(symbol);
       const resp = await (sdk as any).startOnrampUsd(this.config.priceUsd, canisterId, { context: 'article:onramp' });
       const sessionId = resp?.metadata?.onramp?.sessionId || resp?.metadata?.onramp?.session_id || null;
       const paymentIntentId = resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
@@ -284,7 +286,7 @@ export class ICPayArticlePaywall extends LitElement {
       console.warn('Failed to load verified ledgers:', error);
       // Fallback to basic options if API fails
       this.availableLedgers = [{ symbol: 'ICP', label: 'ICP', canisterId: 'ryjl3-tyaaa-aaaaa-aaaba-cai' }];
-      if (!this.selectedSymbol) this.selectedSymbol = 'ICP';
+      if (!this.selectedSymbol) this.selectedSymbol = this.config?.defaultSymbol || 'ICP';
     }
   }
 
@@ -306,7 +308,7 @@ export class ICPayArticlePaywall extends LitElement {
     this.errorSeverity = null;
     this.errorAction = null;
 
-    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'unlock', type: 'sendUsd', amount: this.config.priceUsd, currency: this.selectedSymbol } })); } catch {}
+    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'unlock', type: 'sendUsd', amount: this.config.priceUsd, currency: this.selectedSymbol || this.config?.defaultSymbol } })); } catch {}
 
     this.processing = true;
     try {
@@ -331,6 +333,7 @@ export class ICPayArticlePaywall extends LitElement {
               }
             } catch {}
             this.pnp = new PlugNPlay(_cfg2);
+            this.tryHideDefaultWalletModal();
             const availableWallets = this.pnp.getEnabledWallets();
             debugLog(this.config?.debug || false, 'Available wallets', availableWallets);
             if (!availableWallets?.length) throw new Error('No wallets available');
@@ -350,12 +353,13 @@ export class ICPayArticlePaywall extends LitElement {
       debugLog(this.config?.debug || false, 'Creating SDK for payment');
       const sdk = createSdk(this.config);
 
-      const opt = this.cryptoOptions.find(o => o.symbol === this.selectedSymbol)!;
-      const canisterId = opt.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(this.selectedSymbol);
+      const symbol = this.selectedSymbol || this.config?.defaultSymbol || 'ICP';
+      const opt = this.cryptoOptions.find(o => o.symbol === symbol)!;
+      const canisterId = opt.canisterId || await (sdk.client.getLedgerCanisterIdBySymbol(symbol as string));
 
       debugLog(this.config?.debug || false, 'Article payment details', {
         priceUsd: this.config.priceUsd,
-        selectedSymbol: this.selectedSymbol,
+        selectedSymbol: symbol,
         canisterId
       });
 
@@ -388,12 +392,15 @@ export class ICPayArticlePaywall extends LitElement {
   private getWalletId(w: any): string { return (w && (w.id || w.provider || w.key)) || ''; }
   private getWalletLabel(w: any): string { return (w && (w.label || w.name || w.title || w.id)) || 'Wallet'; }
   private getWalletIcon(w: any): string | null { return (w && (w.icon || w.logo || w.image)) || null; }
+  private tryHideDefaultWalletModal() { hidePnPDefaultModal(); }
 
   private async connectWithWallet(walletId: string) {
     if (!this.pnp) return;
     try {
       if (!walletId) throw new Error('No wallet ID provided');
+      this.tryHideDefaultWalletModal();
       const result = await this.pnp.connect(walletId);
+      this.tryHideDefaultWalletModal();
       const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
       if (!isConnected) throw new Error('Wallet connection was rejected');
       this.walletConnected = true;
@@ -444,9 +451,9 @@ export class ICPayArticlePaywall extends LitElement {
         </div>
         <button class="pay-button ${this.processing?'processing':''}" ?disabled=${this.processing||this.unlocked || (this.config?.disablePaymentButton === true) || (this.succeeded && this.config?.disableAfterSuccess === true)} @click=${() => this.unlock()}>
           ${this.unlocked ? 'Unlocked' : (this.processing ? 'Processing…' : (
-            (this.config?.buttonLabel || 'Pay ${amount} with {symbol}')
+          (this.config?.buttonLabel || 'Pay ${amount} with {symbol}')
               .replace('{amount}', `${Number(this.config?.priceUsd ?? 0).toFixed(2)}`)
-              .replace('{symbol}', this.selectedSymbol)
+              .replace('{symbol}', (this.selectedSymbol || this.config?.defaultSymbol || 'ICP'))
           ))}
         </button>
 
