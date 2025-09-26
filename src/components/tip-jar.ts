@@ -419,7 +419,7 @@ export class ICPayTipJar extends LitElement {
     const tokenSelectorMode: 'buttons'|'dropdown'|'none' = globalMode === 'dropdown' ? 'dropdown' : (hasMultiple ? 'buttons' : 'none');
 
     return html`
-      <div class="icpay-card icpay-section" style="text-align:center;">
+      <div class="icpay-card icpay-section icpay-widget-base" style="text-align:center;">
         ${this.config?.progressBar?.enabled !== false ? html`
           <icpay-progress-bar
             .debug=${!!this.config?.debug}

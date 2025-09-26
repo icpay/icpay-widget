@@ -371,7 +371,7 @@ export class ICPayCoffeeShop extends LitElement {
     }
 
     return html`
-      <div class="icpay-card icpay-section">
+      <div class="icpay-card icpay-section icpay-widget-base">
         ${this.config?.progressBar?.enabled !== false ? html`
           <icpay-progress-bar
             .debug=${!!this.config?.debug}

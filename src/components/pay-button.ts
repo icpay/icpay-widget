@@ -398,7 +398,7 @@ export class ICPayPayButton extends LitElement {
     const showProgressBar = progressEnabled;
 
     return html`
-      <div class="icpay-card icpay-section">
+      <div class="icpay-card icpay-section icpay-widget-base">
         ${showProgressBar ? html`
           <icpay-progress-bar
             .debug=${!!this.config?.debug}
