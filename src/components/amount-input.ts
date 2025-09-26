@@ -381,7 +381,7 @@ export class ICPayAmountInput extends LitElement {
     const showProgressBar = progressEnabled && (mode === 'modal' ? true : this.processing);
 
     return html`
-      <div class="icpay-card icpay-section">
+      <div class="icpay-card icpay-section icpay-widget-base">
         ${showProgressBar ? html`
           <icpay-progress-bar
             .debug=${!!this.config?.debug}

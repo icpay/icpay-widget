@@ -1,16 +1,17 @@
 export function hidePnPDefaultModal(): void {
   try {
     if (typeof document === 'undefined') return;
-    const selectors = [
-      '.plug-n-play-modal',
-      '.pnp-modal',
-      '#plug-n-play-root',
-      '#pnp-root',
-      '[data-pnp-root]',
-      '[data-pnp-modal]'
-    ];
-    document.querySelectorAll(selectors.join(',')).forEach((el) => {
-      try { (el as HTMLElement).style.display = 'none'; } catch {}
+    // New markup seen in current builds (scoped to widget root)
+    const overlays = Array.from(document.querySelectorAll('.icpay-widget-base .modal-overlay')) as HTMLElement[];
+    overlays.forEach((overlay) => {
+      try {
+        const hasWalletSelector = !!overlay.querySelector('.wallet-selector-container');
+        if (hasWalletSelector) {
+          overlay.style.display = 'none';
+          const closeBtn = overlay.querySelector('.close-button') as HTMLElement | null;
+          try { closeBtn?.click?.(); } catch {}
+        }
+      } catch {}
     });
   } catch {}
 }
