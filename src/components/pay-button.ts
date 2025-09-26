@@ -229,6 +229,7 @@ export class ICPayPayButton extends LitElement {
     try {
       const amountUsd = Number(this.config?.amountUsd ?? 0);
       const sdk = this.getSdk();
+      if (!this.selectedSymbol) this.selectedSymbol = this.config?.defaultSymbol || 'ICP';
       const symbol = this.selectedSymbol || 'ICP';
       const opt = this.cryptoOptions.find(o => o.symbol === symbol);
       const canisterId = opt?.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(symbol);
@@ -343,6 +344,7 @@ export class ICPayPayButton extends LitElement {
       if (!ready) return;
 
       const sdk = this.getSdk();
+      if (!this.selectedSymbol) this.selectedSymbol = this.config?.defaultSymbol || 'ICP';
       const symbol = this.selectedSymbol || 'ICP';
       const opt = this.cryptoOptions.find(o => o.symbol === symbol);
       const canisterId = opt?.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(symbol);
