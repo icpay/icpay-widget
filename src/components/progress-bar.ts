@@ -1369,22 +1369,6 @@ export class ICPayProgressBar extends LitElement {
     });
   }
 
-  private progressPercent() {
-    if (this.failed) return 0;
-    if (this.showSuccess) return 100;
-    const completedSteps = this.currentSteps.filter(step => step.status === 'completed').length;
-    const pct = (completedSteps / this.currentSteps.length) * 100;
-    return Math.max(0, Math.min(100, pct));
-  }
-
-  private verticalPercent() {
-    if (this.failed) return 0;
-    if (this.showSuccess) return 100;
-    const completedSteps = this.currentSteps.filter(step => step.status === 'completed').length;
-    const pct = (completedSteps / this.currentSteps.length) * 100;
-    return Math.max(0, Math.min(100, pct));
-  }
-
   private getStepIcon(step: Step): string | any {
     switch (step.status) {
       case 'loading':
@@ -1605,60 +1589,6 @@ export class ICPayProgressBar extends LitElement {
       this.isTransitioning = false;
       this.requestUpdate();
     }, 400);
-  }
-
-  private showWalletSelectorModal() {
-    this.showWalletSelector = true;
-    this.isTransitioning = false;
-    this.requestUpdate();
-  }
-
-  private hideWalletSelectorModal() {
-    this.showWalletSelector = false;
-    this.requestUpdate();
-  }
-
-  private renderWalletSelector() {
-    // Import wallet selector functionality
-    const wallets = [
-      { id: 'ii', label: 'Internet Identity', icon: null },
-      { id: 'nfid', label: 'NFID', icon: null },
-      { id: 'plug', label: 'Plug', icon: null },
-      { id: 'oisy', label: 'Oisy', icon: null }
-    ];
-
-    return html`
-      <div class="wallet-selector-container">
-        <h3 class="wallet-selector-title">Choose Wallet</h3>
-        <div class="wallet-options">
-          ${wallets.map(wallet => html`
-            <button
-              class="wallet-option"
-              @click=${() => this.handleWalletSelection(wallet.id)}
-            >
-              <div class="wallet-icon">
-                ${wallet.icon ? html`
-                  <img src="${wallet.icon}" alt="${wallet.label} logo" />
-                ` : html`
-                  <div class="wallet-icon-placeholder">${wallet.label.charAt(0)}</div>
-                `}
-              </div>
-              <div class="wallet-label">${wallet.label}</div>
-            </button>
-          `)}
-        </div>
-      </div>
-    `;
-  }
-
-  private handleWalletSelection(walletId: string) {
-    // Dispatch wallet selection event
-    window.dispatchEvent(new CustomEvent('icpay-wallet-selected', {
-      detail: { walletId }
-    }));
-
-    // Start transition to progress bar
-    this.startTransitionToProgress();
   }
 
   private renderProgressContent() {
