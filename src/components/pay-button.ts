@@ -5,7 +5,6 @@ import { handleWidgetError, getErrorMessage, shouldShowErrorToUser, getErrorActi
 import type { PayButtonConfig, CryptoOption } from '../types';
 import { renderTransakOnrampModal, TransakOnrampOptions } from './transak-onramp-modal';
 import { createSdk } from '../utils/sdk';
-import { hidePnPDefaultModal } from '../utils/pnp';
 import type { WidgetSdk } from '../utils/sdk';
 import './progress-bar';
 import './token-selector';
@@ -158,7 +157,6 @@ export class ICPayPayButton extends LitElement {
         }
       } catch {}
       this.pnp = new PlugNPlay(_cfg);
-      this.tryHideDefaultWalletModal();
       const availableWallets = this.pnp.getEnabledWallets();
       debugLog(this.config?.debug || false, 'Available wallets', availableWallets);
       if (!availableWallets?.length) throw new Error('No wallets available');
@@ -177,16 +175,12 @@ export class ICPayPayButton extends LitElement {
   private getWalletLabel(w: any): string { return (w && (w.label || w.name || w.title || w.id)) || 'Wallet'; }
   private getWalletIcon(w: any): string | null { return (w && (w.icon || w.logo || w.image)) || null; }
 
-  private tryHideDefaultWalletModal() { hidePnPDefaultModal(); }
-
   private async connectWithWallet(walletId: string) {
     if (!this.pnp) return;
     try {
       debugLog(this.config?.debug || false, 'Connecting to wallet', { walletId });
       if (!walletId) throw new Error('No wallet ID provided');
-      this.tryHideDefaultWalletModal();
       const result = await this.pnp.connect(walletId);
-      this.tryHideDefaultWalletModal();
       debugLog(this.config?.debug || false, 'Wallet connect result', result);
       const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
       if (!isConnected) throw new Error('Wallet connection was rejected');
@@ -376,6 +370,14 @@ export class ICPayPayButton extends LitElement {
           }
         }
       });
+      // On failure, disconnect so next attempt triggers wallet selection again
+      try {
+        if (!this.config.useOwnWallet && this.pnp) {
+          await this.pnp.disconnect?.();
+          this.walletConnected = false;
+          this.config = { ...this.config, actorProvider: undefined as any, connectedWallet: undefined } as any;
+        }
+      } catch {}
     } finally {
       this.processing = false;
     }

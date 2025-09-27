@@ -1,18 +1,53 @@
 export function hidePnPDefaultModal(): void {
   try {
     if (typeof document === 'undefined') return;
-    // New markup seen in current builds (scoped to widget root)
-    const overlays = Array.from(document.querySelectorAll('.icpay-widget-base .modal-overlay')) as HTMLElement[];
-    overlays.forEach((overlay) => {
-      try {
-        const hasWalletSelector = !!overlay.querySelector('.wallet-selector-container');
-        if (hasWalletSelector) {
-          overlay.style.display = 'none';
-          const closeBtn = overlay.querySelector('.close-button') as HTMLElement | null;
-          try { closeBtn?.click?.(); } catch {}
-        }
-      } catch {}
-    });
+    const hideNow = () => {
+      // Scoped and global overlays
+      const selectors = [
+        '.icpay-widget-base .modal-overlay',
+        '.modal-overlay',
+        // legacy roots/selectors
+        '.plug-n-play-modal',
+        '.pnp-modal',
+        '#plug-n-play-root',
+        '#pnp-root',
+        '[data-pnp-root]',
+        '[data-pnp-modal]'
+      ];
+      document.querySelectorAll(selectors.join(',')).forEach((el) => {
+        const overlay = el as HTMLElement;
+        try {
+          const hasWalletSelector = !!overlay.querySelector?.('.wallet-selector-container');
+          if (overlay.classList?.contains('modal-overlay')) {
+            if (hasWalletSelector) overlay.style.display = 'none';
+          } else {
+            overlay.style.display = 'none';
+          }
+        } catch {}
+      });
+    };
+
+    hideNow();
+
+    // Briefly observe DOM mutations to hide overlays that appear after async connects
+    try {
+      const Observer = (window as any).MutationObserver || (window as any).WebKitMutationObserver;
+      if (Observer) {
+        const observer = new Observer((mutations: any[]) => {
+          for (const m of mutations) {
+            if (!m.addedNodes) continue;
+            for (const node of m.addedNodes) {
+              if (!(node instanceof HTMLElement)) continue;
+              if (node.matches?.('.modal-overlay') || node.querySelector?.('.wallet-selector-container')) {
+                hideNow();
+              }
+            }
+          }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        setTimeout(() => { try { observer.disconnect(); } catch {} }, 3000);
+      }
+    } catch {}
   } catch {}
 }
 
