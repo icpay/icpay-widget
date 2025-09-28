@@ -1504,9 +1504,6 @@ export class ICPayProgressBar extends LitElement {
             </div>
             <div class="error-text">Insufficient balance for this transaction</div>
           </div>
-          <button class="add-funds-btn" @click=${() => this.handleAddFunds()}>
-            Add Funds
-          </button>
         </div>
 
         <div class="error-actions">
