@@ -101,6 +101,9 @@ export function shouldShowErrorToUser(error: IcpayError): boolean {
 
 // Get appropriate UI action for error
 export function getErrorAction(error: IcpayError): string | null {
+  // Disable for now
+  return null;
+  /*
   if (error.userAction) {
     return error.userAction;
   }
@@ -116,6 +119,7 @@ export function getErrorAction(error: IcpayError): string | null {
     default:
       return null;
   }
+  */
 }
 
 // Error severity levels for UI styling
