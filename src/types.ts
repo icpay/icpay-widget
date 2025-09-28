@@ -36,6 +36,8 @@ export type CommonConfig = {
   publishableKey: string; // from icpay-sdk
   apiUrl?: string;
   icHost?: string;
+  // Optional metadata to include on created payment intents
+  metadata?: Record<string, any>;
   // Optional derivation origin override used by wallet connectors like Internet Identity
   derivationOrigin?: string;
   actorProvider?: (canisterId: string, idl: any) => any;

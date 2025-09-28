@@ -90,13 +90,15 @@ export function createSdk(config: CommonConfig): WidgetSdk {
     }
 
     async function sendUsd(usdAmount: number, ledgerCanisterId: string, metadata?: Record<string, any>) {
-      // Use direct USD-based API for simplicity in widgets
-      return (client as any).createPaymentUsd({ usdAmount, ledgerCanisterId, metadata });
+      // Merge global config.metadata with call-specific metadata
+      const mergedMeta = { ...(config as any).metadata, ...(metadata || {}) } as Record<string, any>;
+      return (client as any).createPaymentUsd({ usdAmount, ledgerCanisterId, metadata: mergedMeta });
     }
 
     async function startOnrampUsd(usdAmount: number, ledgerCanisterId: string, metadata?: Record<string, any>) {
       // Trigger onramp flow through SDK; SDK returns onramp data in metadata.onramp
-      return (client as any).createPaymentUsd({ usdAmount, ledgerCanisterId, metadata, onrampPayment: true });
+      const mergedMeta = { ...(config as any).metadata, ...(metadata || {}) } as Record<string, any>;
+      return (client as any).createPaymentUsd({ usdAmount, ledgerCanisterId, metadata: mergedMeta, onrampPayment: true });
     }
 
 
