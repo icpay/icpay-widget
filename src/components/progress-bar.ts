@@ -240,6 +240,7 @@ export class ICPayProgressBar extends LitElement {
       background: transparent;
       font-size: 20px;
       transition: all 0.2s;
+      z-index: 10;
     }
 
     .close-button:hover {
