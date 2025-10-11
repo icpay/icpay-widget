@@ -8,6 +8,7 @@ import './progress-bar';
 import './token-selector';
 import { renderWalletSelectorModal } from './wallet-selector-modal';
 import { renderTransakOnrampModal, TransakOnrampOptions } from './transak-onramp-modal';
+import { applyOisyNewTabConfig } from '../utils/pnp';
 
 // Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';
@@ -236,7 +237,7 @@ export class ICPayPremiumContent extends LitElement {
           debugLog(this.config?.debug || false, 'Connecting to wallet via Plug N Play');
           try {
             if (!PlugNPlay) { const module = await import('@windoge98/plug-n-play'); PlugNPlay = module.PNP; }
-            const _cfg2: any = { ...(this.config?.plugNPlay || {}) };
+            const _cfg2: any = applyOisyNewTabConfig({ ...(this.config?.plugNPlay || {}) });
             try {
               if (typeof window !== 'undefined') {
                 const { resolveDerivationOrigin } = await import('../utils/origin');

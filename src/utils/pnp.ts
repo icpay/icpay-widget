@@ -52,3 +52,20 @@ export function hidePnPDefaultModal(): void {
 }
 
 
+// Force Oisy to open in a browser tab (not a sized popup) by clearing window features
+// This relies on @windoge98/plug-n-play honoring adapter.config.transport.windowOpenerFeatures
+// When features string is empty, most browsers open a new tab instead of a popup window
+export function applyOisyNewTabConfig(cfg: any): any {
+  try {
+    const next = cfg || {};
+    next.adapters = next.adapters || {};
+    const oisy = next.adapters.oisy || {};
+    const oisyConfig = oisy.config || {};
+    const transport = { ...(oisyConfig.transport || {}), windowOpenerFeatures: '' };
+    next.adapters.oisy = { ...oisy, config: { ...oisyConfig, transport } };
+    return next;
+  } catch {
+    return cfg;
+  }
+}
+

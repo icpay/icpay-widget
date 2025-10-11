@@ -9,6 +9,7 @@ import type { WidgetSdk } from '../utils/sdk';
 import './progress-bar';
 import './token-selector';
 import { renderWalletSelectorModal } from './wallet-selector-modal';
+import { applyOisyNewTabConfig } from '../utils/pnp';
 
 const isBrowser = typeof window !== 'undefined';
 let PlugNPlay: any = null;
@@ -149,7 +150,10 @@ export class ICPayPayButton extends LitElement {
         const module = await import('@windoge98/plug-n-play');
         PlugNPlay = module.PNP;
       }
-      const _cfg: any = { ...(this.config?.plugNPlay || {}) };
+      // If user wants Oisy to open in a tab, rewrite PNP config to clear window features
+      const wantsOisyTab = (this.config as any)?.plugNPlay?.providers?.oisy !== false; // oisy enabled by default
+      const _rawCfg: any = { ...(this.config?.plugNPlay || {}) };
+      const _cfg: any = wantsOisyTab ? applyOisyNewTabConfig(_rawCfg) : _rawCfg;
       try {
         if (typeof window !== 'undefined') {
           const { resolveDerivationOrigin } = await import('../utils/origin');
