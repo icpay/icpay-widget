@@ -69,3 +69,21 @@ export function applyOisyNewTabConfig(cfg: any): any {
   }
 }
 
+// Normalize the connected wallet object to the shape expected by icpay-sdk
+// Ensures there is an `owner` (principal string) available for intent creation
+export function normalizeConnectedWallet(pnp: any, connectResult: any): any {
+  try {
+    const fromResult = (connectResult && (connectResult.owner || connectResult.principal)) || null;
+    const fromAccount = (pnp && pnp.account && (pnp.account.owner || pnp.account.principal)) || null;
+    const toStringSafe = (v: any) => (typeof v === 'string' ? v : (v && typeof v.toString === 'function' ? v.toString() : null));
+    const principal = toStringSafe(fromResult) || toStringSafe(fromAccount) || null;
+    if (principal) {
+      return { owner: principal, principal };
+    }
+    // Fallback to raw result to maintain other data, but SDK will still require owner
+    return connectResult || { owner: null };
+  } catch {
+    return connectResult || { owner: null };
+  }
+}
+
