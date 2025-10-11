@@ -8,7 +8,7 @@ import './progress-bar';
 import './token-selector';
 import { renderWalletSelectorModal } from './wallet-selector-modal';
 import { renderTransakOnrampModal, TransakOnrampOptions } from './transak-onramp-modal';
-import { applyOisyNewTabConfig } from '../utils/pnp';
+import { applyOisyNewTabConfig, normalizeConnectedWallet } from '../utils/pnp';
 
 const isBrowser = typeof window !== 'undefined';
 let PlugNPlay: any = null;
@@ -215,7 +215,8 @@ export class ICPayAmountInput extends LitElement {
         if (!isConnected) throw new Error('Wallet connection was rejected');
         this.walletConnected = true;
         try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
-        this.config = { ...this.config, connectedWallet: result, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
+        const normalized = normalizeConnectedWallet(this.pnp, result);
+        this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
         this.showWalletModal = false;
         const action = this.pendingAction; this.pendingAction = null;
         if (action === 'pay') setTimeout(() => this.pay(), 0);
