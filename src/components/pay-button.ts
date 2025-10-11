@@ -81,6 +81,12 @@ export class ICPayPayButton extends LitElement {
     // Initialize default symbol
     if (this.config?.defaultSymbol) this.selectedSymbol = this.config.defaultSymbol;
     try { window.addEventListener('icpay-switch-account', this.onSwitchAccount as EventListener); } catch {}
+    // Debug: observe SDK intent creation event
+    try {
+      window.addEventListener('icpay-sdk-transaction-created', ((e: any) => {
+        debugLog(this.config?.debug || false, 'SDK transaction created', { detail: e?.detail });
+      }) as EventListener);
+    } catch {}
   }
 
   protected updated(changed: Map<string, unknown>): void {
@@ -360,18 +366,36 @@ export class ICPayPayButton extends LitElement {
       if (!ready) return;
 
       const sdk = this.getSdk();
+      // Debug: snapshot wallet state before resolving canister and sending
+      try {
+        const cw = (this.config as any)?.connectedWallet;
+        const pnpAcct = (this as any)?.pnp?.account;
+        debugLog(this.config?.debug || false, 'Wallet state before payment', {
+          connectedWallet: cw,
+          pnpAccount: pnpAcct,
+          principal: (cw?.owner || cw?.principal || pnpAcct?.owner || pnpAcct?.principal || null)
+        });
+      } catch {}
       if (!this.selectedSymbol) this.selectedSymbol = this.config?.defaultSymbol || 'ICP';
       const symbol = this.selectedSymbol || 'ICP';
       const opt = this.cryptoOptions.find(o => o.symbol === symbol);
       const canisterId = opt?.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(symbol);
+      debugLog(this.config?.debug || false, 'Resolved ledger details', { symbol, canisterId });
       const amountUsd = Number(this.config?.amountUsd ?? 0);
       const meta = { context: 'pay-button' } as Record<string, any>;
-
+      debugLog(this.config?.debug || false, 'Calling sdk.sendUsd', { amountUsd, canisterId, meta });
       const resp = await sdk.sendUsd(amountUsd, canisterId, meta);
+      debugLog(this.config?.debug || false, 'sdk.sendUsd response', resp);
       if (this.config.onSuccess) this.config.onSuccess({ id: resp.transactionId, status: resp.status });
       this.succeeded = true;
       this.dispatchEvent(new CustomEvent('icpay-pay', { detail: { amount: amountUsd, tx: resp }, bubbles: true }));
     } catch (e) {
+      debugLog(this.config?.debug || false, 'Payment error', {
+        message: (e as any)?.message,
+        code: (e as any)?.code,
+        details: (e as any)?.details,
+        stack: (e as any)?.stack
+      });
       handleWidgetError(e, {
         onError: (error) => {
           this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
