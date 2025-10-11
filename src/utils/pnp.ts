@@ -61,7 +61,12 @@ export function applyOisyNewTabConfig(cfg: any): any {
     next.adapters = next.adapters || {};
     const oisy = next.adapters.oisy || {};
     const oisyConfig = oisy.config || {};
-    const transport = { ...(oisyConfig.transport || {}), windowOpenerFeatures: '' };
+    const transport = {
+      ...(oisyConfig.transport || {}),
+      windowOpenerFeatures: '',
+      // Allow establishing channel even if not in the same click stack (Oisy signer requirement is strict)
+      detectNonClickEstablishment: false
+    };
     next.adapters.oisy = { ...oisy, config: { ...oisyConfig, transport } };
     return next;
   } catch {

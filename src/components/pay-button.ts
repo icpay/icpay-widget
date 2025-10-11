@@ -201,7 +201,15 @@ export class ICPayPayButton extends LitElement {
         this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
         this.showWalletModal = false;
         const action = this.pendingAction; this.pendingAction = null;
-        if (action === 'pay') setTimeout(() => this.pay(), 0);
+        if (action === 'pay') {
+          const isOisy = (walletId || '').toLowerCase() === 'oisy';
+          if (isOisy) {
+            // For Oisy, require an explicit user click to proceed (signer window must open in a click handler)
+            debugLog(this.config?.debug || false, 'Oisy connected; waiting for user click to proceed with payment');
+          } else {
+            this.pay();
+          }
+        }
       }).catch((error: any) => {
         debugLog(this.config?.debug || false, 'Wallet connection error', error);
         this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
@@ -230,7 +238,10 @@ export class ICPayPayButton extends LitElement {
       visible: this.showWalletModal,
       wallets,
       isConnecting: false,
-      onSelect: (walletId: string) => this.connectWithWallet(walletId),
+      onSelect: (walletId: string) => {
+        // Ensure any signer window/channel establishment happens directly in this click handler
+        this.connectWithWallet(walletId);
+      },
       onClose: () => { this.showWalletModal = false; },
       onCreditCard: onrampEnabled ? () => this.startOnramp() : undefined,
       creditCardLabel: this.config?.onramp?.creditCardLabel || 'Pay with credit card',
