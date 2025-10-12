@@ -201,15 +201,7 @@ export class ICPayPayButton extends LitElement {
         this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
         this.showWalletModal = false;
         const action = this.pendingAction; this.pendingAction = null;
-        if (action === 'pay') {
-          const isOisy = (walletId || '').toLowerCase() === 'oisy';
-          if (isOisy) {
-            // For Oisy, require an explicit user click to proceed (signer window must open in a click handler)
-            debugLog(this.config?.debug || false, 'Oisy connected; waiting for user click to proceed with payment');
-          } else {
-            this.pay();
-          }
-        }
+        if (action === 'pay') this.pay();
       }).catch((error: any) => {
         debugLog(this.config?.debug || false, 'Wallet connection error', error);
         this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
