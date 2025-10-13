@@ -51,6 +51,7 @@ export class ICPayPayButton extends LitElement {
   @state() private onrampSessionId: string | null = null;
   @state() private onrampPaymentIntentId: string | null = null;
   @state() private onrampErrorMessage: string | null = null;
+  @state() private skipDisconnectOnce: boolean = false;
   private onrampPollTimer: number | null = null;
   private transakMessageHandlerBound: any | null = null;
   private pnp: any | null = null;
@@ -200,7 +201,7 @@ export class ICPayPayButton extends LitElement {
             try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
             this.showWalletModal = false;
             const action = this.pendingAction; this.pendingAction = null;
-            if (action === 'pay') this.pay();
+            if (action === 'pay') { this.skipDisconnectOnce = true; this.pay(); }
             return;
           }
           // Not authenticated -> fall back to connect flow
@@ -215,7 +216,7 @@ export class ICPayPayButton extends LitElement {
             this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
             this.showWalletModal = false;
             const action = this.pendingAction; this.pendingAction = null;
-            if (action === 'pay') this.pay();
+            if (action === 'pay') { this.skipDisconnectOnce = true; this.pay(); }
           }).catch((error: any) => {
             debugLog(this.config?.debug || false, 'Wallet connection error', error);
             this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
@@ -237,7 +238,7 @@ export class ICPayPayButton extends LitElement {
         this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
         this.showWalletModal = false;
         const action = this.pendingAction; this.pendingAction = null;
-        if (action === 'pay') this.pay();
+        if (action === 'pay') { this.skipDisconnectOnce = true; this.pay(); }
       }).catch((error: any) => {
         debugLog(this.config?.debug || false, 'Wallet connection error', error);
         this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
@@ -401,14 +402,18 @@ export class ICPayPayButton extends LitElement {
 
     this.processing = true;
     try {
-      // Always disconnect current built-in wallet before new payment attempt
-      try {
-        if (!this.config.useOwnWallet && this.pnp) {
-          await this.pnp.disconnect?.();
-          this.walletConnected = false;
-          this.config = { ...this.config, actorProvider: undefined as any, connectedWallet: undefined } as any;
-        }
-      } catch {}
+      // Disconnect current built-in wallet before new payment attempt unless we just connected
+      if (!this.skipDisconnectOnce) {
+        try {
+          if (!this.config.useOwnWallet && this.pnp) {
+            await this.pnp.disconnect?.();
+            this.walletConnected = false;
+            this.config = { ...this.config, actorProvider: undefined as any, connectedWallet: undefined } as any;
+          }
+        } catch {}
+      } else {
+        this.skipDisconnectOnce = false;
+      }
       const ready = await this.ensureWallet();
       if (!ready) return;
 
