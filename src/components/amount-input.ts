@@ -219,6 +219,37 @@ export class ICPayAmountInput extends LitElement {
     if (!this.pnp) return;
     try {
       if (!walletId) throw new Error('No wallet ID provided');
+      const isOisy = (walletId || '').toLowerCase() === 'oisy';
+      if (isOisy) {
+        detectOisySessionViaAdapter(this.pnp).then((principal: string | null) => {
+          if (principal) {
+            const normalized = normalizeConnectedWallet(this.pnp, { owner: principal, principal, connected: true });
+            this.walletConnected = true;
+            try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
+            this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
+            this.showWalletModal = false;
+            const action = this.pendingAction; this.pendingAction = null;
+            if (action === 'pay') setTimeout(() => this.pay(), 0);
+            return;
+          }
+          const promise = this.pnp.connect(walletId);
+          promise.then((result: any) => {
+            const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
+            if (!isConnected) throw new Error('Wallet connection was rejected');
+            this.walletConnected = true;
+            try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
+            this.config = { ...this.config, connectedWallet: result, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
+            this.showWalletModal = false;
+            const action = this.pendingAction; this.pendingAction = null;
+            if (action === 'pay') setTimeout(() => this.pay(), 0);
+          }).catch((error: any) => {
+            this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
+            this.errorSeverity = ErrorSeverity.ERROR;
+            this.showWalletModal = false;
+          });
+        });
+        return;
+      }
       const promise = this.pnp.connect(walletId);
       promise.then((result: any) => {
         const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
