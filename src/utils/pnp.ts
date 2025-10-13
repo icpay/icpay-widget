@@ -106,7 +106,8 @@ export async function detectOisySessionViaAdapter(pnp: any): Promise<string | nu
     const connected: boolean = await adapterInstance.isConnected();
     if (!connected) return null;
     const principal: string = await adapterInstance.getPrincipal();
-    if (principal && typeof principal === 'string' && principal.length > 0) return principal;
+    // Ignore anonymous/public identity ('2vxsx-fae')
+    if (principal && typeof principal === 'string' && principal.length > 0 && principal !== '2vxsx-fae') return principal;
     return null;
   } catch {
     return null;
