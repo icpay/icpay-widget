@@ -9,7 +9,7 @@ import type { WidgetSdk } from '../utils/sdk';
 import './progress-bar';
 import './token-selector';
 import { renderWalletSelectorModal } from './wallet-selector-modal';
-import { applyOisyNewTabConfig, normalizeConnectedWallet } from '../utils/pnp';
+import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
 
 const isBrowser = typeof window !== 'undefined';
 let PlugNPlay: any = null;
@@ -167,6 +167,17 @@ export class ICPayPayButton extends LitElement {
         }
       } catch {}
       this.pnp = new PlugNPlay(_cfg);
+      // Adapter-based detection (no storage)
+      try {
+        const principal = await detectOisySessionViaAdapter(this.pnp);
+        if (principal) {
+          this.walletConnected = true;
+          const normalized = normalizeConnectedWallet(this.pnp, { owner: principal, principal, connected: true });
+          this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
+          try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: 'oisy' } })); } catch {}
+          return true;
+        }
+      } catch {}
       const availableWallets = this.pnp.getEnabledWallets();
       debugLog(this.config?.debug || false, 'Available wallets', availableWallets);
       if (!availableWallets?.length) throw new Error('No wallets available');

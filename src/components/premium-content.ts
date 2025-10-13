@@ -8,7 +8,7 @@ import './progress-bar';
 import './token-selector';
 import { renderWalletSelectorModal } from './wallet-selector-modal';
 import { renderTransakOnrampModal, TransakOnrampOptions } from './transak-onramp-modal';
-import { applyOisyNewTabConfig, normalizeConnectedWallet } from '../utils/pnp';
+import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
 
 // Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';
@@ -245,6 +245,18 @@ export class ICPayPremiumContent extends LitElement {
               }
             } catch {}
             this.pnp = new PlugNPlay(_cfg2);
+            try {
+              const principal = await detectOisySessionViaAdapter(this.pnp);
+              if (principal) {
+                this.walletConnected = true;
+                const normalized = normalizeConnectedWallet(this.pnp, { owner: principal, principal, connected: true });
+                this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
+                try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: 'oisy' } })); } catch {}
+                // Proceed directly
+                this.onPay();
+                return;
+              }
+            } catch {}
             const availableWallets = this.pnp.getEnabledWallets();
             debugLog(this.config?.debug || false, 'Available wallets', availableWallets);
             if (!availableWallets?.length) throw new Error('No wallets available');
