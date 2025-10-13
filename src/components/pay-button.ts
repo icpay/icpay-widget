@@ -167,17 +167,6 @@ export class ICPayPayButton extends LitElement {
         }
       } catch {}
       this.pnp = new PlugNPlay(_cfg);
-      // Adapter-based detection (no storage)
-      try {
-        const principal = await detectOisySessionViaAdapter(this.pnp);
-        if (principal) {
-          this.walletConnected = true;
-          const normalized = normalizeConnectedWallet(this.pnp, { owner: principal, principal, connected: true });
-          this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
-          try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: 'oisy' } })); } catch {}
-          return true;
-        }
-      } catch {}
       const availableWallets = this.pnp.getEnabledWallets();
       debugLog(this.config?.debug || false, 'Available wallets', availableWallets);
       if (!availableWallets?.length) throw new Error('No wallets available');
@@ -200,7 +189,43 @@ export class ICPayPayButton extends LitElement {
     if (!this.pnp) return;
     try {
       if (!walletId) throw new Error('No wallet ID provided');
-      // Call connect immediately within the click handler to satisfy popup policies
+      // If Oisy is selected and user is already authenticated, skip connect (avoids login tab)
+      const isOisy = (walletId || '').toLowerCase() === 'oisy';
+      if (isOisy) {
+        detectOisySessionViaAdapter(this.pnp).then((principal: string | null) => {
+          if (principal) {
+            const normalized = normalizeConnectedWallet(this.pnp, { owner: principal, principal, connected: true });
+            this.walletConnected = true;
+            this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
+            try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
+            this.showWalletModal = false;
+            const action = this.pendingAction; this.pendingAction = null;
+            if (action === 'pay') this.pay();
+            return;
+          }
+          // Not authenticated -> fall back to connect flow
+          const promise = this.pnp.connect(walletId);
+          promise.then((result: any) => {
+            debugLog(this.config?.debug || false, 'Wallet connect result', result);
+            const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
+            if (!isConnected) throw new Error('Wallet connection was rejected');
+            this.walletConnected = true;
+            try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
+            const normalized = normalizeConnectedWallet(this.pnp, result);
+            this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
+            this.showWalletModal = false;
+            const action = this.pendingAction; this.pendingAction = null;
+            if (action === 'pay') this.pay();
+          }).catch((error: any) => {
+            debugLog(this.config?.debug || false, 'Wallet connection error', error);
+            this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
+            this.errorSeverity = ErrorSeverity.ERROR;
+            this.showWalletModal = false;
+          });
+        });
+        return;
+      }
+      // Non-Oisy: connect immediately within click handler
       const promise = this.pnp.connect(walletId);
       promise.then((result: any) => {
         debugLog(this.config?.debug || false, 'Wallet connect result', result);
@@ -376,6 +401,14 @@ export class ICPayPayButton extends LitElement {
 
     this.processing = true;
     try {
+      // Always disconnect current built-in wallet before new payment attempt
+      try {
+        if (!this.config.useOwnWallet && this.pnp) {
+          await this.pnp.disconnect?.();
+          this.walletConnected = false;
+          this.config = { ...this.config, actorProvider: undefined as any, connectedWallet: undefined } as any;
+        }
+      } catch {}
       const ready = await this.ensureWallet();
       if (!ready) return;
 
