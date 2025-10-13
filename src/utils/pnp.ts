@@ -92,3 +92,24 @@ export function normalizeConnectedWallet(pnp: any, connectResult: any): any {
   }
 }
 
+// Read saved Plug N Play session (provider/principal) from localStorage
+// Try to detect existing Oisy session via adapter APIs (no localStorage/cookies)
+// Returns principal string if an active session is detected, else null
+export async function detectOisySessionViaAdapter(pnp: any): Promise<string | null> {
+  try {
+    const adapters = (pnp as any)?.config?.adapters;
+    const oisy = adapters?.oisy;
+    const AdapterCtor = oisy?.adapter;
+    if (!AdapterCtor) return null;
+    // Construct a temporary adapter instance to query session
+    const adapterInstance = new AdapterCtor({ adapter: oisy });
+    const connected: boolean = await adapterInstance.isConnected();
+    if (!connected) return null;
+    const principal: string = await adapterInstance.getPrincipal();
+    if (principal && typeof principal === 'string' && principal.length > 0) return principal;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
