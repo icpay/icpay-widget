@@ -193,6 +193,11 @@ export class ICPayPayButton extends LitElement {
       // If Oisy is selected and user is already authenticated, skip connect (avoids login tab)
       const isOisy = (walletId || '').toLowerCase() === 'oisy';
       if (isOisy) {
+        // Pre-open Oisy signer tab in the same click handler using the same window name the signer uses
+        try {
+          const signerUrl = (this as any)?.pnp?.config?.adapters?.oisy?.config?.signerUrl || 'https://oisy.com/sign';
+          window.open(signerUrl, 'signerWindow', 'noopener,noreferrer');
+        } catch {}
         detectOisySessionViaAdapter(this.pnp).then((principal: string | null) => {
           if (principal) {
             const normalized = normalizeConnectedWallet(this.pnp, { owner: principal, principal, connected: true });
