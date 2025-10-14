@@ -52,6 +52,7 @@ export class ICPayPayButton extends LitElement {
   @state() private onrampPaymentIntentId: string | null = null;
   @state() private onrampErrorMessage: string | null = null;
   @state() private skipDisconnectOnce: boolean = false;
+  @state() private lastWalletId: string | null = null;
   private onrampPollTimer: number | null = null;
   private transakMessageHandlerBound: any | null = null;
   private pnp: any | null = null;
@@ -190,6 +191,7 @@ export class ICPayPayButton extends LitElement {
     if (!this.pnp) return;
     try {
       if (!walletId) throw new Error('No wallet ID provided');
+      this.lastWalletId = (walletId || '').toLowerCase();
       // If Oisy is selected and user is already authenticated, skip connect (avoids login tab)
       const isOisy = (walletId || '').toLowerCase() === 'oisy';
       if (isOisy) {
@@ -440,6 +442,17 @@ export class ICPayPayButton extends LitElement {
       debugLog(this.config?.debug || false, 'Resolved ledger details', { symbol, canisterId });
       const amountUsd = Number(this.config?.amountUsd ?? 0);
       const meta = { context: 'pay-button' } as Record<string, any>;
+      // If Oisy, pre-open signer tab for the transfer approval step to avoid popup blockers
+      try {
+        if ((this.lastWalletId || '').toLowerCase() === 'oisy') {
+          const signerUrl = (this as any)?.pnp?.config?.adapters?.oisy?.config?.signerUrl || 'https://oisy.com/sign';
+          const w = window.open('', 'signerWindow');
+          if (w) {
+            try { (w as any).opener = null; } catch {}
+            try { w.location.href = signerUrl; } catch {}
+          }
+        }
+      } catch {}
       debugLog(this.config?.debug || false, 'Calling sdk.sendUsd', { amountUsd, canisterId, meta });
       const resp = await sdk.sendUsd(amountUsd, canisterId, meta);
       debugLog(this.config?.debug || false, 'sdk.sendUsd response', resp);
