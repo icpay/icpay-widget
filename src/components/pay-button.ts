@@ -192,48 +192,7 @@ export class ICPayPayButton extends LitElement {
     try {
       if (!walletId) throw new Error('No wallet ID provided');
       this.lastWalletId = (walletId || '').toLowerCase();
-      // If Oisy is selected and user is already authenticated, skip connect (avoids login tab)
-      const isOisy = (walletId || '').toLowerCase() === 'oisy';
-      if (isOisy) {
-        // Pre-open Oisy signer tab in the same click handler using the same window name the signer uses
-        try {
-          const signerUrl = (this as any)?.pnp?.config?.adapters?.oisy?.config?.signerUrl || 'https://oisy.com/sign';
-          window.open(signerUrl, 'signerWindow', 'noopener,noreferrer');
-        } catch {}
-        detectOisySessionViaAdapter(this.pnp).then((principal: string | null) => {
-          if (principal) {
-            const normalized = normalizeConnectedWallet(this.pnp, { owner: principal, principal, connected: true });
-            this.walletConnected = true;
-            this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
-            try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
-            this.showWalletModal = false;
-            const action = this.pendingAction; this.pendingAction = null;
-            if (action === 'pay') { this.skipDisconnectOnce = true; this.pay(); }
-            return;
-          }
-          // Not authenticated -> fall back to connect flow
-          const promise = this.pnp.connect(walletId);
-          promise.then((result: any) => {
-            debugLog(this.config?.debug || false, 'Wallet connect result', result);
-            const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
-            if (!isConnected) throw new Error('Wallet connection was rejected');
-            this.walletConnected = true;
-            try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
-            const normalized = normalizeConnectedWallet(this.pnp, result);
-            this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
-            this.showWalletModal = false;
-            const action = this.pendingAction; this.pendingAction = null;
-            if (action === 'pay') { this.skipDisconnectOnce = true; this.pay(); }
-          }).catch((error: any) => {
-            debugLog(this.config?.debug || false, 'Wallet connection error', error);
-            this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
-            this.errorSeverity = ErrorSeverity.ERROR;
-            this.showWalletModal = false;
-          });
-        });
-        return;
-      }
-      // Non-Oisy: connect immediately within click handler
+      // Minimal: connect immediately within click (no pre-open or detection)
       const promise = this.pnp.connect(walletId);
       promise.then((result: any) => {
         debugLog(this.config?.debug || false, 'Wallet connect result', result);
@@ -442,15 +401,11 @@ export class ICPayPayButton extends LitElement {
       debugLog(this.config?.debug || false, 'Resolved ledger details', { symbol, canisterId });
       const amountUsd = Number(this.config?.amountUsd ?? 0);
       const meta = { context: 'pay-button' } as Record<string, any>;
-      // If Oisy, pre-open signer tab for the transfer approval step to avoid popup blockers
+      // If Oisy, open signer tab right before transfer (no keep-alive)
       try {
         if ((this.lastWalletId || '').toLowerCase() === 'oisy') {
           const signerUrl = (this as any)?.pnp?.config?.adapters?.oisy?.config?.signerUrl || 'https://oisy.com/sign';
-          const w = window.open('', 'signerWindow');
-          if (w) {
-            try { (w as any).opener = null; } catch {}
-            try { w.location.href = signerUrl; } catch {}
-          }
+          window.open(signerUrl, 'signerWindow', 'noreferrer,noopener');
         }
       } catch {}
       debugLog(this.config?.debug || false, 'Calling sdk.sendUsd', { amountUsd, canisterId, meta });
