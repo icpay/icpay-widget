@@ -160,8 +160,8 @@ export class ICPayPayButton extends LitElement {
         const module = await import('@windoge98/plug-n-play');
         PlugNPlay = module.PNP;
       }
-      // If user wants Oisy to open in a tab, rewrite PNP config to clear window features
-      const wantsOisyTab = (this.config as any)?.plugNPlay?.providers?.oisy !== false; // oisy enabled by default
+      // Optional: open Oisy in a new tab if explicitly enabled
+      const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
       const _rawCfg: any = { ...(this.config?.plugNPlay || {}) };
       const _cfg: any = wantsOisyTab ? applyOisyNewTabConfig(_rawCfg) : _rawCfg;
       try {

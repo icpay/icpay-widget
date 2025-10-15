@@ -237,7 +237,8 @@ export class ICPayDonationThermometer extends LitElement {
           debugLog(this.config?.debug || false, 'Connecting to wallet via Plug N Play');
           try {
             if (!PlugNPlay) { const module = await import('@windoge98/plug-n-play'); PlugNPlay = module.PNP; }
-            const _cfg2: any = applyOisyNewTabConfig({ ...(this.config?.plugNPlay || {}) });
+            const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
+            const _cfg2: any = wantsOisyTab ? applyOisyNewTabConfig({ ...(this.config?.plugNPlay || {}) }) : ({ ...(this.config?.plugNPlay || {}) });
             try {
               if (typeof window !== 'undefined') {
                 const { resolveDerivationOrigin } = await import('../utils/origin');

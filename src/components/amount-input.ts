@@ -181,8 +181,9 @@ export class ICPayAmountInput extends LitElement {
         const module = await import('@windoge98/plug-n-play');
         PlugNPlay = module.PNP;
       }
+      const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
       const _rawCfg: any = { ...(this.config?.plugNPlay || {}) };
-      const _cfg: any = applyOisyNewTabConfig(_rawCfg);
+      const _cfg: any = wantsOisyTab ? applyOisyNewTabConfig(_rawCfg) : _rawCfg;
       try {
         if (typeof window !== 'undefined') {
           const { resolveDerivationOrigin } = await import('../utils/origin');
