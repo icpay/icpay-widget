@@ -253,17 +253,21 @@ export class ICPayArticlePaywall extends LitElement {
 
   private onSwitchAccount = async (e: any) => {
     try {
-      if (!this.pnp) return;
-      await this.pnp.disconnect();
-      const type = (e?.detail?.walletType || '').toLowerCase();
-      if (type === 'ii') {
-        try { window.open('https://identity.ic0.app/', '_blank', 'noopener,noreferrer'); } catch {}
+      if (this.pnp) {
+        try { await this.pnp.disconnect(); } catch {}
       }
+      this.walletConnected = false;
+      this.config = { ...this.config, actorProvider: undefined as any, connectedWallet: undefined } as any;
       // Prepare to restart flow after reconnect
       this.pendingAction = 'unlock';
-      this.walletConnected = false;
       this.showWalletModal = true;
       this.requestUpdate();
+      // Restart progress from step 0 for unlock
+      try {
+        const amount = Number(this.config?.priceUsd || 0);
+        const curr = this.selectedSymbol || this.config?.defaultSymbol;
+        window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'unlock', type: 'sendUsd', amount, currency: curr } }));
+      } catch {}
     } catch {}
   };
 
