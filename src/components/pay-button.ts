@@ -58,6 +58,7 @@ export class ICPayPayButton extends LitElement {
   private onrampPollTimer: number | null = null;
   private transakMessageHandlerBound: any | null = null;
   private pnp: any | null = null;
+  private oisyConnectRetriedNewTab: boolean = false;
   private sdk: WidgetSdk | null = null;
   private onrampPollingActive: boolean = false;
   private onrampNotifyController: { stop: () => void } | null = null;
@@ -197,6 +198,7 @@ export class ICPayPayButton extends LitElement {
     try {
       if (!walletId) throw new Error('No wallet ID provided');
       this.lastWalletId = (walletId || '').toLowerCase();
+      if (this.lastWalletId === 'oisy') this.oisyConnectRetriedNewTab = false;
       // Minimal: connect immediately within click (no pre-open or detection)
       const promise = this.pnp.connect(walletId);
       promise.then((result: any) => {
@@ -220,6 +222,49 @@ export class ICPayPayButton extends LitElement {
         }
       }).catch((error: any) => {
         debugLog(this.config?.debug || false, 'Wallet connection error', error);
+        const isOisy = (walletId || '').toLowerCase() === 'oisy';
+        const message = (error && (error.message || String(error))) || '';
+        const blocked = isOisy && (!this.oisyConnectRetriedNewTab) && (message.includes('Signer window could not be opened') || message.includes('Communication channel could not be established'));
+        if (blocked) {
+          // Retry Oisy connect by forcing new-tab transport
+          this.oisyConnectRetriedNewTab = true;
+          (async () => {
+            try {
+              if (!PlugNPlay) { const module = await import('@windoge98/plug-n-play'); PlugNPlay = module.PNP; }
+              const raw: any = { ...(this.config?.plugNPlay || {}) };
+              const cfg: any = applyOisyNewTabConfig(raw);
+              try {
+                if (typeof window !== 'undefined') {
+                  const { resolveDerivationOrigin } = await import('../utils/origin');
+                  cfg.derivationOrigin = this.config?.derivationOrigin || resolveDerivationOrigin();
+                }
+              } catch {}
+              this.pnp = new PlugNPlay(cfg);
+              const retry = this.pnp.connect('oisy');
+              retry.then((result: any) => {
+                const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
+                if (!isConnected) throw new Error('Wallet connection was rejected');
+                this.walletConnected = true;
+                try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: 'oisy' } })); } catch {}
+                const normalized = normalizeConnectedWallet(this.pnp, result);
+                this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
+                this.oisyReadyToPay = true;
+                this.pendingAction = null;
+              }).catch((err2: any) => {
+                debugLog(this.config?.debug || false, 'Oisy retry connect (new tab) failed', err2);
+                this.errorMessage = err2 instanceof Error ? err2.message : 'Wallet connection failed';
+                this.errorSeverity = ErrorSeverity.ERROR;
+                this.showWalletModal = false;
+              });
+            } catch (initErr) {
+              debugLog(this.config?.debug || false, 'Oisy new-tab init failed', initErr);
+              this.errorMessage = initErr instanceof Error ? initErr.message : 'Wallet connection failed';
+              this.errorSeverity = ErrorSeverity.ERROR;
+              this.showWalletModal = false;
+            }
+          })();
+          return;
+        }
         this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
         this.errorSeverity = ErrorSeverity.ERROR;
         this.showWalletModal = false;
