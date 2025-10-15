@@ -248,12 +248,7 @@ export class ICPayCoffeeShop extends LitElement {
         canisterId
       });
 
-      try {
-        if ((this.lastWalletId || '').toLowerCase() === 'oisy') {
-          const signerUrl = (this as any)?.pnp?.config?.adapters?.oisy?.config?.signerUrl || 'https://oisy.com/sign';
-          window.open(signerUrl, '_blank', 'noopener,noreferrer');
-        }
-      } catch {}
+      // Do not pre-open Oisy signer tab here; let SDK handle it inside this click
       const resp = await sdk.sendUsd(this.selectedItem.priceUsd, canisterId, { context: 'coffee', item: this.selectedItem.name });
       debugLog(this.config?.debug || false, 'Coffee order payment completed', { resp });
 

@@ -418,13 +418,7 @@ export class ICPayPayButton extends LitElement {
       debugLog(this.config?.debug || false, 'Resolved ledger details', { symbol, canisterId });
       const amountUsd = Number(this.config?.amountUsd ?? 0);
       const meta = { context: 'pay-button' } as Record<string, any>;
-      // If Oisy, open signer tab right before transfer (open actual signer URL, not about:blank)
-      try {
-        if ((this.lastWalletId || '').toLowerCase() === 'oisy') {
-          const signerUrl = (this as any)?.pnp?.config?.adapters?.oisy?.config?.signerUrl || 'https://oisy.com/sign';
-          window.open(signerUrl, '_blank', 'noopener,noreferrer');
-        }
-      } catch {}
+      // Do not pre-open Oisy signer tab; SDK will open it within this user gesture
       debugLog(this.config?.debug || false, 'Calling sdk.sendUsd', { amountUsd, canisterId, meta });
       const resp = await sdk.sendUsd(amountUsd, canisterId, meta);
       debugLog(this.config?.debug || false, 'sdk.sendUsd response', resp);
