@@ -51,6 +51,8 @@ export class ICPayPayButton extends LitElement {
   @state() private onrampSessionId: string | null = null;
   @state() private onrampPaymentIntentId: string | null = null;
   @state() private onrampErrorMessage: string | null = null;
+  @state() private oisyReadyToPay: boolean = false;
+  @state() private oisySignerPreopened: boolean = false;
   @state() private skipDisconnectOnce: boolean = false;
   @state() private lastWalletId: string | null = null;
   private onrampPollTimer: number | null = null;
@@ -202,9 +204,15 @@ export class ICPayPayButton extends LitElement {
         try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
         const normalized = normalizeConnectedWallet(this.pnp, result);
         this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
-        this.showWalletModal = false;
-        const action = this.pendingAction; this.pendingAction = null;
-        if (action === 'pay') { this.skipDisconnectOnce = true; this.pay(); }
+        const isOisy = (walletId || '').toLowerCase() === 'oisy';
+        if (isOisy) {
+          // Stay in modal and show a single CTA to execute the transfer from a user gesture
+          this.oisyReadyToPay = true;
+        } else {
+          this.showWalletModal = false;
+          const action = this.pendingAction; this.pendingAction = null;
+          if (action === 'pay') { this.skipDisconnectOnce = true; this.pay(); }
+        }
       }).catch((error: any) => {
         debugLog(this.config?.debug || false, 'Wallet connection error', error);
         this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
@@ -242,6 +250,17 @@ export class ICPayPayButton extends LitElement {
       creditCardLabel: this.config?.onramp?.creditCardLabel || 'Pay with credit card',
       showCreditCard: onrampEnabled,
       creditCardTooltip: tooltip,
+      oisyReadyToPay: this.oisyReadyToPay,
+      onOisyPay: () => {
+        try {
+          // Open signer window and execute transfer from within this user gesture
+          window.open('', 'signerWindow');
+        } catch {}
+        this.showWalletModal = false;
+        this.skipDisconnectOnce = true;
+        this.oisyReadyToPay = false;
+        this.pay();
+      }
     });
   }
 

@@ -35,7 +35,7 @@ type Options = {
   creditCardTooltip?: string | null;
 };
 
-export function renderWalletSelectorModal(opts: Options): TemplateResult | null {
+export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boolean; onOisyPay?: () => void }): TemplateResult | null {
   if (!opts.visible) return null as any;
   const { wallets, onSelect, onClose, isConnecting } = opts;
   const normalizedWallets = wallets.map(w => {
@@ -68,6 +68,13 @@ export function renderWalletSelectorModal(opts: Options): TemplateResult | null 
         <button @click=${onClose} style="position:absolute;top:16px;right:16px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#9ca3af;cursor:pointer;border:none;background:transparent;font-size:20px">✕</button>
         <h3 style="color:#fff;margin:0 48px 16px 0;font-size:18px;font-weight:600">Choose Wallet</h3>
         <div style="display:flex;flex-direction:column;gap:8px">
+          ${opts.oisyReadyToPay ? html`
+            <button
+              @click=${() => { if (opts.onOisyPay) opts.onOisyPay(); }}
+              style="width:100%;padding:12px 16px;background:linear-gradient(135deg,#059669 0%,#10b981 100%);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;text-align:center;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px">
+              Pay with OISY
+            </button>
+          ` : null}
           ${normalizedWallets.map(w => {
             const id = (w.id || '').toLowerCase();
             const displayName = getWalletFriendlyName(w.id, w.label);
