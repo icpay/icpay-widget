@@ -118,16 +118,19 @@ export class ICPayCoffeeShop extends LitElement {
 
   private onSwitchAccount = async (e: any) => {
     try {
-      if (!this.pnp) return;
-      await this.pnp.disconnect();
-      const type = (e?.detail?.walletType || '').toLowerCase();
-      if (type === 'ii') {
-        try { window.open('https://identity.ic0.app/', '_blank', 'noopener,noreferrer'); } catch {}
+      if (this.pnp) {
+        try { await this.pnp.disconnect(); } catch {}
       }
-      this.pendingAction = 'order';
       this.walletConnected = false;
+      this.config = { ...this.config, actorProvider: undefined as any, connectedWallet: undefined } as any;
+      this.pendingAction = 'order';
       this.showWalletModal = true;
       this.requestUpdate();
+      try {
+        const amount = Number(this.selectedItem?.priceUsd || 0);
+        const curr = this.selectedSymbol || this.config?.defaultSymbol;
+        window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'order', type: 'sendUsd', amount, currency: curr } }));
+      } catch {}
     } catch {}
   };
 
