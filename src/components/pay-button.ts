@@ -208,6 +208,8 @@ export class ICPayPayButton extends LitElement {
         if (isOisy) {
           // Stay in modal and show a single CTA to execute the transfer from a user gesture
           this.oisyReadyToPay = true;
+          // Prevent auto-pay via updated() resume logic
+          this.pendingAction = null;
         } else {
           this.showWalletModal = false;
           const action = this.pendingAction; this.pendingAction = null;
