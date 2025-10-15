@@ -375,12 +375,7 @@ export class ICPayArticlePaywall extends LitElement {
         canisterId
       });
 
-      try {
-        if ((this.lastWalletId || '').toLowerCase() === 'oisy') {
-          const signerUrl = (this as any)?.pnp?.config?.adapters?.oisy?.config?.signerUrl || 'https://oisy.com/sign';
-          window.open(signerUrl, '_blank', 'noopener,noreferrer');
-        }
-      } catch {}
+      // Do not pre-open Oisy signer tab here; let SDK handle it inside this click
       const resp = await sdk.sendUsd(this.config.priceUsd, canisterId, { context: 'article' });
       debugLog(this.config?.debug || false, 'Article payment completed', { resp });
 

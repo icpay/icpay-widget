@@ -352,12 +352,7 @@ export class ICPayAmountInput extends LitElement {
       const amountUsd = Number(this.amountUsd);
       const meta = { context: 'amount-input' } as Record<string, any>;
 
-      try {
-        if ((this.lastWalletId || '').toLowerCase() === 'oisy') {
-          const signerUrl = (this as any)?.pnp?.config?.adapters?.oisy?.config?.signerUrl || 'https://oisy.com/sign';
-          window.open(signerUrl, '_blank', 'noopener,noreferrer');
-        }
-      } catch {}
+      // Do not pre-open Oisy signer tab here; let SDK handle it inside this click
       const resp = await sdk.sendUsd(amountUsd, canisterId, meta);
       if (this.config.onSuccess) this.config.onSuccess({ id: resp.transactionId, status: resp.status, amountUsd });
       this.succeeded = true;
