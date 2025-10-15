@@ -1555,6 +1555,8 @@ export class ICPayProgressBar extends LitElement {
 
   private requestSwitchAccount() {
     try {
+      // Close the progress modal so the wallet selector can be used
+      this.open = false;
       const walletType = this.currentWalletType || 'unknown';
       window.dispatchEvent(new CustomEvent('icpay-switch-account', { detail: { walletType } } as any));
     } catch {}
