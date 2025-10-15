@@ -71,11 +71,10 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
           ${opts.oisyReadyToPay ? html`
             <button
               @click=${() => { if (opts.onOisyPay) opts.onOisyPay(); }}
-              style="width:100%;padding:12px 16px;background:linear-gradient(135deg,#059669 0%,#10b981 100%);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;text-align:center;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px">
+              style="width:100%;padding:12px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;text-align:left;cursor:pointer;font-size:14px;display:flex;align-items:center;gap:12px;justify-content:center">
               Pay with OISY
             </button>
-          ` : null}
-          ${normalizedWallets.map(w => {
+          ` : normalizedWallets.map(w => {
             const id = (w.id || '').toLowerCase();
             const displayName = getWalletFriendlyName(w.id, w.label);
             const mainButton = html`

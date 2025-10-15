@@ -245,21 +245,17 @@ export class ICPayPayButton extends LitElement {
         // Ensure any signer window/channel establishment happens directly in this click handler
         this.connectWithWallet(walletId);
       },
-      onClose: () => { this.showWalletModal = false; },
+      onClose: () => { this.showWalletModal = false; this.oisyReadyToPay = false; },
       onCreditCard: onrampEnabled ? () => this.startOnramp() : undefined,
       creditCardLabel: this.config?.onramp?.creditCardLabel || 'Pay with credit card',
       showCreditCard: onrampEnabled,
       creditCardTooltip: tooltip,
       oisyReadyToPay: this.oisyReadyToPay,
       onOisyPay: () => {
-        try {
-          // Open signer window and execute transfer from within this user gesture
-          window.open('', 'signerWindow');
-        } catch {}
-        this.showWalletModal = false;
+        this.showWalletModal = false; // Close modal so progress bar can proceed
         this.skipDisconnectOnce = true;
         this.oisyReadyToPay = false;
-        this.pay();
+        this.pay(); // Trigger pay within same user gesture
       }
     });
   }
@@ -420,11 +416,11 @@ export class ICPayPayButton extends LitElement {
       debugLog(this.config?.debug || false, 'Resolved ledger details', { symbol, canisterId });
       const amountUsd = Number(this.config?.amountUsd ?? 0);
       const meta = { context: 'pay-button' } as Record<string, any>;
-      // If Oisy, open signer tab right before transfer (no keep-alive)
+      // If Oisy, open signer tab right before transfer (open actual signer URL, not about:blank)
       try {
         if ((this.lastWalletId || '').toLowerCase() === 'oisy') {
           const signerUrl = (this as any)?.pnp?.config?.adapters?.oisy?.config?.signerUrl || 'https://oisy.com/sign';
-          window.open(signerUrl, 'signerWindow', 'noreferrer,noopener');
+          window.open(signerUrl, '_blank', 'noopener,noreferrer');
         }
       } catch {}
       debugLog(this.config?.debug || false, 'Calling sdk.sendUsd', { amountUsd, canisterId, meta });

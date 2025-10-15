@@ -76,6 +76,8 @@ export class ICPayDonationThermometer extends LitElement {
   @state() private walletConnected = false;
   @state() private pendingAction: 'donate' | null = null;
   @state() private showWalletModal = false;
+  @state() private oisyReadyToPay: boolean = false;
+  @state() private lastWalletId: string | null = null;
   private pnp: any | null = null;
   @state() private showOnrampModal = false;
   @state() private onrampSessionId: string | null = null;
@@ -283,6 +285,12 @@ export class ICPayDonationThermometer extends LitElement {
         canisterId
       });
 
+      try {
+        if ((this.lastWalletId || '').toLowerCase() === 'oisy') {
+          const signerUrl = (this as any)?.pnp?.config?.adapters?.oisy?.config?.signerUrl || 'https://oisy.com/sign';
+          window.open(signerUrl, '_blank', 'noopener,noreferrer');
+        }
+      } catch {}
       const resp = await sdk.sendUsd(this.selectedAmount, canisterId, { context: 'donation' });
       debugLog(this.config?.debug || false, 'Donation payment completed', { resp });
 
@@ -403,6 +411,7 @@ export class ICPayDonationThermometer extends LitElement {
     if (!this.pnp) return;
     try {
       if (!walletId) throw new Error('No wallet ID provided');
+      this.lastWalletId = (walletId || '').toLowerCase();
       const promise = this.pnp.connect(walletId);
       promise.then((result: any) => {
         const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
@@ -411,9 +420,14 @@ export class ICPayDonationThermometer extends LitElement {
         try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
         const normalized = normalizeConnectedWallet(this.pnp, result);
         this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
-        this.showWalletModal = false;
-        const action = this.pendingAction; this.pendingAction = null;
-        if (action === 'donate') setTimeout(() => this.donate(), 0);
+        const isOisy = this.lastWalletId === 'oisy';
+        if (isOisy) {
+          this.oisyReadyToPay = true;
+        } else {
+          this.showWalletModal = false;
+          const action = this.pendingAction; this.pendingAction = null;
+          if (action === 'donate') setTimeout(() => this.donate(), 0);
+        }
       }).catch((error: any) => {
         this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
         this.errorSeverity = ErrorSeverity.ERROR;
@@ -486,13 +500,15 @@ export class ICPayDonationThermometer extends LitElement {
             wallets,
             isConnecting: false,
             onSelect: (walletId: string) => this.connectWithWallet(walletId),
-            onClose: () => { this.showWalletModal = false; },
+            onClose: () => { this.showWalletModal = false; this.oisyReadyToPay = false; },
             onCreditCard: (this.config?.onramp?.enabled !== false) ? () => this.startOnramp() : undefined,
             creditCardLabel: this.config?.onramp?.creditCardLabel || 'Pay with credit card',
             showCreditCard: (this.config?.onramp?.enabled !== false),
             creditCardTooltip: (() => {
               const min = 5; const amt = Number(this.selectedAmount || this.config?.defaultAmountUsd || 0); if (amt > 0 && amt < min && (this.config?.onramp?.enabled !== false)) { const d = (min - amt).toFixed(2); return `Note: Minimum card amount is $${min}. You will pay about $${d} more.`; } return null;
             })(),
+            oisyReadyToPay: this.oisyReadyToPay,
+            onOisyPay: () => { this.showWalletModal = false; this.oisyReadyToPay = false; this.donate(); }
           });
         })()}
 

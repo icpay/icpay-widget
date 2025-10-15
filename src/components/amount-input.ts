@@ -64,6 +64,8 @@ export class ICPayAmountInput extends LitElement {
   @state() private onrampSessionId: string | null = null;
   @state() private onrampPaymentIntentId: string | null = null;
   @state() private onrampErrorMessage: string | null = null;
+  @state() private oisyReadyToPay: boolean = false;
+  @state() private lastWalletId: string | null = null;
   private pnp: any | null = null;
   private transakMessageHandlerBound: any | null = null;
   private onrampPollTimer: number | null = null;
@@ -188,16 +190,6 @@ export class ICPayAmountInput extends LitElement {
         }
       } catch {}
       this.pnp = new PlugNPlay(_cfg);
-      try {
-        const principal = await detectOisySessionViaAdapter(this.pnp);
-        if (principal) {
-          this.walletConnected = true;
-          const normalized = normalizeConnectedWallet(this.pnp, { owner: principal, principal, connected: true });
-          this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
-          try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: 'oisy' } })); } catch {}
-          return true;
-        }
-      } catch {}
       const availableWallets = this.pnp.getEnabledWallets();
       if (!availableWallets?.length) throw new Error('No wallets available');
       this.pendingAction = 'pay';
@@ -219,37 +211,7 @@ export class ICPayAmountInput extends LitElement {
     if (!this.pnp) return;
     try {
       if (!walletId) throw new Error('No wallet ID provided');
-      const isOisy = (walletId || '').toLowerCase() === 'oisy';
-      if (isOisy) {
-        detectOisySessionViaAdapter(this.pnp).then((principal: string | null) => {
-          if (principal) {
-            const normalized = normalizeConnectedWallet(this.pnp, { owner: principal, principal, connected: true });
-            this.walletConnected = true;
-            try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
-            this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
-            this.showWalletModal = false;
-            const action = this.pendingAction; this.pendingAction = null;
-            if (action === 'pay') setTimeout(() => this.pay(), 0);
-            return;
-          }
-          const promise = this.pnp.connect(walletId);
-          promise.then((result: any) => {
-            const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
-            if (!isConnected) throw new Error('Wallet connection was rejected');
-            this.walletConnected = true;
-            try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
-            this.config = { ...this.config, connectedWallet: result, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
-            this.showWalletModal = false;
-            const action = this.pendingAction; this.pendingAction = null;
-            if (action === 'pay') setTimeout(() => this.pay(), 0);
-          }).catch((error: any) => {
-            this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
-            this.errorSeverity = ErrorSeverity.ERROR;
-            this.showWalletModal = false;
-          });
-        });
-        return;
-      }
+      this.lastWalletId = (walletId || '').toLowerCase();
       const promise = this.pnp.connect(walletId);
       promise.then((result: any) => {
         const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
@@ -258,9 +220,15 @@ export class ICPayAmountInput extends LitElement {
         try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
         const normalized = normalizeConnectedWallet(this.pnp, result);
         this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
-        this.showWalletModal = false;
-        const action = this.pendingAction; this.pendingAction = null;
-        if (action === 'pay') setTimeout(() => this.pay(), 0);
+        const isOisy = this.lastWalletId === 'oisy';
+        if (isOisy) {
+          // Keep modal open and show only the explicit CTA
+          this.oisyReadyToPay = true;
+        } else {
+          this.showWalletModal = false;
+          const action = this.pendingAction; this.pendingAction = null;
+          if (action === 'pay') setTimeout(() => this.pay(), 0);
+        }
       }).catch((error: any) => {
         this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
         this.errorSeverity = ErrorSeverity.ERROR;
@@ -384,6 +352,12 @@ export class ICPayAmountInput extends LitElement {
       const amountUsd = Number(this.amountUsd);
       const meta = { context: 'amount-input' } as Record<string, any>;
 
+      try {
+        if ((this.lastWalletId || '').toLowerCase() === 'oisy') {
+          const signerUrl = (this as any)?.pnp?.config?.adapters?.oisy?.config?.signerUrl || 'https://oisy.com/sign';
+          window.open(signerUrl, '_blank', 'noopener,noreferrer');
+        }
+      } catch {}
       const resp = await sdk.sendUsd(amountUsd, canisterId, meta);
       if (this.config.onSuccess) this.config.onSuccess({ id: resp.transactionId, status: resp.status, amountUsd });
       this.succeeded = true;
@@ -483,13 +457,15 @@ export class ICPayAmountInput extends LitElement {
             wallets,
             isConnecting: false,
             onSelect: (walletId: string) => this.connectWithWallet(walletId),
-            onClose: () => { this.showWalletModal = false; },
+            onClose: () => { this.showWalletModal = false; this.oisyReadyToPay = false; },
             onCreditCard: ((this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true)) ? () => this.startOnramp() : undefined,
             creditCardLabel: this.config?.onramp?.creditCardLabel || 'Pay with credit card',
             showCreditCard: (this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true),
             creditCardTooltip: (() => {
               const min = 5; const amt = Number(this.amountUsd || 0); if (amt > 0 && amt < min && ((this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true))) { const d = (min - amt).toFixed(2); return `Note: Minimum card amount is $${min}. You will pay about $${d} more.`; } return null;
             })(),
+            oisyReadyToPay: this.oisyReadyToPay,
+            onOisyPay: () => { this.showWalletModal = false; this.oisyReadyToPay = false; this.pay(); }
           });
         })()}
 
