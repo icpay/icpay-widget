@@ -128,7 +128,10 @@ export class ICPayTokenSelector extends LitElement {
 
   private getLogoUrl(symbol: string): string {
     const slug = String(symbol || '').toLowerCase();
-    return `https://widget.icpay.org/ledger/${slug}.svg`;
+    // Prefer explicit chain via element attribute or global window config; default to 'ic'
+    const chain = (this.getAttribute('chain-name') || (window as any)?.ICPay?.config?.chainName || 'IC').toLowerCase();
+    const base = (window as any)?.ICPay?.config?.widgetBaseUrl || 'https://widget.icpay.org';
+    return `${base}/img/tokens/${chain}/${slug}.svg`;
   }
 
   private onSelect(symbol: string) {

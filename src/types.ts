@@ -36,6 +36,9 @@ export type CommonConfig = {
   publishableKey: string; // from icpay-sdk
   apiUrl?: string;
   icHost?: string;
+  // Chain/network selection (for multi-chain assets)
+  chainName?: string; // default: 'IC'
+  chainId?: number;   // default: 0
   // Optional metadata to include on created payment intents
   metadata?: Record<string, any>;
   // Optional derivation origin override used by wallet connectors like Internet Identity
