@@ -95,7 +95,7 @@ export class ICPayDonationThermometer extends LitElement {
       const saved = JSON.parse(raw);
       if (!saved?.provider || !saved?.principal) return;
       if (!PlugNPlay) {
-        const module = await import('@windoge98/plug-n-play');
+        const module = await import('../wallet-select');
         PlugNPlay = module.PNP;
       }
       const _cfg1: any = applyOisyNewTabConfig({ ...(this.config?.plugNPlay || {}) });
@@ -239,7 +239,7 @@ export class ICPayDonationThermometer extends LitElement {
         if (!this.walletConnected) {
           debugLog(this.config?.debug || false, 'Connecting to wallet via Plug N Play');
           try {
-            if (!PlugNPlay) { const module = await import('@windoge98/plug-n-play'); PlugNPlay = module.PNP; }
+            if (!PlugNPlay) { const module = await import('../wallet-select'); PlugNPlay = module.PNP; }
             const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
             const _cfg2: any = wantsOisyTab ? applyOisyNewTabConfig({ ...(this.config?.plugNPlay || {}) }) : ({ ...(this.config?.plugNPlay || {}) });
             try {

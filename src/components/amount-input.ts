@@ -181,7 +181,7 @@ export class ICPayAmountInput extends LitElement {
     if (this.walletConnected) return true;
     try {
       if (!PlugNPlay) {
-        const module = await import('@windoge98/plug-n-play');
+        const module = await import('../wallet-select');
         PlugNPlay = module.PNP;
       }
       const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);

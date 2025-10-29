@@ -161,7 +161,7 @@ export class ICPayPayButton extends LitElement {
     if (this.walletConnected) return true;
     try {
       if (!PlugNPlay) {
-        const module = await import('@windoge98/plug-n-play');
+        const module = await import('../wallet-select');
         PlugNPlay = module.PNP;
       }
       // Optional: open Oisy in a new tab if explicitly enabled
@@ -230,7 +230,7 @@ export class ICPayPayButton extends LitElement {
           this.oisyConnectRetriedNewTab = true;
           (async () => {
             try {
-              if (!PlugNPlay) { const module = await import('@windoge98/plug-n-play'); PlugNPlay = module.PNP; }
+              if (!PlugNPlay) { const module = await import('../wallet-select'); PlugNPlay = module.PNP; }
               const raw: any = { ...(this.config?.plugNPlay || {}) };
               const cfg: any = applyOisyNewTabConfig(raw);
               try {
