@@ -1,4 +1,4 @@
-import { HttpAgent } from '@dfinity/agent';
+import { Actor, HttpAgent } from '@dfinity/agent';
 // Avoid importing IDL types to prevent cross-version type conflicts
 import type { AdapterInterface, WalletSelectConfig, GetActorOptions, WalletAccount } from '../index';
 import { PostMessageTransport } from '@slide-computer/signer-web';
@@ -54,9 +54,7 @@ export class OisyAdapter implements AdapterInterface {
   getActor(options: GetActorOptions): any {
     if (!this._agent) throw new Error('Oisy agent not initialized');
     // Create actor through the signer agent compatible path
-    return (globalThis as any).Actor?.createActor
-      ? (globalThis as any).Actor.createActor(options.idl, { agent: this._agent, canisterId: options.canisterId })
-      : (options as any);
+    return Actor.createActor(options.idl, { agent: this._agent, canisterId: options.canisterId });
   }
 }
 

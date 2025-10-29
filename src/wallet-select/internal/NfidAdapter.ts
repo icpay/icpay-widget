@@ -1,4 +1,4 @@
-import { HttpAgent } from '@dfinity/agent';
+import { Actor, HttpAgent } from '@dfinity/agent';
 // Avoid importing IDL types to prevent cross-version type conflicts
 import type { AdapterInterface, WalletSelectConfig, GetActorOptions, WalletAccount } from '../index';
 import { PostMessageTransport } from '@slide-computer/signer-web';
@@ -45,9 +45,7 @@ export class NfidAdapter implements AdapterInterface {
   async getPrincipal(): Promise<string | null> { return this._principal; }
   getActor(options: GetActorOptions): any {
     if (!this._agent) throw new Error('NFID agent not initialized');
-    return (globalThis as any).Actor?.createActor
-      ? (globalThis as any).Actor.createActor(options.idl, { agent: this._agent, canisterId: options.canisterId })
-      : (options as any);
+    return Actor.createActor(options.idl, { agent: this._agent, canisterId: options.canisterId });
   }
 }
 

@@ -1,5 +1,5 @@
 import type { HttpAgentOptions } from '@dfinity/agent';
-import { HttpAgent } from '@dfinity/agent';
+import { Actor, HttpAgent } from '@dfinity/agent';
 // Avoid importing IDL types to prevent cross-version type conflicts
 
 export type WalletSelectConfig = {
@@ -149,9 +149,7 @@ export class WalletSelect {
   getActor<T>(options: GetActorOptions): any {
     if (!this._activeAdapter) {
       const agent = new HttpAgent(defaultHttpAgentOptions(this._config.icHost));
-      return (globalThis as any).Actor?.createActor
-        ? (globalThis as any).Actor.createActor(options.idl, { agent, canisterId: options.canisterId })
-        : (options as any);
+      return Actor.createActor(options.idl, { agent, canisterId: options.canisterId });
     }
     return this._activeAdapter.getActor<T>(options);
   }
