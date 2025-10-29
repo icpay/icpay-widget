@@ -472,10 +472,6 @@ export class ICPayArticlePaywall extends LitElement {
           <div class="preview">${this.preview}</div>
           <div class="${this.unlocked ? 'unlocked' : 'locked'}">${this.unlocked ? this.lockedContent : this.obfuscatedLockedContent}</div>
         </div>
-        <div class="pricing" style="text-align:center;">
-          <div class="price">$${Number(this.config?.priceUsd ?? 0).toFixed(2)}</div>
-          <div class="label">Continue reading</div>
-        </div>
         <div>
           <icpay-token-selector
             .options=${this.cryptoOptions}
