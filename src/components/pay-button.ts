@@ -162,7 +162,7 @@ export class ICPayPayButton extends LitElement {
     try {
       if (!PlugNPlay) {
         const module = await import('../wallet-select');
-        PlugNPlay = module.PNP;
+        PlugNPlay = module.WalletSelect;
       }
       // Optional: open Oisy in a new tab if explicitly enabled
       const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
@@ -230,7 +230,7 @@ export class ICPayPayButton extends LitElement {
           this.oisyConnectRetriedNewTab = true;
           (async () => {
             try {
-              if (!PlugNPlay) { const module = await import('../wallet-select'); PlugNPlay = module.PNP; }
+              if (!PlugNPlay) { const module = await import('../wallet-select'); PlugNPlay = module.WalletSelect; }
               const raw: any = { ...(this.config?.plugNPlay || {}) };
               const cfg: any = applyOisyNewTabConfig(raw);
               try {

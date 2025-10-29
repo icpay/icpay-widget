@@ -12,5 +12,7 @@ export * from './components/amount-input';
 
 export { renderTransakOnrampModal } from './components/transak-onramp-modal';
 
+export * from './wallet-select';
+
 
 

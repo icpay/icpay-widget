@@ -1,7 +1,7 @@
 import type { ActorSubclass } from '@dfinity/agent';
 import { Actor } from '@dfinity/agent';
 import type { IDL } from '@dfinity/candid';
-import type { AdapterInterface, GlobalPnpConfig, GetActorOptions, WalletAccount, AdapterConfig } from '../index';
+import type { AdapterInterface, WalletSelectConfig, GetActorOptions, WalletAccount, AdapterConfig } from '../index';
 
 declare global {
   interface Window {
@@ -13,10 +13,10 @@ export class PlugAdapter implements AdapterInterface {
   readonly id = 'plug';
   readonly label = 'Plug';
   readonly icon: string | null = null;
-  private _config: GlobalPnpConfig;
+  private _config: WalletSelectConfig;
   private _adapterCfg?: AdapterConfig;
 
-  constructor(args: { config?: GlobalPnpConfig; adapter?: AdapterConfig }) {
+  constructor(args: { config?: WalletSelectConfig; adapter?: AdapterConfig }) {
     this._config = args.config || {};
     this._adapterCfg = args.adapter;
   }

@@ -114,7 +114,7 @@ export class ICPayPremiumContent extends LitElement {
       if (!saved?.provider || !saved?.principal) return;
       if (!PlugNPlay) {
         const module = await import('../wallet-select');
-        PlugNPlay = module.PNP;
+        PlugNPlay = module.WalletSelect;
       }
       const _cfg1: any = { ...(this.config?.plugNPlay || {}) };
       try {
@@ -241,7 +241,7 @@ export class ICPayPremiumContent extends LitElement {
         if (!this.walletConnected) {
           debugLog(this.config?.debug || false, 'Connecting to wallet via Plug N Play');
           try {
-            if (!PlugNPlay) { const module = await import('../wallet-select'); PlugNPlay = module.PNP; }
+            if (!PlugNPlay) { const module = await import('../wallet-select'); PlugNPlay = module.WalletSelect; }
             const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
             const _cfg2: any = wantsOisyTab ? applyOisyNewTabConfig({ ...(this.config?.plugNPlay || {}) }) : ({ ...(this.config?.plugNPlay || {}) });
             try {
