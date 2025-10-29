@@ -97,17 +97,18 @@ export function normalizeConnectedWallet(pnp: any, connectResult: any): any {
 // Returns principal string if an active session is detected, else null
 export async function detectOisySessionViaAdapter(pnp: any): Promise<string | null> {
   try {
-    const adapters = (pnp as any)?.config?.adapters;
-    const oisy = adapters?.oisy;
-    const AdapterCtor = oisy?.adapter;
-    if (!AdapterCtor) return null;
-    // Construct a temporary adapter instance to query session
-    const adapterInstance = new AdapterCtor({ adapter: oisy });
+    // Support both external PNP and internal wallet-select implementation
+    const getEnabled = typeof pnp?.getEnabledWallets === 'function' ? pnp.getEnabledWallets.bind(pnp) : null;
+    if (!getEnabled) return null;
+    const enabled = getEnabled() || [];
+    const oisyCfg = enabled.find((w: any) => (w?.id || '').toLowerCase() === 'oisy');
+    if (!oisyCfg || !oisyCfg.adapter) return null;
+    const AdapterCtor = oisyCfg.adapter;
+    const adapterInstance = new AdapterCtor({ config: (pnp as any)?.config || {} });
     const connected: boolean = await adapterInstance.isConnected();
     if (!connected) return null;
-    const principal: string = await adapterInstance.getPrincipal();
-    // Ignore anonymous/public identity ('2vxsx-fae')
-    if (principal && typeof principal === 'string' && principal.length > 0 && principal !== '2vxsx-fae') return principal;
+    const principal: string | null = await adapterInstance.getPrincipal();
+    if (principal && principal !== '2vxsx-fae') return principal;
     return null;
   } catch {
     return null;
