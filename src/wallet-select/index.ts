@@ -69,6 +69,19 @@ import { NfidAdapter } from './internal/NfidAdapter.js';
 import { OisyAdapter } from './internal/OisyAdapter.js';
 import { getIcon } from './img/icons.js';
 
+// Compile-time feature flags for tree-shaking heavy wallet adapters.
+// Use tsup/esbuild --define to override these at build time, e.g.:
+//   --define:__ENABLE_WALLET_NFID=false
+// Defaults keep current behavior (all enabled) unless explicitly disabled.
+declare const __ENABLE_WALLET_PLUG: boolean | undefined;
+declare const __ENABLE_WALLET_II: boolean | undefined;
+declare const __ENABLE_WALLET_NFID: boolean | undefined;
+declare const __ENABLE_WALLET_OISY: boolean | undefined;
+const ENABLE_WALLET_PLUG = (typeof __ENABLE_WALLET_PLUG === 'boolean') ? __ENABLE_WALLET_PLUG : true;
+const ENABLE_WALLET_II = (typeof __ENABLE_WALLET_II === 'boolean') ? __ENABLE_WALLET_II : true;
+const ENABLE_WALLET_NFID = (typeof __ENABLE_WALLET_NFID === 'boolean') ? __ENABLE_WALLET_NFID : true;
+const ENABLE_WALLET_OISY = (typeof __ENABLE_WALLET_OISY === 'boolean') ? __ENABLE_WALLET_OISY : true;
+
 export class WalletSelect {
   private _config: WalletSelectConfig;
   private _adapters: Record<string, AdapterConfig>;
@@ -77,12 +90,19 @@ export class WalletSelect {
 
   constructor(config?: WalletSelectConfig) {
     this._config = config || {};
-    const baseAdapters: Record<string, AdapterConfig> = {
-      oisy: { id: 'oisy', label: 'Oisy', icon: null, enabled: true, adapter: OisyAdapter },
-      nfid: { id: 'nfid', label: 'NFID', icon: null, enabled: true, adapter: NfidAdapter },
-      ii: { id: 'ii', label: 'Internet Identity', icon: null, enabled: true, adapter: IIAdapter },
-      plug: { id: 'plug', label: 'Plug', icon: null, enabled: true, adapter: PlugAdapter }
-    };
+    const baseAdapters: Record<string, AdapterConfig> = {};
+    if (ENABLE_WALLET_OISY) {
+      baseAdapters.oisy = { id: 'oisy', label: 'Oisy', icon: null, enabled: true, adapter: OisyAdapter };
+    }
+    if (ENABLE_WALLET_NFID) {
+      baseAdapters.nfid = { id: 'nfid', label: 'NFID', icon: null, enabled: true, adapter: NfidAdapter };
+    }
+    if (ENABLE_WALLET_II) {
+      baseAdapters.ii = { id: 'ii', label: 'Internet Identity', icon: null, enabled: true, adapter: IIAdapter };
+    }
+    if (ENABLE_WALLET_PLUG) {
+      baseAdapters.plug = { id: 'plug', label: 'Plug', icon: null, enabled: true, adapter: PlugAdapter };
+    }
     // Initialize adapters config with sane defaults and allow overrides
     const cfgAdapters = (this._config.adapters = this._config.adapters || {});
     const host = defaultIcHost(this._config.icHost);
