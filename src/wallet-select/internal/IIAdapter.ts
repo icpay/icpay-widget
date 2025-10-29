@@ -1,17 +1,17 @@
 import type { ActorSubclass } from '@dfinity/agent';
 import { Actor, HttpAgent } from '@dfinity/agent';
 import { AuthClient } from '@dfinity/auth-client';
-import type { AdapterInterface, GlobalPnpConfig, GetActorOptions, WalletAccount } from '../index';
+import type { AdapterInterface, WalletSelectConfig, GetActorOptions, WalletAccount } from '../index';
 
 export class IIAdapter implements AdapterInterface {
   readonly id = 'ii';
   readonly label = 'Internet Identity';
   readonly icon: string | null = null;
-  private _config: GlobalPnpConfig;
+  private _config: WalletSelectConfig;
   private _client: AuthClient | null = null;
   private _agent: HttpAgent | null = null;
 
-  constructor(args: { config: GlobalPnpConfig }) {
+  constructor(args: { config: WalletSelectConfig }) {
     this._config = args.config || {};
   }
 

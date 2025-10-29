@@ -182,7 +182,7 @@ export class ICPayAmountInput extends LitElement {
     try {
       if (!PlugNPlay) {
         const module = await import('../wallet-select');
-        PlugNPlay = module.PNP;
+        PlugNPlay = module.WalletSelect;
       }
       const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
       const _rawCfg: any = { ...(this.config?.plugNPlay || {}) };

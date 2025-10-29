@@ -1,6 +1,6 @@
 import { HttpAgent } from '@dfinity/agent';
 // Avoid importing IDL types to prevent cross-version type conflicts
-import type { AdapterInterface, GlobalPnpConfig, GetActorOptions, WalletAccount } from '../index';
+import type { AdapterInterface, WalletSelectConfig, GetActorOptions, WalletAccount } from '../index';
 import { PostMessageTransport } from '@slide-computer/signer-web';
 import { Signer } from '@slide-computer/signer';
 import { SignerAgent } from '@slide-computer/signer-agent';
@@ -9,11 +9,11 @@ export class NfidAdapter implements AdapterInterface {
   readonly id = 'nfid';
   readonly label = 'NFID';
   readonly icon: string | null = null;
-  private _config: GlobalPnpConfig;
+  private _config: WalletSelectConfig;
   private _agent: any | null = null;
   private _principal: string | null = null;
 
-  constructor(args: { config: GlobalPnpConfig }) { this._config = args.config || {}; }
+  constructor(args: { config: WalletSelectConfig }) { this._config = args.config || {}; }
 
   async isInstalled(): Promise<boolean> { return true; }
   async isConnected(): Promise<boolean> { return !!this._agent; }

@@ -2,7 +2,7 @@ import type { HttpAgentOptions } from '@dfinity/agent';
 import { HttpAgent } from '@dfinity/agent';
 // Avoid importing IDL types to prevent cross-version type conflicts
 
-export type GlobalPnpConfig = {
+export type WalletSelectConfig = {
   icHost?: string;
   derivationOrigin?: string;
   adapters?: Partial<Record<string, { adapter?: any; config?: any; enabled?: boolean; label?: string; icon?: string }>>;
@@ -38,7 +38,7 @@ export type AdapterConfig = {
   label: string;
   icon?: string | null;
   enabled?: boolean;
-  adapter: new (args: { config: GlobalPnpConfig }) => AdapterInterface;
+  adapter: new (args: { config: WalletSelectConfig }) => AdapterInterface;
 };
 
 function toStringPrincipal(value: unknown): string | null {
@@ -69,13 +69,13 @@ import { NfidAdapter } from './internal/NfidAdapter.js';
 import { OisyAdapter } from './internal/OisyAdapter.js';
 import { getIcon } from './img/icons.js';
 
-export class PNP {
-  private _config: GlobalPnpConfig;
+export class WalletSelect {
+  private _config: WalletSelectConfig;
   private _adapters: Record<string, AdapterConfig>;
   private _activeAdapter: AdapterInterface | null = null;
   private _account: WalletAccount | null = null;
 
-  constructor(config?: GlobalPnpConfig) {
+  constructor(config?: WalletSelectConfig) {
     this._config = config || {};
     const baseAdapters: Record<string, AdapterConfig> = {
       oisy: { id: 'oisy', label: 'Oisy', icon: null, enabled: true, adapter: OisyAdapter },
@@ -107,7 +107,7 @@ export class PNP {
     this._adapters = baseAdapters;
   }
 
-  get config(): GlobalPnpConfig { return this._config; }
+  get config(): WalletSelectConfig { return this._config; }
   get account(): WalletAccount | null { return this._account; }
 
   getEnabledWallets(): any[] {
@@ -157,6 +157,6 @@ export class PNP {
   }
 }
 
-export const createPNP = (config?: GlobalPnpConfig) => new PNP(config);
+export const createWalletSelect = (config?: WalletSelectConfig) => new WalletSelect(config);
 
 
