@@ -67,7 +67,6 @@ import { PlugAdapter } from './internal/PlugAdapter.js';
 import { IIAdapter } from './internal/IIAdapter.js';
 import { NfidAdapter } from './internal/NfidAdapter.js';
 import { OisyAdapter } from './internal/OisyAdapter.js';
-import { StoicAdapter } from './internal/StoicAdapter.js';
 import { getIcon } from './img/icons.js';
 
 export class PNP {
@@ -79,11 +78,10 @@ export class PNP {
   constructor(config?: GlobalPnpConfig) {
     this._config = config || {};
     const baseAdapters: Record<string, AdapterConfig> = {
-      plug: { id: 'plug', label: 'Plug', icon: null, enabled: true, adapter: PlugAdapter },
-      ii: { id: 'ii', label: 'Internet Identity', icon: null, enabled: true, adapter: IIAdapter },
-      nfid: { id: 'nfid', label: 'NFID', icon: null, enabled: true, adapter: NfidAdapter },
       oisy: { id: 'oisy', label: 'Oisy', icon: null, enabled: true, adapter: OisyAdapter },
-      stoic: { id: 'stoic', label: 'Stoic', icon: null, enabled: true, adapter: StoicAdapter }
+      nfid: { id: 'nfid', label: 'NFID', icon: null, enabled: true, adapter: NfidAdapter },
+      ii: { id: 'ii', label: 'Internet Identity', icon: null, enabled: true, adapter: IIAdapter },
+      plug: { id: 'plug', label: 'Plug', icon: null, enabled: true, adapter: PlugAdapter }
     };
     // Initialize adapters config with sane defaults and allow overrides
     const cfgAdapters = (this._config.adapters = this._config.adapters || {});
