@@ -1,6 +1,6 @@
 {
   "name": "@ic-pay/icpay-widget",
-  "version": "1.1.55",
+  "version": "1.1.56",
   "description": "ICPay embeddable payment widgets as framework-agnostic Web Components",
   "homepage": "https://github.com/icpay/icpay-widget#readme",
   "bugs": {
@@ -41,7 +41,7 @@
     "@dfinity/candid": "^3.4.1",
     "@dfinity/identity": "^3.4.1",
     "@dfinity/principal": "^3.4.1",
-    "@ic-pay/icpay-sdk": "^1.3.95",
+    "@ic-pay/icpay-sdk": "^1.3.96",
     "@slide-computer/signer": "^4.0.0",
     "@slide-computer/signer-agent": "^4.0.0",
     "@slide-computer/signer-web": "^4.0.0",
