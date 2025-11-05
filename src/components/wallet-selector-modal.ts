@@ -45,22 +45,20 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
       icon: w.icon ?? null,
     };
   });
-  // onramp-start: Temporarily disable Credit Card (Transak) option in wallet selector
-  const creditCardSection: TemplateResult | null = null;
-  /*
-  // Original credit card section (re-enable by replacing `${creditCardSection}` with this block):
-  <div style="margin:12px 0;height:1px;background:rgba(255,255,255,0.08)"></div>
-  <div style="display:flex;flex-direction:column;gap:6px">
-    <button
-      @click=${() => { if (opts.onCreditCard) opts.onCreditCard(); }}
-      style="width:100%;padding:12px 16px;background:linear-gradient(135deg,#3b82f6 0%,#10b981 100%);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;text-align:center;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px">
-      <span>💳</span>
-      <span style="font-weight:600">${opts.creditCardLabel || 'Pay with credit card'}</span>
-    </button>
-    ${opts.creditCardTooltip ? html`<div style="font-size:12px;color:#f5d78a;text-align:center">${opts.creditCardTooltip}</div>` : null}
-  </div>
-  */
-  // onramp-end
+  const creditCardSection: TemplateResult | null = (opts.showCreditCard && opts.onCreditCard)
+    ? html`
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
+        <button
+          @click=${() => { if (opts.onCreditCard) opts.onCreditCard(); }}
+          style="width:100%;padding:12px 16px;background:linear-gradient(135deg,#3b82f6 0%,#10b981 100%);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;text-align:center;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px">
+          <span>💳</span>
+          <span style="font-weight:600">${opts.creditCardLabel || 'Pay with credit card'}</span>
+        </button>
+        ${opts.creditCardTooltip ? html`<div style="font-size:12px;color:#f5d78a;text-align:center">${opts.creditCardTooltip}</div>` : null}
+      </div>
+      <div style="margin:12px 0;height:1px;background:rgba(255,255,255,0.08)"></div>
+    `
+    : null;
   return html`
     <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);z-index:10000">
       <style>
@@ -69,7 +67,8 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
       </style>
       <div style="background:#1f2937;border-radius:12px;padding:24px;max-width:400px;width:90%;border:1px solid rgba(255,255,255,0.1);position:relative">
         <button @click=${onClose} style="position:absolute;top:16px;right:16px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#9ca3af;cursor:pointer;border:none;background:transparent;font-size:20px">✕</button>
-        ${opts.oisyReadyToPay ? null : html`<h3 style="color:#fff;margin:0 48px 16px 0;font-size:18px;font-weight:600">Choose Wallet</h3>`}
+        ${opts.oisyReadyToPay ? null : html`<h3 style="color:#fff;margin:0 48px 16px 0;font-size:18px;font-weight:600">Connect or pay</h3>`}
+        ${creditCardSection}
         <div style="display:flex;flex-direction:column;gap:8px">
           ${opts.oisyReadyToPay ? html`
             <button
@@ -111,7 +110,6 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
             return html`<div style="width:100%">${mainButton}</div>`;
           })}
         </div>
-        ${creditCardSection}
       </div>
     </div>
   `;
