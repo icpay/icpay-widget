@@ -7,6 +7,7 @@ import { createSdk } from '../utils/sdk';
 import './progress-bar';
 import './token-selector';
 import { renderWalletSelectorModal } from './wallet-selector-modal';
+import { renderWalletBalanceModal, WalletBalanceEntry } from './wallet-balance-modal';
 import { renderTransakOnrampModal, TransakOnrampOptions } from './transak-onramp-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
 
@@ -98,6 +99,11 @@ export class ICPayArticlePaywall extends LitElement {
   private onrampPollTimer: number | null = null;
   private onrampPollingActive: boolean = false;
   private onrampNotifyController: { stop: () => void } | null = null;
+  // Post-connect token selection
+  @state() private showBalanceModal = false;
+  @state() private balancesLoading = false;
+  @state() private balancesError: string | null = null;
+  @state() private walletBalances: WalletBalanceEntry[] = [];
   private async tryAutoConnectPNP() {
     try {
       if (!this.config || this.config?.useOwnWallet) return;
@@ -437,8 +443,8 @@ export class ICPayArticlePaywall extends LitElement {
           this.oisyReadyToPay = true;
         } else {
           this.showWalletModal = false;
-          const action = this.pendingAction; this.pendingAction = null;
-          if (action === 'unlock') setTimeout(() => this.unlock(), 0);
+          // After any successful wallet connect, open token-balance picker
+          this.fetchAndShowBalances();
         }
       }).catch((error: any) => {
         this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
@@ -451,6 +457,44 @@ export class ICPayArticlePaywall extends LitElement {
       this.showWalletModal = false;
     }
   }
+
+  private async fetchAndShowBalances() {
+    // Opens modal with balances; falls back to showing all verified ledgers if balance fetch fails
+    try {
+      this.balancesLoading = true;
+      this.balancesError = null;
+      this.showBalanceModal = true;
+      const sdk = createSdk(this.config);
+      // Use SDK public flow to read balances from ledgers directly for the connected wallet (IC ledgers)
+      const all = await (sdk as any).getAllLedgerBalances();
+      const entries: WalletBalanceEntry[] = (all?.balances || []).map((b: any) => ({
+        ledgerId: b.ledgerId,
+        ledgerName: b.ledgerName,
+        ledgerSymbol: b.ledgerSymbol,
+        canisterId: b.canisterId,
+        balance: b.balance,
+        formattedBalance: b.formattedBalance,
+        decimals: b.decimals,
+        currentPrice: b.currentPrice,
+        lastUpdated: b.lastUpdated,
+      }));
+      this.walletBalances = entries;
+    } catch (e: any) {
+      this.walletBalances = [];
+      this.balancesError = (e && (e.message || String(e))) || 'Failed to load balances';
+    } finally {
+      this.balancesLoading = false;
+    }
+  }
+
+  private onSelectBalanceSymbol = (symbol: string) => {
+    if (symbol && typeof symbol === 'string') {
+      this.selectedSymbol = symbol;
+    }
+    this.showBalanceModal = false;
+    const action = this.pendingAction; this.pendingAction = null;
+    if (action === 'unlock') setTimeout(() => this.unlock(), 0);
+  };
 
   render() {
     if (!this.config) {
@@ -518,6 +562,15 @@ export class ICPayArticlePaywall extends LitElement {
             onOisyPay: () => { this.showWalletModal = false; this.oisyReadyToPay = false; this.unlock(); }
           });
         })()}
+
+        ${renderWalletBalanceModal({
+          visible: this.showBalanceModal,
+          isLoading: this.balancesLoading,
+          error: this.balancesError,
+          balances: this.walletBalances,
+          onSelect: (s: string) => this.onSelectBalanceSymbol(s),
+          onClose: () => { this.showBalanceModal = false; },
+        })}
 
         ${this.showOnrampModal ? renderTransakOnrampModal({
           visible: this.showOnrampModal,
