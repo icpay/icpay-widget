@@ -1,16 +1,6 @@
 import { html, TemplateResult } from 'lit';
-
-export type WalletBalanceEntry = {
-  ledgerId: string;
-  ledgerName: string;
-  ledgerSymbol: string;
-  canisterId: string;
-  balance: string; // raw smallest units
-  formattedBalance: string; // human readable
-  decimals: number;
-  currentPrice?: number;
-  lastUpdated: Date;
-};
+import type { WalletBalanceEntry } from '../utils/balances';
+import { formatTokenAmountThirdwebStyle } from '../utils/format';
 
 type Options = {
   visible: boolean;
@@ -24,15 +14,21 @@ type Options = {
 export function renderWalletBalanceModal(opts: Options): TemplateResult | null {
   if (!opts.visible) return null as any;
 
-  const nonZero = (opts.balances || []).filter((b) => {
-    const v = Number(b.formattedBalance || '0');
-    return isFinite(v) && v > 0;
-  });
+  const formatTokenAmount = (val: string | number): string => formatTokenAmountThirdwebStyle(val);
 
-  const zero = (opts.balances || []).filter((b) => {
-    const v = Number(b.formattedBalance || '0');
-    return !isFinite(v) || v <= 0;
-  });
+  const toUsd = (b: WalletBalanceEntry): number => {
+    const amt = parseFloat(String(b.formattedBalance || '0'));
+    const price = Number((b as any).currentPrice ?? 0);
+    const usd = (isFinite(amt) ? amt : 0) * (isFinite(price) ? price : 0);
+    return isFinite(usd) ? usd : 0;
+  };
+  const byUsdDesc = (a: WalletBalanceEntry, b: WalletBalanceEntry) => toUsd(b) - toUsd(a);
+  const sufficient = (opts.balances || [])
+    .filter((b) => b.hasSufficientBalance === true || b.hasSufficientBalance === undefined)
+    .sort(byUsdDesc);
+  const insufficient = (opts.balances || [])
+    .filter((b) => b.hasSufficientBalance === false)
+    .sort(byUsdDesc);
 
   return html`
     <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);z-index:10001">
@@ -54,13 +50,13 @@ export function renderWalletBalanceModal(opts: Options): TemplateResult | null {
         ` : (opts.error ? html`
           <div style="color:#fca5a5">${opts.error}</div>
         ` : html`
-          ${nonZero.length > 0 ? html`
+          ${sufficient.length > 0 ? html`
             <div style="display:flex;flex-direction:column;gap:8px">
-              ${nonZero.map((b) => html`
+              ${sufficient.map((b) => html`
                 <button class="btn" @click=${() => opts.onSelect(b.ledgerSymbol)}>
                   <div class="row">
-                    <div class="sym">${b.ledgerName} <span class="muted" style="margin-left:6px">${b.ledgerSymbol}</span></div>
-                    <div class="amt">${b.formattedBalance}</div>
+                    <div class="sym">${(b.chainName ? b.chainName + ' - ' : '') + b.ledgerName} <span class="muted" style="margin-left:6px">(${b.ledgerSymbol})</span></div>
+                    <div class="amt">${formatTokenAmount(b.formattedBalance)} ($${toUsd(b).toFixed(2)})</div>
                   </div>
                 </button>
               `)}
@@ -69,15 +65,15 @@ export function renderWalletBalanceModal(opts: Options): TemplateResult | null {
             <div class="muted" style="margin-bottom:8px">You have no balances on verified ledgers.</div>
           `}
 
-          ${zero.length > 0 ? html`
+          ${insufficient.length > 0 ? html`
             <div class="divider"></div>
-            <div class="muted" style="margin-bottom:8px">Other tokens</div>
+            <div class="muted" style="margin-bottom:8px">Insufficient balance</div>
             <div style="display:flex;flex-direction:column;gap:8px">
-              ${zero.map((b) => html`
-                <button class="btn" disabled title="No balance" @click=${() => opts.onSelect(b.ledgerSymbol)}>
+              ${insufficient.map((b) => html`
+                <button class="btn" disabled title="Insufficient balance" @click=${() => opts.onSelect(b.ledgerSymbol)}>
                   <div class="row">
-                    <div class="sym">${b.ledgerName} <span class="muted" style="margin-left:6px">${b.ledgerSymbol}</span></div>
-                    <div class="amt">0</div>
+                    <div class="sym">${(b.chainName ? b.chainName + ' - ' : '') + b.ledgerName} <span class="muted" style="margin-left:6px">(${b.ledgerSymbol})</span></div>
+                    <div class="amt">need ${b.requiredAmountFormatted || '--'}</div>
                   </div>
                 </button>
               `)}

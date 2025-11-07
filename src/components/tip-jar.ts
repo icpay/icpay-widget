@@ -2,10 +2,10 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles';
 import { handleWidgetError, getErrorMessage, shouldShowErrorToUser, getErrorAction, getErrorSeverity, ErrorSeverity } from '../error-handling';
-import type { TipJarConfig, CryptoOption } from '../types';
+import { buildWalletEntries } from '../utils/balances';
+import type { TipJarConfig } from '../types';
 import { createSdk } from '../utils/sdk';
 import './progress-bar';
-import './token-selector';
 import { renderWalletSelectorModal } from './wallet-selector-modal';
 import { renderTransakOnrampModal, TransakOnrampOptions } from './transak-onramp-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
@@ -13,7 +13,7 @@ import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAd
 // Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';
 
-// Plug N Play will be imported dynamically when needed
+// wallet will be imported dynamically when needed
 let PlugNPlay: any = null;
 
 // Debug logger utility for widget components
@@ -69,7 +69,6 @@ export class ICPayTipJar extends LitElement {
   @state() private total = 0;
   @state() private processing = false;
   @state() private succeeded = false;
-  @state() private availableLedgers: CryptoOption[] = [];
   @state() private errorMessage: string | null = null;
   @state() private errorSeverity: ErrorSeverity | null = null;
   @state() private errorAction: string | null = null;
@@ -119,14 +118,6 @@ export class ICPayTipJar extends LitElement {
   private get amounts(): number[] {
     return this.config?.amountsUsd || [1, 5, 10];
   }
-  private get cryptoOptions(): CryptoOption[] {
-    // If config provides cryptoOptions, use those (allows override)
-    if (this.config.cryptoOptions) {
-      return this.config.cryptoOptions;
-    }
-    // Otherwise use fetched verified ledgers
-    return this.availableLedgers;
-  }
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -137,10 +128,14 @@ export class ICPayTipJar extends LitElement {
     if (this.config && this.config.defaultAmountUsd) this.selectedAmount = this.config.defaultAmountUsd;
     this.tryAutoConnectPNP();
     try { window.addEventListener('icpay-switch-account', this.onSwitchAccount as EventListener); } catch {}
-    if (!(this.config?.cryptoOptions && this.config.cryptoOptions.length > 0)) {
-      this.loadVerifiedLedgers();
-    }
-    if (this.config?.defaultSymbol) this.selectedSymbol = this.config.defaultSymbol;
+    // Close wallet modal after SDK transaction creation
+    try {
+      window.addEventListener('icpay-sdk-transaction-created', (() => {
+        this.showWalletModal = false;
+        this.requestUpdate();
+      }) as EventListener);
+    } catch {}
+    // No ledger preload; balances flow handles token availability
   }
 
   protected updated(changed: Map<string, unknown>): void {
@@ -165,43 +160,13 @@ export class ICPayTipJar extends LitElement {
       this.requestUpdate();
       try {
         const amount = Number(this.selectedAmount || 0);
-        const curr = this.selectedSymbol || this.config?.defaultSymbol;
+        const curr = this.selectedSymbol || 'ICP';
         window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'tip', type: 'sendUsd', amount, currency: curr } }));
       } catch {}
     } catch {}
   };
 
-  private async loadVerifiedLedgers() {
-    if (!isBrowser || !this.config?.publishableKey) {
-      // Skip in SSR or if config not set yet
-      return;
-    }
-
-    try {
-      const sdk = createSdk(this.config);
-      const ledgers = await sdk.client.getVerifiedLedgers();
-      this.availableLedgers = ledgers.map(ledger => ({
-        symbol: ledger.symbol,
-        label: ledger.name,
-        canisterId: ledger.canisterId
-      }));
-      // If user provided a single cryptoOption, auto-select regardless of dropdown mode
-      if (this.config?.cryptoOptions && this.config.cryptoOptions.length === 1) {
-        this.selectedSymbol = this.config.cryptoOptions[0].symbol;
-      }
-      // Set default selection to provided defaultSymbol, else first available
-      if (!this.selectedSymbol && this.availableLedgers.length > 0) {
-        this.selectedSymbol = this.config?.defaultSymbol || this.availableLedgers[0].symbol;
-      }
-    } catch (error) {
-      console.warn('Failed to load verified ledgers:', error);
-      // Fallback to basic options if API fails
-      this.availableLedgers = [ { symbol: 'ICP', label: 'ICP', canisterId: 'ryjl3-tyaaa-aaaaa-aaaba-cai' } ];
-      if (!this.selectedSymbol) {
-        this.selectedSymbol = this.config?.defaultSymbol || 'ICP';
-      }
-    }
-  }
+  // Removed ledger preload
 
   private selectAmount(v: number) { this.selectedAmount = v; }
   private selectSymbol(s: string) { this.selectedSymbol = s; }
@@ -222,7 +187,7 @@ export class ICPayTipJar extends LitElement {
     this.errorSeverity = null;
     this.errorAction = null;
 
-    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'tip', type: 'sendUsd', amount: this.selectedAmount, currency: this.selectedSymbol || this.config?.defaultSymbol } })); } catch {}
+    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'tip', type: 'sendUsd', amount: this.selectedAmount, currency: this.selectedSymbol || 'ICP' } })); } catch {}
 
     this.processing = true;
     try {
@@ -235,13 +200,14 @@ export class ICPayTipJar extends LitElement {
           return;
         }
       } else {
-        // Built-in wallet handling - connect directly with Plug N Play
+        // Built-in wallet handling - connect directly with wallet
         if (!this.walletConnected) {
-          debugLog(this.config?.debug || false, 'Connecting to wallet via Plug N Play');
+          debugLog(this.config?.debug || false, 'Connecting to wallet via wallet');
           try {
             if (!PlugNPlay) { const module = await import('../wallet-select'); PlugNPlay = module.WalletSelect; }
             const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
             const _cfg2: any = wantsOisyTab ? applyOisyNewTabConfig({ ...(this.config?.plugNPlay || {}) }) : ({ ...(this.config?.plugNPlay || {}) });
+            if ((this.config as any)?.chainTypes) _cfg2.chainTypes = (this.config as any).chainTypes;
             try {
               if (typeof window !== 'undefined') {
                 const { resolveDerivationOrigin } = await import('../utils/origin');
@@ -279,18 +245,15 @@ export class ICPayTipJar extends LitElement {
       debugLog(this.config?.debug || false, 'Creating SDK for payment');
       const sdk = createSdk(this.config);
 
-      const symbol = this.selectedSymbol || this.config?.defaultSymbol || 'ICP';
-      const opt = this.cryptoOptions.find(o => o.symbol === symbol)!;
-      const canisterId = opt.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(symbol);
+      const symbol = this.selectedSymbol || 'ICP';
 
       debugLog(this.config?.debug || false, 'Tip payment details', {
         amount: this.selectedAmount,
-        selectedSymbol: symbol,
-        canisterId
+        selectedSymbol: symbol
       });
 
       // Do not pre-open Oisy signer tab here; let SDK handle it inside this click
-      const resp = await sdk.sendUsd(this.selectedAmount, canisterId, { context: 'tip-jar' });
+      const resp = await sdk.sendUsd(this.selectedAmount, symbol, { context: 'tip-jar' });
       debugLog(this.config?.debug || false, 'Tip payment completed', { resp });
 
       this.total += this.selectedAmount;
@@ -359,10 +322,8 @@ export class ICPayTipJar extends LitElement {
   private async createOnrampIntent() {
     try {
       const sdk = createSdk(this.config);
-      const symbol = this.selectedSymbol || this.config?.defaultSymbol || 'ICP';
-      const opt = this.cryptoOptions.find(o => o.symbol === symbol)!;
-      const canisterId = opt.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(symbol);
-      const resp = await (sdk as any).startOnrampUsd(this.selectedAmount, canisterId, { context: 'tip:onramp' });
+      const symbol = this.selectedSymbol || 'ICP';
+      const resp = await (sdk as any).startOnrampUsd(this.selectedAmount, symbol, { context: 'tip:onramp' });
       const sessionId = resp?.metadata?.onramp?.sessionId || resp?.metadata?.onramp?.session_id || null;
       const paymentIntentId = resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
       const errorMessage = resp?.metadata?.onramp?.errorMessage || null;
@@ -445,14 +406,6 @@ export class ICPayTipJar extends LitElement {
       return html`<div class="icpay-card icpay-section">Loading...</div>`;
     }
 
-    // Determine token selector visibility/mode using new string-based setting
-    const optionsCount = this.cryptoOptions?.length || 0;
-    const hasMultiple = optionsCount > 1;
-    const rawMode = (this.config?.showLedgerDropdown as any) as ('buttons'|'dropdown'|'none'|undefined);
-    const globalMode: 'buttons'|'dropdown'|'none' = rawMode === 'dropdown' ? 'dropdown' : rawMode === 'none' ? 'none' : 'buttons';
-    const showSelector = (globalMode !== 'none') && (hasMultiple || globalMode === 'dropdown');
-    const tokenSelectorMode: 'buttons'|'dropdown'|'none' = globalMode === 'dropdown' ? 'dropdown' : (hasMultiple ? 'buttons' : 'none');
-
     return html`
       <div class="icpay-card icpay-section icpay-widget-base" style="text-align:center;">
         ${this.config?.progressBar?.enabled !== false ? html`
@@ -460,7 +413,7 @@ export class ICPayTipJar extends LitElement {
             .debug=${!!this.config?.debug}
             .theme=${this.config?.theme}
             .amount=${Number(this.selectedAmount || 0)}
-            .ledgerSymbol=${this.selectedSymbol || this.config?.defaultSymbol || 'ICP'}
+            .ledgerSymbol=${this.selectedSymbol || 'ICP'}
           ></icpay-progress-bar>
         ` : null}
         <div class="jar"><div class="fill" style="height:${this.fillPercentage}%"></div></div>
@@ -470,24 +423,14 @@ export class ICPayTipJar extends LitElement {
           ${this.amounts.map(a => html`<div class="chip ${this.selectedAmount===a?'selected':''}" @click=${() => this.selectAmount(a)}>$${a}</div>`)}
         </div>
 
-        ${showSelector ? html`
-          <div>
-            <icpay-token-selector
-              .options=${this.cryptoOptions}
-              .value=${this.selectedSymbol || ''}
-              .defaultSymbol=${this.config?.defaultSymbol || 'ICP'}
-              mode=${tokenSelectorMode}
-              @icpay-token-change=${(e: any) => this.selectSymbol(e.detail.symbol)}
-            ></icpay-token-selector>
-          </div>
-        ` : null}
+
 
         <button class="pay-button ${this.processing?'processing':''}"
           ?disabled=${this.processing || (this.config?.disablePaymentButton === true) || (this.succeeded && this.config?.disableAfterSuccess === true)}
           @click=${() => this.tip()}>
           ${this.succeeded && this.config?.disableAfterSuccess ? 'Paid' : (this.processing ? 'Processing…' : (this.config?.buttonLabel
-            ? this.config.buttonLabel.replace('{amount}', String(this.selectedAmount)).replace('{symbol}', (this.selectedSymbol || this.config?.defaultSymbol || 'ICP'))
-            : `Tip $${this.selectedAmount} with ${this.selectedSymbol || this.config?.defaultSymbol || 'ICP'}`))}
+            ? this.config.buttonLabel.replace('{amount}', String(this.selectedAmount)).replace('{symbol}', (this.selectedSymbol || 'ICP'))
+            : `Tip $${this.selectedAmount} with crypto`))}
         </button>
 
         ${this.errorMessage ? html`
@@ -502,11 +445,12 @@ export class ICPayTipJar extends LitElement {
         ` : ''}
         ${(() => {
           const walletsRaw = (this as any).pnp?.getEnabledWallets?.() || [];
-          const wallets = walletsRaw.map((w:any)=>({ id: this.getWalletId(w), label: this.getWalletLabel(w), icon: this.getWalletIcon(w) }));
+          const wallets = (buildWalletEntries as any)(walletsRaw);
           return renderWalletSelectorModal({
             visible: !!(this.showWalletModal && this.pnp),
             wallets,
             isConnecting: false,
+            onSwitchAccount: () => this.onSwitchAccount(null),
             onSelect: (walletId: string) => this.connectWithWallet(walletId),
             onClose: () => { this.showWalletModal = false; this.oisyReadyToPay = false; },
             onCreditCard: (this.config?.onramp?.enabled !== false) ? () => this.startOnramp() : undefined,

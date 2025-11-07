@@ -2,11 +2,13 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles';
 import { handleWidgetError, getErrorMessage, shouldShowErrorToUser, getErrorAction, getErrorSeverity, ErrorSeverity } from '../error-handling';
-import type { PremiumContentConfig, CryptoOption } from '../types';
+import type { PremiumContentConfig } from '../types';
 import { createSdk } from '../utils/sdk';
 import './progress-bar';
-import './token-selector';
 import { renderWalletSelectorModal } from './wallet-selector-modal';
+import { renderWalletBalanceModal } from './wallet-balance-modal';
+import { getWalletBalanceEntries, buildWalletEntries, isEvmWalletId, ensureEvmChain } from '../utils/balances';
+import type { WalletBalanceEntry } from '../utils/balances';
 import { renderTransakOnrampModal, TransakOnrampOptions } from './transak-onramp-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
 
@@ -87,7 +89,6 @@ export class ICPayPremiumContent extends LitElement {
   @state() private unlocked = false;
   @state() private succeeded = false;
   @state() private processing = false;
-  @state() private availableLedgers: CryptoOption[] = [];
   @state() private errorMessage: string | null = null;
   @state() private errorSeverity: ErrorSeverity | null = null;
   @state() private errorAction: string | null = null;
@@ -105,6 +106,11 @@ export class ICPayPremiumContent extends LitElement {
   private onrampPollTimer: number | null = null;
   private onrampPollingActive: boolean = false;
   private onrampNotifyController: { stop: () => void } | null = null;
+  // Post-connect token selection
+  @state() private showBalanceModal = false;
+  @state() private balancesLoading = false;
+  @state() private balancesError: string | null = null;
+  @state() private walletBalances: WalletBalanceEntry[] = [];
   private async tryAutoConnectPNP() {
     try {
       if (!this.config || this.config?.useOwnWallet) return;
@@ -133,14 +139,6 @@ export class ICPayPremiumContent extends LitElement {
     } catch {}
   }
 
-  private get cryptoOptions(): CryptoOption[] {
-    // If config provides cryptoOptions, use those (allows override)
-    if (this.config.cryptoOptions) {
-      return this.config.cryptoOptions;
-    }
-    // Otherwise use fetched verified ledgers
-    return this.availableLedgers;
-  }
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -149,9 +147,14 @@ export class ICPayPremiumContent extends LitElement {
     debugLog(this.config?.debug || false, 'Premium content connected', { config: this.config });
     this.tryAutoConnectPNP();
     try { window.addEventListener('icpay-switch-account', this.onSwitchAccount as EventListener); } catch {}
-    if (!(this.config?.cryptoOptions && this.config.cryptoOptions.length > 0)) {
-      this.loadVerifiedLedgers();
-    }
+    // Close wallet/balance modals when SDK intent is created
+    try {
+      window.addEventListener('icpay-sdk-transaction-created', (() => {
+        this.showWalletModal = false;
+        this.showBalanceModal = false;
+        this.requestUpdate();
+      }) as EventListener);
+    } catch {}
   }
 
   protected updated(changed: Map<string, unknown>): void {
@@ -175,39 +178,13 @@ export class ICPayPremiumContent extends LitElement {
       this.requestUpdate();
       try {
         const amount = Number(this.config?.priceUsd || 0);
-        const curr = this.selectedSymbol || this.config?.defaultSymbol;
+        const curr = this.selectedSymbol || 'ICP';
         window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'pay', type: 'sendUsd', amount, currency: curr } }));
       } catch {}
     } catch {}
   };
 
-  private async loadVerifiedLedgers() {
-    if (!isBrowser || !this.config?.publishableKey) {
-      // Skip in SSR or if config not set yet
-      return;
-    }
 
-    try {
-      const sdk = createSdk(this.config);
-      const ledgers = await sdk.client.getVerifiedLedgers();
-      this.availableLedgers = ledgers.map(ledger => ({
-        symbol: ledger.symbol,
-        label: ledger.name,
-        canisterId: ledger.canisterId
-      }));
-      // Set default selection to defaultSymbol or first available ledger
-      if (!this.selectedSymbol) {
-        this.selectedSymbol = this.config?.defaultSymbol || (this.availableLedgers[0]?.symbol || 'ICP');
-      }
-    } catch (error) {
-      console.warn('Failed to load verified ledgers:', error);
-      // Fallback to basic options if API fails
-      this.availableLedgers = [
-        { symbol: 'ICP', label: 'ICP', canisterId: 'ryjl3-tyaaa-aaaaa-aaaba-cai' }
-      ];
-      if (!this.selectedSymbol) this.selectedSymbol = this.config?.defaultSymbol || 'ICP';
-    }
-  }
 
   private async onPay() {
     if (!isBrowser) return; // Skip in SSR
@@ -225,7 +202,7 @@ export class ICPayPremiumContent extends LitElement {
     this.errorSeverity = null;
     this.errorAction = null;
 
-    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'pay', type: 'sendUsd', amount: this.config.priceUsd, currency: this.selectedSymbol || this.config?.defaultSymbol } })); } catch {}
+    try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'pay', type: 'sendUsd', amount: this.config.priceUsd, currency: this.selectedSymbol || 'ICP' } })); } catch {}
 
     this.processing = true;
     try {
@@ -244,6 +221,7 @@ export class ICPayPremiumContent extends LitElement {
             if (!PlugNPlay) { const module = await import('../wallet-select'); PlugNPlay = module.WalletSelect; }
             const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
             const _cfg2: any = wantsOisyTab ? applyOisyNewTabConfig({ ...(this.config?.plugNPlay || {}) }) : ({ ...(this.config?.plugNPlay || {}) });
+            if ((this.config as any)?.chainTypes) _cfg2.chainTypes = (this.config as any).chainTypes;
             try {
               if (typeof window !== 'undefined') {
                 const { resolveDerivationOrigin } = await import('../utils/origin');
@@ -282,19 +260,16 @@ export class ICPayPremiumContent extends LitElement {
       debugLog(this.config?.debug || false, 'Creating SDK for payment');
       const sdk = createSdk(this.config);
 
-      // resolve canisterId by symbol if provided, otherwise require canisterId per option
-      const symbol = this.selectedSymbol || this.config?.defaultSymbol || 'ICP';
-      const option = this.cryptoOptions.find(o => o.symbol === symbol)!;
-      const canisterId = option.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(symbol);
+      // Use symbol directly; SDK will resolve token address internally
+      const symbol = this.selectedSymbol || 'ICP';
 
       debugLog(this.config?.debug || false, 'Payment details', {
         priceUsd: this.config.priceUsd,
-        selectedSymbol: symbol,
-        canisterId
+        selectedSymbol: symbol
       });
 
       // Do not pre-open Oisy signer tab here; let SDK handle it inside this click
-      const resp = await sdk.sendUsd(this.config.priceUsd, canisterId, { context: 'premium-content' });
+      const resp = await sdk.sendUsd(this.config.priceUsd, symbol, { context: 'premium-content' });
       debugLog(this.config?.debug || false, 'Payment completed', { resp });
 
       this.unlocked = true;
@@ -363,10 +338,8 @@ export class ICPayPremiumContent extends LitElement {
   private async createOnrampIntent() {
     try {
       const sdk = createSdk(this.config);
-      const symbol = this.selectedSymbol || this.config?.defaultSymbol || 'ICP';
-      const option = this.cryptoOptions.find(o => o.symbol === symbol)!;
-      const canisterId = option.canisterId || await sdk.client.getLedgerCanisterIdBySymbol(symbol);
-      const resp = await (sdk as any).startOnrampUsd(this.config.priceUsd, canisterId, { context: 'premium:onramp' });
+      const symbol = this.selectedSymbol || 'ICP';
+      const resp = await (sdk as any).startOnrampUsd(this.config.priceUsd, symbol, { context: 'premium:onramp' });
       const sessionId = resp?.metadata?.onramp?.sessionId || resp?.metadata?.onramp?.session_id || null;
       const paymentIntentId = resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
       const errorMessage = resp?.metadata?.onramp?.errorMessage || null;
@@ -432,8 +405,7 @@ export class ICPayPremiumContent extends LitElement {
           this.oisyReadyToPay = true;
         } else {
           this.showWalletModal = false;
-          const action = this.pendingAction; this.pendingAction = null;
-          if (action === 'pay') setTimeout(() => this.onPay(), 0);
+          this.fetchAndShowBalances('pay');
         }
       }).catch((error: any) => {
         this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
@@ -447,6 +419,45 @@ export class ICPayPremiumContent extends LitElement {
     }
   }
 
+  private async fetchAndShowBalances(action: 'pay') {
+    try {
+      this.balancesLoading = true;
+      this.balancesError = null;
+      this.showBalanceModal = true;
+      const sdk = createSdk(this.config);
+      const { balances } = await getWalletBalanceEntries({ sdk, lastWalletId: this.lastWalletId, connectedWallet: (this.config as any)?.connectedWallet, amountUsd: Number(this.config?.priceUsd ?? 0) });
+      this.walletBalances = balances as WalletBalanceEntry[];
+      this.pendingAction = action;
+    } catch (e: any) {
+      this.walletBalances = [];
+      this.balancesError = (e && (e.message || String(e))) || 'Failed to load balances';
+    } finally {
+      this.balancesLoading = false;
+    }
+  }
+
+  private onSelectBalanceSymbol = (symbol: string) => {
+    if (symbol && typeof symbol === 'string') {
+      this.selectedSymbol = symbol;
+    }
+    if (isEvmWalletId(this.lastWalletId)) {
+      const sel = (this.walletBalances || []).find(b => b.ledgerSymbol === (this.selectedSymbol || symbol));
+      const targetChain = sel?.chainId;
+      ensureEvmChain(targetChain, { chainName: sel?.chainName, rpcUrlPublic: (sel as any)?.rpcUrlPublic, nativeSymbol: sel?.ledgerSymbol, decimals: sel?.decimals }).then(async () => {
+        try {
+          const sdk = createSdk(this.config);
+          const amountUsd = Number(this.config?.priceUsd ?? 0);
+          await (sdk.client as any).createPaymentUsd({ usdAmount: amountUsd, chainId: sel?.chainUuid || sel?.chainId, symbol: sel?.ledgerSymbol, metadata: { network: 'evm', ledgerId: sel?.ledgerId } });
+        } catch {}
+        this.showBalanceModal = false;
+      });
+      return;
+    }
+    this.showBalanceModal = false;
+    const action = this.pendingAction; this.pendingAction = null;
+    if (action === 'pay') setTimeout(() => this.onPay(), 0);
+  };
+
   render() {
     if (!this.config) {
       return html`<div class="icpay-card icpay-section">Loading...</div>`;
@@ -459,7 +470,7 @@ export class ICPayPremiumContent extends LitElement {
             .debug=${!!this.config?.debug}
             .theme=${this.config?.theme}
             .amount=${Number(this.config?.priceUsd || 0)}
-            .ledgerSymbol=${this.selectedSymbol || this.config?.defaultSymbol || 'ICP'}
+            .ledgerSymbol=${this.selectedSymbol || 'ICP'}
           ></icpay-progress-bar>
         ` : null}
         <div class="image-container">
@@ -472,21 +483,13 @@ export class ICPayPremiumContent extends LitElement {
           <div class="label">One-time unlock</div>
         </div>
 
-        <div>
-          <icpay-token-selector
-            .options=${this.cryptoOptions}
-            .value=${this.selectedSymbol || ''}
-            .defaultSymbol=${this.config?.defaultSymbol || 'ICP'}
-            mode=${(this.config?.showLedgerDropdown || 'buttons')}
-            @icpay-token-change=${(e: any) => this.select(e.detail.symbol)}
-          ></icpay-token-selector>
-        </div>
+
 
         <button class="pay-button ${this.processing ? 'processing' : ''}" ?disabled=${this.processing || this.unlocked || (this.config?.disablePaymentButton === true) || (this.succeeded && this.config?.disableAfterSuccess === true)} @click=${() => this.onPay()}>
           ${this.unlocked ? 'Unlocked' : (this.processing ? 'Processing…' : (
-            (this.config?.buttonLabel || 'Pay ${amount} with {symbol}')
+            (this.config?.buttonLabel || 'Pay ${amount} with crypto')
               .replace('{amount}', `${Number(this.config?.priceUsd ?? 0).toFixed(2)}`)
-              .replace('{symbol}', (this.selectedSymbol || this.config?.defaultSymbol || 'ICP'))
+              .replace('{symbol}', (this.selectedSymbol || 'ICP'))
           ))}
         </button>
 
@@ -502,11 +505,12 @@ export class ICPayPremiumContent extends LitElement {
         ` : ''}
         ${(() => {
           const walletsRaw = (this as any).pnp?.getEnabledWallets?.() || [];
-          const wallets = walletsRaw.map((w:any)=>({ id: this.getWalletId(w), label: this.getWalletLabel(w), icon: this.getWalletIcon(w) }));
+          const wallets = buildWalletEntries(walletsRaw);
           return renderWalletSelectorModal({
             visible: !!(this.showWalletModal && this.pnp),
             wallets,
             isConnecting: false,
+            onSwitchAccount: () => this.onSwitchAccount(null),
             onSelect: (walletId: string) => this.connectWithWallet(walletId),
             onClose: () => { this.showWalletModal = false; this.oisyReadyToPay = false; },
             onCreditCard: ((this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true)) ? () => this.startOnramp() : undefined,
@@ -519,6 +523,15 @@ export class ICPayPremiumContent extends LitElement {
             onOisyPay: () => { this.showWalletModal = false; this.oisyReadyToPay = false; this.onPay(); }
           });
         })()}
+
+        ${renderWalletBalanceModal({
+          visible: this.showBalanceModal,
+          isLoading: this.balancesLoading,
+          error: this.balancesError,
+          balances: this.walletBalances,
+          onSelect: (s: string) => this.onSelectBalanceSymbol(s),
+          onClose: () => { this.showBalanceModal = false; },
+        })}
 
         ${this.showOnrampModal ? renderTransakOnrampModal({
           visible: this.showOnrampModal,

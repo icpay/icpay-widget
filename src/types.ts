@@ -29,7 +29,6 @@ export type PlugNPlayConfig = {
 
 export type ProgressBarConfig = {
   enabled?: boolean; // default: true
-  mode?: 'modal' | 'horizontal' | 'vertical' | 'inline'; // default: 'modal'
 };
 
 export type CommonConfig = {
@@ -39,6 +38,11 @@ export type CommonConfig = {
   // Chain/network selection (for multi-chain assets)
   chainName?: string; // default: 'IC'
   chainId?: number;   // default: 0
+  // Optional filtering for wallet balance checker
+  chainShortcodes?: string[];   // e.g., ['base','ic']
+  ledgerShortcodes?: string[];  // e.g., ['icp','pay']
+  // Optional wallet selection filter: which chain types to show wallets for
+  chainTypes?: Array<'ic' | 'evm'>;
   // Optional metadata to include on created payment intents
   metadata?: Record<string, any>;
   // Optional derivation origin override used by wallet connectors like Internet Identity
@@ -54,39 +58,24 @@ export type CommonConfig = {
   disablePaymentButton?: boolean;
   // If true, disable the payment button after a successful payment
   disableAfterSuccess?: boolean;
-  // Global control for token selector rendering: 'buttons' | 'dropdown' | 'none'
-  showLedgerDropdown?: 'buttons' | 'dropdown' | 'none';
   // Temporary kill switch: disable card onramp across all components
   onrampDisabled?: boolean;
   // Optional onramp (Transak) configuration
   onramp?: OnrampConfig;
 };
 
-export type CryptoOption = {
-  symbol: string; // e.g., 'btc', 'eth', 'usdc'
-  label: string;  // e.g., 'Bitcoin'
-  canisterId?: string; // optional mapping
-};
 
 export type PremiumContentConfig = CommonConfig & {
   priceUsd: number;
-  cryptoOptions?: CryptoOption[];
   imageUrl?: string;
   // Optional: customize button label with template variables {amount} and {symbol}
   buttonLabel?: string;
-  // Optional: default selected symbol
-  defaultSymbol?: string;
   onSuccess?: (tx: { id: number; status: string }) => void;
 };
 
 export type TipJarConfig = CommonConfig & {
   amountsUsd?: number[];
   defaultAmountUsd?: number;
-  cryptoOptions?: CryptoOption[];
-  // Optional: default selected symbol (e.g., 'ICP')
-  defaultSymbol?: string;
-  // Optional: render a ledger selector; if only one option, it will be auto-selected
-  showLedgerDropdown?: string;
   // Optional: customize button label with template variables {amount} and {symbol}
   buttonLabel?: string;
   onSuccess?: (tx: { id: number; status: string; total?: number }) => void;
@@ -94,25 +83,19 @@ export type TipJarConfig = CommonConfig & {
 
 export type ArticlePaywallConfig = CommonConfig & {
   priceUsd: number;
-  cryptoOptions?: CryptoOption[];
   title?: string;
   preview?: string;
   lockedContent?: string;
   // Optional: customize button label with template variables
   buttonLabel?: string;
-  // Optional: default selected symbol
-  defaultSymbol?: string;
   onSuccess?: (tx: { id: number; status: string }) => void;
 };
 
 export type CoffeeShopConfig = CommonConfig & {
   items: Array<{ name: string; priceUsd: number }>;
   defaultItemIndex?: number;
-  cryptoOptions?: CryptoOption[];
   // Optional: customize button label with template variables
   buttonLabel?: string;
-  // Optional: default selected symbol
-  defaultSymbol?: string;
   onSuccess?: (tx: { id: number; status: string; item: string }) => void;
 };
 
@@ -120,11 +103,8 @@ export type DonationThermometerConfig = CommonConfig & {
   goalUsd: number;
   defaultAmountUsd?: number;
   amountsUsd?: number[];
-  cryptoOptions?: CryptoOption[];
   // Optional: customize button label with template variables
   buttonLabel?: string;
-  // Optional: default selected symbol
-  defaultSymbol?: string;
   onSuccess?: (tx: { id: number; status: string; raised: number }) => void;
 };
 
@@ -148,12 +128,6 @@ export type OnrampConfig = {
 export type PayButtonConfig = CommonConfig & {
   // If set, shows amount on the button like "Pay $12 with ICPay"; otherwise a generic label
   amountUsd?: number;
-  // Optional: show or override available ledgers; if omitted, use verified ledgers from SDK
-  cryptoOptions?: CryptoOption[];
-  // Optional: controls whether to render a ledger dropdown; default: false
-  showLedgerDropdown?: string;
-  // Optional: default selected symbol, e.g. 'ICP'
-  defaultSymbol?: string;
   // Optional: override button label when amountUsd is not provided
   buttonLabel?: string;
   // Called on successful payment
@@ -165,11 +139,6 @@ export type AmountInputConfig = CommonConfig & {
   // Placeholder and defaults
   placeholder?: string; // default: "Enter amount in USD"
   defaultAmountUsd?: number; // e.g., 45
-  // Ledgers
-  cryptoOptions?: CryptoOption[];
-  // Optional: controls whether to render a ledger dropdown; default: false
-  showLedgerDropdown?: string;
-  defaultSymbol?: string; // e.g., 'ICP'
   // Validation
   minUsd?: number; // default: 0.5
   maxUsd?: number; // optional cap
