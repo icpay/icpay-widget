@@ -6,6 +6,7 @@ export type WalletSelectConfig = {
   icHost?: string;
   derivationOrigin?: string;
   adapters?: Partial<Record<string, { adapter?: any; config?: any; enabled?: boolean; label?: string; icon?: string }>>;
+  chainTypes?: Array<'ic' | 'evm'>; // optional: restrict which wallets to show
 };
 
 export type GetActorOptions = {
@@ -67,20 +68,11 @@ import { PlugAdapter } from './internal/PlugAdapter.js';
 import { IIAdapter } from './internal/IIAdapter.js';
 import { NfidAdapter } from './internal/NfidAdapter.js';
 import { OisyAdapter } from './internal/OisyAdapter.js';
+import { MetaMaskAdapter } from './internal/MetaMaskAdapter.js';
+import { WalletConnectAdapter } from './internal/WalletConnectAdapter.js';
+import { CoinbaseAdapter } from './internal/CoinbaseAdapter.js';
 import { getIcon } from './img/icons.js';
 
-// Compile-time feature flags for tree-shaking heavy wallet adapters.
-// Use tsup/esbuild --define to override these at build time, e.g.:
-//   --define:__ENABLE_WALLET_NFID=false
-// Defaults keep current behavior (all enabled) unless explicitly disabled.
-declare const __ENABLE_WALLET_PLUG: boolean | undefined;
-declare const __ENABLE_WALLET_II: boolean | undefined;
-declare const __ENABLE_WALLET_NFID: boolean | undefined;
-declare const __ENABLE_WALLET_OISY: boolean | undefined;
-const ENABLE_WALLET_PLUG = (typeof __ENABLE_WALLET_PLUG === 'boolean') ? __ENABLE_WALLET_PLUG : true;
-const ENABLE_WALLET_II = (typeof __ENABLE_WALLET_II === 'boolean') ? __ENABLE_WALLET_II : true;
-const ENABLE_WALLET_NFID = (typeof __ENABLE_WALLET_NFID === 'boolean') ? __ENABLE_WALLET_NFID : true;
-const ENABLE_WALLET_OISY = (typeof __ENABLE_WALLET_OISY === 'boolean') ? __ENABLE_WALLET_OISY : true;
 
 export class WalletSelect {
   private _config: WalletSelectConfig;
@@ -91,18 +83,13 @@ export class WalletSelect {
   constructor(config?: WalletSelectConfig) {
     this._config = config || {};
     const baseAdapters: Record<string, AdapterConfig> = {};
-    if (ENABLE_WALLET_OISY) {
-      baseAdapters.oisy = { id: 'oisy', label: 'Oisy', icon: null, enabled: true, adapter: OisyAdapter };
-    }
-    if (ENABLE_WALLET_NFID) {
-      baseAdapters.nfid = { id: 'nfid', label: 'NFID', icon: null, enabled: true, adapter: NfidAdapter };
-    }
-    if (ENABLE_WALLET_II) {
-      baseAdapters.ii = { id: 'ii', label: 'Internet Identity', icon: null, enabled: true, adapter: IIAdapter };
-    }
-    if (ENABLE_WALLET_PLUG) {
-      baseAdapters.plug = { id: 'plug', label: 'Plug', icon: null, enabled: true, adapter: PlugAdapter };
-    }
+    baseAdapters.oisy = { id: 'oisy', label: 'Oisy', icon: null, enabled: true, adapter: OisyAdapter };
+    baseAdapters.nfid = { id: 'nfid', label: 'NFID', icon: null, enabled: true, adapter: NfidAdapter };
+    baseAdapters.ii = { id: 'ii', label: 'Internet Identity', icon: null, enabled: true, adapter: IIAdapter };
+    baseAdapters.plug = { id: 'plug', label: 'Plug', icon: null, enabled: true, adapter: PlugAdapter };
+    baseAdapters.metamask = { id: 'metamask', label: 'MetaMask', icon: null, enabled: true, adapter: MetaMaskAdapter };
+    baseAdapters.walletconnect = { id: 'walletconnect', label: 'WalletConnect', icon: null, enabled: true, adapter: WalletConnectAdapter };
+    baseAdapters.coinbase = { id: 'coinbase', label: 'Coinbase Wallet', icon: null, enabled: true, adapter: CoinbaseAdapter };
     // Initialize adapters config with sane defaults and allow overrides
     const cfgAdapters = (this._config.adapters = this._config.adapters || {});
     const host = defaultIcHost(this._config.icHost);
@@ -124,6 +111,14 @@ export class WalletSelect {
     cfgAdapters.plug = cfgAdapters.plug || {};
     cfgAdapters.ii = cfgAdapters.ii || {};
 
+    // Apply runtime enable/disable from config (default is enabled)
+    Object.keys(baseAdapters).forEach((key) => {
+      const cfg = (cfgAdapters as any)[key];
+      if (cfg && typeof cfg.enabled === 'boolean') {
+        (baseAdapters as any)[key].enabled = !!cfg.enabled;
+      }
+    });
+
     this._adapters = baseAdapters;
   }
 
@@ -131,8 +126,18 @@ export class WalletSelect {
   get account(): WalletAccount | null { return this._account; }
 
   getEnabledWallets(): any[] {
+    const allowedTypes = Array.isArray(this._config.chainTypes) ? this._config.chainTypes.map((t) => String(t).toLowerCase()) : null;
+    const idToType: Record<string, 'ic' | 'evm'> = {
+      oisy: 'ic', nfid: 'ic', ii: 'ic', plug: 'ic',
+      metamask: 'evm', walletconnect: 'evm', coinbase: 'evm',
+    };
     return Object.values(this._adapters)
       .filter((a) => a.enabled !== false)
+      .filter((a) => {
+        if (!allowedTypes || allowedTypes.length === 0) return true;
+        const t = idToType[a.id];
+        return !!t && allowedTypes.includes(t);
+      })
       .map((a) => ({
         id: a.id,
         label: a.label,
