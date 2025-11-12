@@ -35,6 +35,9 @@ export type CommonConfig = {
   publishableKey: string; // from icpay-sdk
   apiUrl?: string;
   icHost?: string;
+  // Optional: human-readable description passed to payment_intent.description
+  // If not provided, defaults to a generic label on submit.
+  description?: string;
   // Chain/network selection (for multi-chain assets)
   chainName?: string; // default: 'IC'
   chainId?: number;   // default: 0

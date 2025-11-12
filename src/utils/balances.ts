@@ -3,6 +3,9 @@ export type WalletBalanceEntry = {
   ledgerName: string;
   ledgerSymbol: string;
   canisterId: string;
+  // Whether this ledger supports x402/EIP-3009 flow (if provided by API)
+  eip3009Version?: string | null;
+  x402Accepts?: boolean;
   balance: string;
   formattedBalance: string;
   decimals: number;
@@ -114,6 +117,8 @@ export async function getWalletBalanceEntries(params: {
     ledgerName: b.ledgerName,
     ledgerSymbol: b.ledgerSymbol,
     canisterId: b.canisterId,
+    eip3009Version: b?.eip3009Version ?? null,
+    x402Accepts: b?.x402Accepts != null ? Boolean(b.x402Accepts) : undefined,
     balance: b.balance,
     formattedBalance: b.formattedBalance,
     decimals: b.decimals,
