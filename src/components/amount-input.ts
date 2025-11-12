@@ -11,6 +11,7 @@ import { renderWalletBalanceModal } from './wallet-balance-modal';
 import { renderWalletSelectorModal } from './wallet-selector-modal';
 import { renderTransakOnrampModal, TransakOnrampOptions } from './transak-onramp-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
+import { clientSupportsX402 } from '../utils/x402';
 
 const isBrowser = typeof window !== 'undefined';
 let PlugNPlay: any = null;
@@ -375,6 +376,7 @@ export class ICPayAmountInput extends LitElement {
 
     this.processing = true;
     try {
+      // Do not attempt x402 here; x402 is decided after token selection in the balance modal (EVM branch).
       const ready = await this.ensureWallet();
       if (!ready) return;
 

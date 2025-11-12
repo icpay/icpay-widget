@@ -92,13 +92,36 @@ export function createSdk(config: CommonConfig): WidgetSdk {
     async function sendUsd(usdAmount: number, ledgerCanisterId: string, metadata?: Record<string, any>) {
       // Merge global config.metadata with call-specific metadata
       const mergedMeta = { ...(config as any).metadata, ...(metadata || {}) } as Record<string, any>;
-      return (client as any).createPaymentUsd({ usdAmount, ledgerCanisterId, metadata: mergedMeta });
+      // Description passed through to intent (components decide X402 vs wallet flow before calling us)
+      const fallbackDesc = `Pay ${usdAmount} with crypto`;
+      const description =
+        (config as any).description ||
+        (mergedMeta as any).__description ||
+        (mergedMeta as any).description ||
+        fallbackDesc;
+      debugLog(Boolean(config.debug), 'Calling createPaymentUsd (flow decision handled by components)', {
+        usdAmount,
+        ledgerCanisterId,
+        description,
+      });
+      return (client as any).createPaymentUsd({ usdAmount, ledgerCanisterId, metadata: mergedMeta, description });
     }
 
     async function startOnrampUsd(usdAmount: number, ledgerCanisterId: string, metadata?: Record<string, any>) {
       // Trigger onramp flow through SDK; SDK returns onramp data in metadata.onramp
       const mergedMeta = { ...(config as any).metadata, ...(metadata || {}) } as Record<string, any>;
-      return (client as any).createPaymentUsd({ usdAmount, ledgerCanisterId, metadata: mergedMeta, onrampPayment: true });
+      const fallbackDesc = `Pay ${usdAmount} with crypto`;
+      const description =
+        (config as any).description ||
+        (mergedMeta as any).__description ||
+        (mergedMeta as any).description ||
+        fallbackDesc;
+      debugLog(Boolean(config.debug), 'Calling onramp createPaymentUsd', {
+        usdAmount,
+        ledgerCanisterId,
+        description,
+      });
+      return (client as any).createPaymentUsd({ usdAmount, ledgerCanisterId, metadata: mergedMeta, onrampPayment: true, description });
     }
 
 

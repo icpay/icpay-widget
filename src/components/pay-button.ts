@@ -12,6 +12,7 @@ import { getWalletBalanceEntries, buildWalletEntries, isEvmWalletId, ensureEvmCh
 import type { WalletBalanceEntry } from '../utils/balances';
 import { renderWalletBalanceModal } from './wallet-balance-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
+import { clientSupportsX402 } from '../utils/x402';
 
 const isBrowser = typeof window !== 'undefined';
 let PlugNPlay: any = null;
@@ -303,21 +304,73 @@ export class ICPayPayButton extends LitElement {
     if (symbol && typeof symbol === 'string') {
       this.selectedSymbol = symbol;
     }
+
+    // Close wallet modal before starting progress to reveal progress bar
+    this.showBalanceModal = false;
+    this.showWalletModal = false;
+
     // If EVM wallet, ensure correct network first, then emit EVM payment start
     if (isEvmWalletId(this.lastWalletId)) {
       const sel = (this.walletBalances || []).find(b => b.ledgerSymbol === (this.selectedSymbol || symbol));
+      debugLog(this.config?.debug || false, 'EVM selection made', {
+        selectedSymbol: this.selectedSymbol || symbol,
+        selPresent: !!sel,
+        selSnapshot: sel ? {
+          ledgerId: (sel as any)?.ledgerId,
+          ledgerSymbol: (sel as any)?.ledgerSymbol,
+          ledgerName: (sel as any)?.ledgerName,
+          chainUuid: (sel as any)?.chainUuid,
+          chainId: (sel as any)?.chainId,
+          chainName: (sel as any)?.chainName,
+          x402Accepts: (sel as any)?.x402Accepts,
+          requiredAmount: (sel as any)?.requiredAmount,
+          hasSufficientBalance: (sel as any)?.hasSufficientBalance,
+        } : null,
+      });
       const targetChain = sel?.chainId;
       ensureEvmChain(targetChain, { chainName: sel?.chainName, rpcUrlPublic: (sel as any)?.rpcUrlPublic, nativeSymbol: sel?.ledgerSymbol, decimals: sel?.decimals }).then(async () => {
         try {
-          const sdk = this.getSdk();
-          const amountUsd = Number(this.config?.amountUsd ?? 0);
-          await (sdk.client as any).createPaymentUsd({ usdAmount: amountUsd, chainId: sel?.chainUuid, symbol: sel?.ledgerSymbol, metadata: { network: 'evm', ledgerId: sel?.ledgerId } });
+        const sdk = this.getSdk();
+        const amountUsd = Number(this.config?.amountUsd ?? 0);
+          const symbolNow = sel?.ledgerSymbol;
+          const tryX402 = Boolean(sel && sel.x402Accepts);
+          debugLog(this.config?.debug || false, 'EVM post-ensure chain snapshot', {
+            targetChain,
+            amountUsd,
+            symbolNow,
+            tryX402,
+            x402Accepts: sel?.x402Accepts,
+          });
+          if (tryX402) {
+            try {
+              const metadata = { network: 'evm', ledgerId: sel?.ledgerId, chainId: sel?.chainUuid, context: 'pay-button:x402' };
+              debugLog(this.config?.debug || false, 'Attempting X402 flow (EVM selection)', { amountUsd, symbol: symbolNow, x402Accepts: sel?.x402Accepts });
+              await (sdk.client as any).createPaymentX402Usd({ usdAmount: amountUsd, symbol: symbolNow, metadata });
+              return;
+            } catch (x402Err: any) {
+              debugLog(this.config?.debug || false, 'X402 payment failed (EVM selection), falling back', {
+                message: x402Err?.message, code: x402Err?.code, data: x402Err?.details || x402Err?.data
+              });
+            }
+          } else {
+            debugLog(this.config?.debug || false, 'Skipping X402 path', {
+              reason: sel ? (sel.x402Accepts ? 'unknown' : 'x402Accepts false') : 'no selection',
+              selPresent: !!sel,
+              x402Accepts: sel?.x402Accepts,
+            });
+          }
+          // Normal wallet flow (native or non-x402 token)
+          debugLog(this.config?.debug || false, 'Falling back to normal EVM wallet flow', {
+            amountUsd,
+            chainUuid: sel?.chainUuid,
+            ledgerId: sel?.ledgerId,
+            symbol: symbolNow,
+          });
+          await (sdk.client as any).createPaymentUsd({ usdAmount: amountUsd, chainId: sel?.chainUuid, symbol: symbolNow, metadata: { network: 'evm', ledgerId: sel?.ledgerId } });
         } catch {}
-        this.showBalanceModal = false;
       });
       return;
     }
-    this.showBalanceModal = false;
     const action = this.pendingAction; this.pendingAction = null;
     if (action === 'pay') { this.skipDisconnectOnce = true; this.pay(); }
   };
@@ -514,6 +567,7 @@ export class ICPayPayButton extends LitElement {
       debugLog(this.config?.debug || false, 'Resolved ledger details', { symbol });
       const amountUsd = Number(this.config?.amountUsd ?? 0);
       const meta = { context: 'pay-button' } as Record<string, any>;
+
       // Do not pre-open Oisy signer tab; SDK will open it within this user gesture
       debugLog(this.config?.debug || false, 'Calling sdk.sendUsd', { amountUsd, symbol, meta });
       const resp = await sdk.sendUsd(amountUsd, symbol, meta);
