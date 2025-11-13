@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { applyThemeVars } from '../styles';
+import { applyThemeVars } from '../../styles';
 import { customElement, property, state } from 'lit/decorators.js';
 
 // Debug logger utility (mirrors other widgets)
@@ -27,38 +27,26 @@ type Step = {
 const DEFAULT_STEPS: Step[] = [
   {
     key: 'wallet',
-    label: 'Connect Wallet',
+    label: 'Connect wallet',
     tooltip: 'Awaiting wallet connection',
     status: 'pending'
   },
   {
-    key: 'init',
-    label: 'Initialising ICPay',
-    tooltip: 'Initializing payment',
-    status: 'pending'
-  },
-  {
     key: 'await',
-    label: 'Awaiting payment confirmation',
-    tooltip: 'Preparing payment',
+    label: 'Awaiting confirmation',
+    tooltip: 'Awaiting wallet signature',
     status: 'pending'
   },
   {
     key: 'transfer',
     label: 'Transferring funds',
-    tooltip: 'Submitting payment',
+    tooltip: 'Awaiting transfer to merchant',
     status: 'pending'
   },
   {
     key: 'verify',
     label: 'Verifying payment',
-    tooltip: 'Confirming payment',
-    status: 'pending'
-  },
-  {
-    key: 'confirm',
-    label: 'Payment confirmed',
-    tooltip: 'Payment completed',
+    tooltip: 'Please wait while we verify',
     status: 'pending'
   }
 ];
@@ -130,6 +118,7 @@ export class ICPayProgressBar extends LitElement {
       transition: opacity 0.4s ease, transform 0.4s ease;
       opacity: 1;
       transform: translateY(0);
+      flex: 1;
     }
 
     .modal-content.transitioning {
@@ -209,16 +198,19 @@ export class ICPayProgressBar extends LitElement {
     }
 
     .modal-container {
-      background: var(--icpay-bg-primary);
-      border: 1px solid var(--icpay-border-primary);
-      border-radius: var(--icpay-radius-lg);
-      padding: var(--icpay-spacing-xl);
-      max-width: 400px;
-      width: 90%;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 24px;
+      padding: 24px;
+      max-width: 420px;
+      width: 100%;
+      height: 460px;
       box-shadow: var(--icpay-shadow-xl);
       transform: translateY(20px);
       transition: transform 0.3s ease;
       position: relative;
+      display: flex;
+      flex-direction: column;
     }
 
     .modal-overlay.active .modal-container {
@@ -247,43 +239,52 @@ export class ICPayProgressBar extends LitElement {
       color: var(--icpay-text-primary);
     }
 
-    .progress-header { text-align: left; margin-bottom: var(--icpay-spacing-lg); }
-    .progress-title {
-      font-size: 18px;
-      font-weight: 600;
-      margin: 0 48px var(--icpay-spacing-sm) 0;
-      color: var(--icpay-text-primary);
+    .progress-header {
+      display:flex;
+      align-items:center;
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #333;
+      flex-shrink: 0;
     }
+    .progress-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0;
+      color: #ffffff;
+      flex: 1;
+      text-align: center;
+      margin-right: 40px;
+    }
+    .progress-spacer { width:24px; display:inline-block; margin-right:16px; }
     .progress-subtitle { color: var(--icpay-text-secondary); font-size: 14px; }
     .progress-steps {
       margin-bottom: var(--icpay-spacing-xl);
       display: flex;
       flex-direction: column;
-      gap: var(--icpay-spacing-sm);
+      gap: 24px;
+      overflow-y: auto;
+      flex: 1;
     }
     .step {
       width: 100%;
-      padding: 12px 16px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
+      padding: 16px;
+      background: #252525;
+      border: none;
+      border-radius: 12px;
       display: flex;
-      align-items: center;
-      gap: 12px;
-      opacity: 0.3;
+      align-items: flex-start;
+      gap: 16px;
       transition: all 0.3s ease;
       cursor: default;
       box-sizing: border-box;
     }
     .step.active {
-      opacity: 1;
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.1);
+      background: #2a2a2a;
     }
     .step.completed {
-      opacity: 0.7;
-      background: rgba(16, 185, 129, 0.1);
-      border-color: rgba(16, 185, 129, 0.3);
+      opacity: 1;
+      background: #252525;
     }
 
     .step.error {
@@ -292,10 +293,10 @@ export class ICPayProgressBar extends LitElement {
       border-color: rgba(239, 68, 68, 0.3);
     }
     .step-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      width: 40px;
+      height: 40px;
+      border-radius: 0;
+      background: transparent;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -303,13 +304,8 @@ export class ICPayProgressBar extends LitElement {
       position: relative;
       flex-shrink: 0;
     }
-    .step.active .step-icon {
-      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
-    }
-    .step.completed .step-icon {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    }
+    .step.active .step-icon { }
+    .step.completed .step-icon { }
 
     .step.error .step-icon {
       background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
@@ -328,14 +324,14 @@ export class ICPayProgressBar extends LitElement {
     }
     .step-title {
       font-weight: 500;
-      font-size: 14px;
+      font-size: 16px;
       color: #ffffff;
       transition: color 0.3s ease;
       margin: 0;
     }
     .step-description {
-      font-size: 12px;
-      color: #9ca3af;
+      font-size: 14px;
+      color: #888;
       margin: 0;
     }
 
@@ -348,17 +344,71 @@ export class ICPayProgressBar extends LitElement {
       border-radius: 4px;
       border-left: 3px solid #ef4444;
     }
-    .loading-spinner {
-      display: none;
-      width: 20px;
-      height: 20px;
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      border-top-color: var(--icpay-text-primary);
+    /* Spinner exactly like in design: wrapper + ::before ring */
+    .spinner {
+      width: 40px;
+      height: 40px;
+      margin-right: 0;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .spinner::before {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border: 3px solid #333;
+      border-top: 3px solid #0066ff;
       border-radius: 50%;
       animation: spin 1s linear infinite;
-      position: absolute;
+      box-sizing: border-box;
     }
-    .step.active .loading-spinner { display: block; }
+    /* Completed: replace ring with filled green circle + tick */
+    .step.completed .spinner::before { display: none; }
+    .step.completed .spinner::after {
+      content: '✓';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #10b981;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 24px;
+      font-weight: bold;
+      box-sizing: border-box;
+    }
+
+    /* Completed icon to match design proportions */
+    .complete-icon {
+      width: 40px;
+      height: 40px;
+      position: relative;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .complete-icon::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 3px solid #333;
+      border-radius: 50%;
+      background: #252525;
+      box-sizing: border-box;
+    }
+    .complete-icon svg {
+      position: relative;
+      width: 20px;
+      height: 20px;
+      stroke: #ffffff;
+      display: block;
+    }
 
     .error-container {
       text-align: center;
@@ -546,6 +596,12 @@ export class ICPayProgressBar extends LitElement {
     }
 
     .success-container { text-align: center; }
+    .success-center {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
     .success-icon {
       width: 64px;
       height: 64px;
@@ -633,14 +689,7 @@ export class ICPayProgressBar extends LitElement {
       to { transform: rotate(360deg); }
     }
 
-    .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid transparent;
-      border-top: 2px solid #ffffff;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
+    /* legacy spinner removed; unified spinner defined above to match design */
 
     @keyframes confetti-fall {
       0% {
@@ -655,6 +704,7 @@ export class ICPayProgressBar extends LitElement {
   `;
 
   @property({ type: Boolean }) open = false;
+  @property({ type: Boolean }) suspended = false;
   @property({ type: Array }) steps: Step[] = DEFAULT_STEPS;
   @property({ type: Number }) amount = 0;
   @property({ type: String }) currency = '';
@@ -833,17 +883,21 @@ export class ICPayProgressBar extends LitElement {
 
     // Mid-flow granular starts for internal SDK steps (independent of top-level starts)
     if (!this.failed && !this.completed) {
-      if (methodName === 'sendFundsToLedger') {
+      if (methodName === 'createPaymentX402Usd') {
+        // X402 signature step: awaiting confirmation
         this.completeByKey('wallet');
-        this.completeByKey('init');
+        this.setLoadingByKey('await');
+      } else if (methodName === 'sendFundsToLedger') {
+        // Regular transfer step (IC or EVM tx): move to transfer
+        this.completeByKey('wallet');
         this.completeByKey('await');
         this.setLoadingByKey('transfer');
       } else if (methodName === 'notifyLedgerTransaction') {
+        // Start of post-send verification. In X402 this is called after signature (settle start).
+        // Ensure we've advanced past await, move to transfer while settlement is being kicked off.
         this.completeByKey('wallet');
-        this.completeByKey('init');
         this.completeByKey('await');
-        this.completeByKey('transfer');
-        this.setLoadingByKey('verify');
+        this.setLoadingByKey('transfer');
       }
     }
   };
@@ -912,21 +966,18 @@ export class ICPayProgressBar extends LitElement {
     if (!this.failed && !this.completed) {
       if (methodName === 'getLedgerBalance') {
         this.completeByKey('wallet');
-        this.completeByKey('init');
         this.setLoadingByKey('await');
       } else if (methodName === 'sendFundsToLedger') {
         this.completeByKey('wallet');
-        this.completeByKey('init');
         this.completeByKey('await');
         this.completeByKey('transfer');
         this.setLoadingByKey('verify');
       } else if (methodName === 'notifyLedgerTransaction') {
         this.completeByKey('wallet');
-        this.completeByKey('init');
         this.completeByKey('await');
         this.completeByKey('transfer');
-        this.completeByKey('verify');
-        this.setLoadingByKey('confirm');
+        // Keep verify loading until completion
+        this.setLoadingByKey('verify');
       }
     }
   };
@@ -939,7 +990,6 @@ export class ICPayProgressBar extends LitElement {
     // Await -> completed on intent created; start transfer loading
     if (!this.failed && !this.completed) {
       this.completeByKey('wallet');
-      this.completeByKey('init');
       this.completeByKey('await');
       this.setLoadingByKey('transfer');
     }
@@ -984,9 +1034,7 @@ export class ICPayProgressBar extends LitElement {
     // Ensure remaining steps are completed in sequence before final success
     this.completeByKey('transfer');
     this.completeByKey('await');
-    this.completeByKey('init');
     this.completeByKey('verify');
-    this.completeByKey('confirm');
     this.completed = true;
     this.showSuccess = true;
     this.showConfetti = true;
@@ -1115,9 +1163,9 @@ export class ICPayProgressBar extends LitElement {
 
     debugLog(this.debug, 'ICPay Progress: Wallet connected event received:', e.detail);
 
-    // Complete wallet step and set init to loading
+    // Complete wallet step and set awaiting confirmation to loading
     this.completeByKey('wallet');
-    this.setLoadingByKey('init');
+    this.setLoadingByKey('await');
 
     // Start transition from wallet selector to progress bar
     this.startTransitionToProgress();
@@ -1371,22 +1419,7 @@ export class ICPayProgressBar extends LitElement {
   }
 
   private getStepIcon(step: Step): string | any {
-    switch (step.status) {
-      case 'loading':
-        return html`<div class="loading-spinner"></div>`; // Use the styled loading spinner
-      case 'completed':
-        return html`<svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-        </svg>`; // Checkmark icon
-      case 'error':
-        return html`<svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>`; // X mark icon
-      default:
-        return html`<svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-        </svg>`; // Process icon for pending
-    }
+    return html`<div class="spinner"></div>`;
   }
 
   private getStepIndexByKey(key: string): number {
@@ -1398,7 +1431,8 @@ export class ICPayProgressBar extends LitElement {
     if (idx >= 0) {
       this.activeIndex = idx;
       this.updateStepStatus(idx, 'loading');
-      if (key === 'confirm') {
+      // Track start time for long verification tip
+      if (key === 'verify') {
         this.confirmLoadingStartedAt = Date.now();
       }
     }
@@ -1461,16 +1495,18 @@ export class ICPayProgressBar extends LitElement {
     });
 
     return html`
-      <div class="success-container">
-        <div class="success-icon">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h2 class="success-title">Payment Complete!</h2>
-        <p class="success-message">Your payment of ${displayAmount} USD has been successfully processed.</p>
-        <div class="success-actions">
-          <button class="btn btn-primary" @click=${() => { this.open = false; }}>Close</button>
+      <div class="success-center">
+        <div class="success-container">
+          <div class="success-icon">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 class="success-title">Payment Complete!</h2>
+          <p class="success-message">Your payment of ${displayAmount} USD has been successfully processed.</p>
+          <div class="success-actions">
+            <button class="btn btn-primary" @click=${() => { this.open = false; }}>Close</button>
+          </div>
         </div>
       </div>
     `;
@@ -1603,28 +1639,15 @@ export class ICPayProgressBar extends LitElement {
     return html`
       <div class="progress-container">
         <div class="progress-header">
-          <h3 class="progress-title">Processing Payment</h3>
-          <p class="progress-subtitle">Please wait while we process your transaction</p>
-          ${this.renderConfirmTip()}
+          <span class="progress-spacer"></span>
+          <h3 class="progress-title">Processing</h3>
         </div>
+        ${this.renderConfirmTip()}
         <div class="progress-steps">
           ${this.currentSteps.map((step, index) => html`
             <div class="step ${index === this.activeIndex ? 'active' : ''} ${step.status === 'completed' ? 'completed' : ''} ${step.status === 'error' ? 'error' : ''}">
               <div class="step-icon">
-                ${step.status === 'loading' ? html`<div class="loading-spinner"></div>` : ''}
-                ${step.status === 'completed' ? html`
-                  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                ` : step.status === 'error' ? html`
-                  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                ` : html`
-                  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                  </svg>
-                `}
+                <div class="spinner"></div>
               </div>
               <div class="step-content">
                 <div class="step-title">${step.label}</div>
@@ -1642,10 +1665,10 @@ export class ICPayProgressBar extends LitElement {
 
   private renderConfirmTip() {
     try {
-      const confirmIdx = this.getStepIndexByKey('confirm');
-      if (confirmIdx < 0) return null as any;
-      const isConfirmLoading = this.activeIndex === confirmIdx && this.currentSteps[confirmIdx]?.status === 'loading';
-      if (!isConfirmLoading) return null as any;
+      const verifyIdx = this.getStepIndexByKey('verify');
+      if (verifyIdx < 0) return null as any;
+      const isVerifyLoading = this.activeIndex === verifyIdx && this.currentSteps[verifyIdx]?.status === 'loading';
+      if (!isVerifyLoading) return null as any;
       const started = this.confirmLoadingStartedAt || 0;
       const elapsed = started ? (Date.now() - started) : 0;
       if (elapsed < 30000) return null as any;
@@ -1720,12 +1743,15 @@ export class ICPayProgressBar extends LitElement {
   }
 
   render() {
+    if (this.suspended) {
+      return null as any;
+    }
     return html`
       ${this.open ? html`
         ${this.renderConfetti()}
         <div class="modal-overlay active">
           <div class="modal-container">
-            <button class="close-button" @click=${() => this.closeProgress()} aria-label="Close" title="Close">✕</button>
+            ${!this.showSuccess ? html`<button class="close-button" @click=${() => this.closeProgress()} aria-label="Close" title="Close">✕</button>` : null}
             <div class="modal-content ${this.isTransitioning ? 'transitioning' : ''}">
               ${this.renderProgressContent()}
             </div>
@@ -1737,5 +1763,6 @@ export class ICPayProgressBar extends LitElement {
 }
 
 declare global { interface HTMLElementTagNameMap { 'icpay-progress-bar': ICPayProgressBar } }
+
 
 

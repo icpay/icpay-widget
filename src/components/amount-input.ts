@@ -5,16 +5,16 @@ import { handleWidgetError, getErrorMessage, shouldShowErrorToUser, getErrorActi
 import type { AmountInputConfig } from '../types';
 import { createSdk } from '../utils/sdk';
 import { buildWalletEntries } from '../utils/balances';
-import './progress-bar';
+import './ui/progress-bar';
 import { getWalletBalanceEntries, isEvmWalletId, ensureEvmChain } from '../utils/balances';
-import { renderWalletBalanceModal } from './wallet-balance-modal';
-import { renderWalletSelectorModal } from './wallet-selector-modal';
-import { renderTransakOnrampModal, TransakOnrampOptions } from './transak-onramp-modal';
+import { renderWalletBalanceModal } from './ui/wallet-balance-modal';
+import { renderWalletSelectorModal } from './ui/wallet-selector-modal';
+import { renderTransakOnrampModal, TransakOnrampOptions } from './ui/transak-onramp-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
 import { clientSupportsX402 } from '../utils/x402';
 
 const isBrowser = typeof window !== 'undefined';
-let PlugNPlay: any = null;
+let WalletSelect: any = null;
 
 function debugLog(debug: boolean, message: string, data?: any): void {
   if (debug) {
@@ -166,9 +166,9 @@ export class ICPayAmountInput extends LitElement {
 
     if (this.walletConnected) return true;
     try {
-      if (!PlugNPlay) {
+      if (!WalletSelect) {
         const module = await import('../wallet-select');
-        PlugNPlay = module.WalletSelect;
+        WalletSelect = module.WalletSelect;
       }
       const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
       const _rawCfg: any = { ...(this.config?.plugNPlay || {}) };
@@ -180,7 +180,7 @@ export class ICPayAmountInput extends LitElement {
           _cfg.derivationOrigin = this.config?.derivationOrigin || resolveDerivationOrigin();
         }
       } catch {}
-      this.pnp = new PlugNPlay(_cfg);
+      this.pnp = new WalletSelect(_cfg);
       const availableWallets = this.pnp.getEnabledWallets();
       if (!availableWallets?.length) throw new Error('No wallets available');
       this.pendingAction = 'pay';

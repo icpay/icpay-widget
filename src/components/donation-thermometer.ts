@@ -5,16 +5,16 @@ import { handleWidgetError, getErrorMessage, shouldShowErrorToUser, getErrorActi
 import { buildWalletEntries } from '../utils/balances';
 import type { DonationThermometerConfig } from '../types';
 import { createSdk } from '../utils/sdk';
-import './progress-bar';
-import { renderWalletSelectorModal } from './wallet-selector-modal';
-import { renderTransakOnrampModal, TransakOnrampOptions } from './transak-onramp-modal';
+import './ui/progress-bar';
+import { renderWalletSelectorModal } from './ui/wallet-selector-modal';
+import { renderTransakOnrampModal, TransakOnrampOptions } from './ui/transak-onramp-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
 
 // Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';
 
 // Plug N Play will be imported dynamically when needed
-let PlugNPlay: any = null;
+let WalletSelect: any = null;
 
 // Debug logger utility for widget components
 function debugLog(debug: boolean, message: string, data?: any): void {
@@ -93,9 +93,9 @@ export class ICPayDonationThermometer extends LitElement {
       if (!raw) return;
       const saved = JSON.parse(raw);
       if (!saved?.provider || !saved?.principal) return;
-      if (!PlugNPlay) {
+      if (!WalletSelect) {
         const module = await import('../wallet-select');
-        PlugNPlay = module.WalletSelect;
+        WalletSelect = module.WalletSelect;
       }
       const _cfg1: any = applyOisyNewTabConfig({ ...(this.config?.plugNPlay || {}) });
       try {
@@ -104,7 +104,7 @@ export class ICPayDonationThermometer extends LitElement {
           _cfg1.derivationOrigin = this.config?.derivationOrigin || resolveDerivationOrigin();
         }
       } catch {}
-      const pnp = new PlugNPlay(_cfg1);
+      const pnp = new WalletSelect(_cfg1);
       // Hydrate saved principal for UI/history; require connect on pay
       this.walletConnected = false;
       this.config = {
@@ -207,7 +207,7 @@ export class ICPayDonationThermometer extends LitElement {
         if (!this.walletConnected) {
           debugLog(this.config?.debug || false, 'Connecting to wallet via Plug N Play');
           try {
-            if (!PlugNPlay) { const module = await import('../wallet-select'); PlugNPlay = module.WalletSelect; }
+            if (!WalletSelect) { const module = await import('../wallet-select'); WalletSelect = module.WalletSelect; }
             const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
             const _cfg2: any = wantsOisyTab ? applyOisyNewTabConfig({ ...(this.config?.plugNPlay || {}) }) : ({ ...(this.config?.plugNPlay || {}) });
             if ((this.config as any)?.chainTypes) _cfg2.chainTypes = (this.config as any).chainTypes;
@@ -217,7 +217,7 @@ export class ICPayDonationThermometer extends LitElement {
                 _cfg2.derivationOrigin = this.config?.derivationOrigin || resolveDerivationOrigin();
               }
             } catch {}
-            this.pnp = new PlugNPlay(_cfg2);
+            this.pnp = new WalletSelect(_cfg2);
             try {
               const principal = await detectOisySessionViaAdapter(this.pnp);
               if (principal) {

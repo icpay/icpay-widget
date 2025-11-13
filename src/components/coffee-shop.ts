@@ -4,9 +4,9 @@ import { baseStyles } from '../styles';
 import { handleWidgetError, getErrorMessage, shouldShowErrorToUser, getErrorAction, getErrorSeverity, ErrorSeverity } from '../error-handling';
 import type { CoffeeShopConfig } from '../types';
 import { createSdk } from '../utils/sdk';
-import './progress-bar';
-import { renderWalletSelectorModal } from './wallet-selector-modal';
-import { renderTransakOnrampModal, TransakOnrampOptions } from './transak-onramp-modal';
+import './ui/progress-bar';
+import { renderWalletSelectorModal } from './ui/wallet-selector-modal';
+import { renderTransakOnrampModal, TransakOnrampOptions } from './ui/transak-onramp-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
 import { buildWalletEntries } from '../utils/balances';
 
@@ -14,7 +14,7 @@ import { buildWalletEntries } from '../utils/balances';
 const isBrowser = typeof window !== 'undefined';
 
 // Plug N Play will be imported dynamically when needed
-let PlugNPlay: any = null;
+let WalletSelect: any = null;
 
 // Debug logger utility for widget components
 function debugLog(debug: boolean, message: string, data?: any): void {
@@ -169,7 +169,7 @@ export class ICPayCoffeeShop extends LitElement {
         if (!this.walletConnected) {
           debugLog(this.config?.debug || false, 'Connecting to wallet via Plug N Play');
           try {
-            if (!PlugNPlay) { const module = await import('../wallet-select'); PlugNPlay = module.WalletSelect; }
+            if (!WalletSelect) { const module = await import('../wallet-select'); WalletSelect = module.WalletSelect; }
             const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
             const _cfg: any = wantsOisyTab ? applyOisyNewTabConfig({ ...(this.config?.plugNPlay || {}) }) : ({ ...(this.config?.plugNPlay || {}) });
             if ((this.config as any)?.chainTypes) _cfg.chainTypes = (this.config as any).chainTypes;
@@ -179,7 +179,7 @@ export class ICPayCoffeeShop extends LitElement {
                 _cfg.derivationOrigin = this.config?.derivationOrigin || resolveDerivationOrigin();
               }
             } catch {}
-            this.pnp = new PlugNPlay(_cfg);
+            this.pnp = new WalletSelect(_cfg);
             try {
               const principal = await detectOisySessionViaAdapter(this.pnp);
               if (principal) {
