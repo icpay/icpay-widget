@@ -3,19 +3,19 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles';
 import { handleWidgetError, getErrorMessage, shouldShowErrorToUser, getErrorAction, getErrorSeverity, ErrorSeverity } from '../error-handling';
 import type { PayButtonConfig } from '../types';
-import { renderTransakOnrampModal, TransakOnrampOptions } from './transak-onramp-modal';
+import { renderTransakOnrampModal, TransakOnrampOptions } from './ui/transak-onramp-modal';
 import { createSdk } from '../utils/sdk';
 import type { WidgetSdk } from '../utils/sdk';
-import './progress-bar';
-import { renderWalletSelectorModal } from './wallet-selector-modal';
+import './ui/progress-bar';
+import { renderWalletSelectorModal } from './ui/wallet-selector-modal';
 import { getWalletBalanceEntries, buildWalletEntries, isEvmWalletId, ensureEvmChain } from '../utils/balances';
 import type { WalletBalanceEntry } from '../utils/balances';
-import { renderWalletBalanceModal } from './wallet-balance-modal';
+import { renderWalletBalanceModal } from './ui/wallet-balance-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
 import { clientSupportsX402 } from '../utils/x402';
 
 const isBrowser = typeof window !== 'undefined';
-let PlugNPlay: any = null;
+let WalletSelect: any = null;
 
 function debugLog(debug: boolean, message: string, data?: any): void {
   if (debug) {
@@ -84,7 +84,6 @@ export class ICPayPayButton extends LitElement {
     if (!isBrowser) return;
     debugLog(this.config?.debug || false, 'Pay button connected', { config: this.config });
     // No ledger preload; balances flow handles token availability
-    // Initialize default symbol
     // selectedSymbol will be set from balance selection flow
     try { window.addEventListener('icpay-switch-account', this.onSwitchAccount as EventListener); } catch {}
     // Observe SDK intent creation event: ensure balance/wallet modals close so progress is visible
@@ -155,9 +154,9 @@ export class ICPayPayButton extends LitElement {
 
     if (this.walletConnected) return true;
     try {
-      if (!PlugNPlay) {
+      if (!WalletSelect) {
         const module = await import('../wallet-select');
-        PlugNPlay = module.WalletSelect;
+        WalletSelect = module.WalletSelect;
       }
       // Optional: open Oisy in a new tab if explicitly enabled
       const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
@@ -171,7 +170,7 @@ export class ICPayPayButton extends LitElement {
           _cfg.derivationOrigin = this.config?.derivationOrigin || resolveDerivationOrigin();
         }
       } catch {}
-      this.pnp = new PlugNPlay(_cfg);
+      this.pnp = new WalletSelect(_cfg);
       const availableWallets = this.pnp.getEnabledWallets();
       debugLog(this.config?.debug || false, 'Available wallets', availableWallets);
       if (!availableWallets?.length) throw new Error('No wallets available');
@@ -227,7 +226,7 @@ export class ICPayPayButton extends LitElement {
           this.oisyConnectRetriedNewTab = true;
           (async () => {
             try {
-              if (!PlugNPlay) { const module = await import('../wallet-select'); PlugNPlay = module.WalletSelect; }
+              if (!WalletSelect) { const module = await import('../wallet-select'); WalletSelect = module.WalletSelect; }
             const raw: any = { ...(this.config?.plugNPlay || {}) };
             if ((this.config as any)?.chainTypes) raw.chainTypes = (this.config as any).chainTypes;
               const cfg: any = applyOisyNewTabConfig(raw);
@@ -237,7 +236,7 @@ export class ICPayPayButton extends LitElement {
                   cfg.derivationOrigin = this.config?.derivationOrigin || resolveDerivationOrigin();
                 }
               } catch {}
-              this.pnp = new PlugNPlay(cfg);
+              this.pnp = new WalletSelect(cfg);
               const retry = this.pnp.connect('oisy');
               retry.then((result: any) => {
                 const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || this.pnp?.account));
@@ -614,6 +613,7 @@ export class ICPayPayButton extends LitElement {
     const label = rawLabel.replace('{amount}', amountPart || '$0.00').replace('{symbol}', selectedSymbol);
     const progressEnabled = this.config?.progressBar?.enabled !== false;
     const showProgressBar = progressEnabled;
+    const suspendProgress = this.showWalletModal || this.showBalanceModal;
 
     return html`
       <div class="icpay-card icpay-section icpay-widget-base">
@@ -623,6 +623,7 @@ export class ICPayPayButton extends LitElement {
             .theme=${this.config?.theme}
             .amount=${Number(this.config?.amountUsd || 0)}
             .ledgerSymbol=${selectedSymbol}
+            .suspended=${suspendProgress}
           ></icpay-progress-bar>
         ` : null}
 

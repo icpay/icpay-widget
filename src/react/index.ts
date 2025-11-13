@@ -7,7 +7,7 @@ import '../components/coffee-shop';
 import '../components/donation-thermometer';
 import '../components/pay-button';
 import '../components/amount-input';
-import '../components/progress-bar';
+import '../components/ui/progress-bar';
 
 export * from './widgets';
 
