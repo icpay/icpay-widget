@@ -11,13 +11,12 @@ import metamaskIcon from './metamask.js';
 import coinbaseIcon from './coinbase.js';
 import rainbowIcon from './rainbow.js';
 import ledgerIcon from './ledger.js';
-import okexIcon from './okex.js';
+import okxIcon from './okx.js';
 import exodusIcon from './exodus.js';
-import walletconnectIcon from './walletconnect.js';
+// import walletconnectIcon from './walletconnect.js'; // Disabled
 import braveIcon from './brave.js';
 import phantomIcon from './phantom.js';
 import rabbyIcon from './rabby.js';
-import keplrIcon from './keplr.js';
 
 const ICONS: Record<string, string> = {
   ii: iiIcon,
@@ -31,11 +30,10 @@ const ICONS: Record<string, string> = {
   brave: braveIcon,
   phantom: phantomIcon,
   rabby: rabbyIcon,
-  keplr: keplrIcon,
   ledger: ledgerIcon,
-  okex: okexIcon,
+  okx: okxIcon,
   exodus: exodusIcon,
-  walletconnect: walletconnectIcon,
+  // walletconnect: walletconnectIcon, // Disabled
 };
 
 export function getIcon(id: string, fallback?: string | null): string | null {

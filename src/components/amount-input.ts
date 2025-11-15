@@ -4,6 +4,7 @@ import { baseStyles } from '../styles';
 import { handleWidgetError, getErrorMessage, shouldShowErrorToUser, getErrorAction, getErrorSeverity, ErrorSeverity } from '../error-handling';
 import type { AmountInputConfig } from '../types';
 import { createSdk } from '../utils/sdk';
+import type { WidgetSdk } from '../utils/sdk';
 import { buildWalletEntries } from '../utils/balances';
 import './ui/progress-bar';
 import { getWalletBalanceEntries, isEvmWalletId, ensureEvmChain } from '../utils/balances';
@@ -78,6 +79,7 @@ export class ICPayAmountInput extends LitElement {
   @state() private balancesLoading = false;
   @state() private balancesError: string | null = null;
   @state() private walletBalances: any[] = [];
+  private sdk: WidgetSdk | null = null;
 
 
   connectedCallback(): void {
@@ -210,7 +212,9 @@ export class ICPayAmountInput extends LitElement {
         this.walletConnected = true;
         try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
         const normalized = normalizeConnectedWallet(this.pnp, result);
-        this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
+        const evmProvider = (this.pnp as any)?.getEvmProvider?.();
+        this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }), ...(evmProvider ? { evmProvider } : {}) } as any;
+        this.sdk = null;
         const isOisy = this.lastWalletId === 'oisy';
         if (isOisy) {
           // Keep modal open and show only the explicit CTA

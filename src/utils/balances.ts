@@ -21,7 +21,7 @@ export type WalletBalanceEntry = {
   hasSufficientBalance?: boolean;
 };
 
-const EVM_WALLET_IDS = new Set(['metamask', 'walletconnect', 'coinbase', 'brave', 'rainbow', 'rabby', 'phantom', 'keplr']);
+const EVM_WALLET_IDS = new Set(['metamask', 'coinbase', 'brave', 'rainbow', 'rabby', 'phantom', 'okx']);
 
 export function isEvmWalletId(walletId?: string | null): boolean {
   if (!walletId) return false;

@@ -4,6 +4,7 @@ import { baseStyles } from '../styles';
 import { handleWidgetError, getErrorMessage, shouldShowErrorToUser, getErrorAction, getErrorSeverity, ErrorSeverity } from '../error-handling';
 import type { PremiumContentConfig } from '../types';
 import { createSdk } from '../utils/sdk';
+import type { WidgetSdk } from '../utils/sdk';
 import './ui/progress-bar';
 import { renderWalletSelectorModal } from './ui/wallet-selector-modal';
 import { renderWalletBalanceModal } from './ui/wallet-balance-modal';
@@ -111,6 +112,7 @@ export class ICPayPremiumContent extends LitElement {
   @state() private balancesLoading = false;
   @state() private balancesError: string | null = null;
   @state() private walletBalances: WalletBalanceEntry[] = [];
+  private sdk: WidgetSdk | null = null;
   private async tryAutoConnectPNP() {
     try {
       if (!this.config || this.config?.useOwnWallet) return;
@@ -234,7 +236,9 @@ export class ICPayPremiumContent extends LitElement {
               if (principal) {
                 this.walletConnected = true;
                 const normalized = normalizeConnectedWallet(this.pnp, { owner: principal, principal, connected: true });
-                this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
+                const evmProvider = (this.pnp as any)?.getEvmProvider?.();
+                this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }), ...(evmProvider ? { evmProvider } : {}) } as any;
+                this.sdk = null;
                 try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: 'oisy' } })); } catch {}
                 // Proceed directly
                 this.onPay();
@@ -399,7 +403,9 @@ export class ICPayPremiumContent extends LitElement {
         this.walletConnected = true;
         try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
         const normalized = normalizeConnectedWallet(this.pnp, result);
-        this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
+        const evmProvider = (this.pnp as any)?.getEvmProvider?.();
+        this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }), ...(evmProvider ? { evmProvider } : {}) } as any;
+        this.sdk = null;
         const isOisy = this.lastWalletId === 'oisy';
         if (isOisy) {
           this.oisyReadyToPay = true;

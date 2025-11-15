@@ -35,6 +35,8 @@ export type CommonConfig = {
   publishableKey: string; // from icpay-sdk
   apiUrl?: string;
   icHost?: string;
+  // If provided, SDK will use this EVM provider for all EVM requests/signatures
+  evmProvider?: any;
   // Optional: human-readable description passed to payment_intent.description
   // If not provided, defaults to a generic label on submit.
   description?: string;

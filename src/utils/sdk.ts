@@ -52,6 +52,8 @@ export function createSdk(config: CommonConfig): WidgetSdk {
   if (config.icHost) sdkConfig.icHost = config.icHost;
   if (config.actorProvider) sdkConfig.actorProvider = config.actorProvider;
   if (config.connectedWallet) sdkConfig.connectedWallet = config.connectedWallet;
+  // Pass selected EVM provider from widget to SDK so signatures use the chosen wallet
+  if ((config as any).evmProvider) (sdkConfig as any).evmProvider = (config as any).evmProvider;
   // Propagate kill switch to SDK (defaults to true inside SDK)
   if (config.onrampDisabled !== undefined) (sdkConfig as any).onrampDisabled = config.onrampDisabled;
 

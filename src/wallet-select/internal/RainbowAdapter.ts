@@ -26,6 +26,7 @@ export class RainbowAdapter implements AdapterInterface {
 	readonly label = 'Rainbow';
 	readonly icon?: string | null;
 	private readonly config: WalletSelectConfig;
+	getEvmProvider(): any { return getRainbowProvider(); }
 
 	constructor(args: { config: WalletSelectConfig }) {
 		this.config = args.config || {};

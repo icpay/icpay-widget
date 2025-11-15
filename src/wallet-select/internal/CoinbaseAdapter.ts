@@ -31,6 +31,7 @@ export class CoinbaseAdapter implements AdapterInterface {
   readonly label = 'Coinbase Wallet';
   readonly icon?: string | null;
   private readonly config: WalletSelectConfig;
+  getEvmProvider(): any { return getCoinbaseProvider(); }
 
   constructor(args: { config: WalletSelectConfig }) {
     this.config = args.config || {};

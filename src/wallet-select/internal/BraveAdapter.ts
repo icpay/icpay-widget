@@ -3,20 +3,50 @@ import type { AdapterInterface, GetActorOptions, WalletSelectConfig, WalletAccou
 declare global {
 	interface Window {
 		ethereum?: any;
+		brave?: any;
+		navigator?: any;
 	}
 }
 
-function getBraveProvider(): any | null {
+function isBraveBrowser(): boolean {
+	try {
+		const nav: any = (typeof navigator !== 'undefined' ? navigator : (window as any)?.navigator);
+		return !!(nav && (nav.brave || String(nav.userAgent || '').toLowerCase().includes('brave')));
+	} catch {
+		return false;
+	}
+}
+
+function getBraveProviderInternal(allowFallback: boolean): any | null {
 	try {
 		const anyWin: any = (typeof window !== 'undefined' ? window : {}) as any;
-		let eth = anyWin.ethereum;
-		// If multiple providers are injected, pick the Brave one
-		if (eth && Array.isArray(eth.providers)) {
-			const brave = eth.providers.find((p: any) => p && p.isBraveWallet);
-			if (brave) return brave;
+		// Some builds expose a dedicated handle
+		if (anyWin.brave?.ethereum) return anyWin.brave.ethereum;
+		const eth = anyWin.ethereum;
+		if (!eth) return null;
+		// Prefer explicit Brave provider if multiple are present
+		if (Array.isArray(eth.providers) && eth.providers.length) {
+			const byFlag = eth.providers.find((p: any) => p && (p.isBraveWallet || (p?.walletMeta?.name && String(p.walletMeta.name).toLowerCase().includes('brave'))));
+			if (byFlag) return byFlag;
+			// If running in Brave and fallback explicitly allowed, allow a cautious fallback to a non-branded provider
+			if (allowFallback && isBraveBrowser()) {
+				const candidate = eth.providers.find(
+					(p: any) => p && typeof p.request === 'function' && !p.isMetaMask && !p.isCoinbaseWallet && !p.isRabby && !p.isOkxWallet && !p.isOKExWallet && !p.isPhantom
+				);
+				if (candidate) return candidate;
+				// As a last resort (explicitly opted-in), return the first provider
+				return eth.providers[0] || null;
+			}
+			return null;
 		}
 		// Single provider case
-		if (eth && eth.isBraveWallet) return eth;
+		if (eth.isBraveWallet) return eth;
+		const name = eth?.walletMeta?.name ? String(eth.walletMeta.name).toLowerCase() : '';
+		if (name.includes('brave')) return eth;
+		// If in Brave, fallback explicitly allowed, and it isn't obviously another brand, allow fallback
+		if (allowFallback && isBraveBrowser() && typeof eth.request === 'function' && !eth.isMetaMask && !eth.isCoinbaseWallet && !eth.isRabby && !eth.isOkxWallet && !eth.isOKExWallet && !eth.isPhantom) {
+			return eth;
+		}
 		return null;
 	} catch {
 		return null;
@@ -33,9 +63,16 @@ export class BraveAdapter implements AdapterInterface {
 		this.config = args.config || {};
 	}
 
+	private getProvider(): any | null {
+		// Always enable fallback logic when in Brave
+		return getBraveProviderInternal(true);
+	}
+
+	getEvmProvider(): any { return this.getProvider(); }
+
 	async isInstalled(): Promise<boolean> {
 		try {
-			return !!getBraveProvider();
+			return !!this.getProvider();
 		} catch {
 			return false;
 		}
@@ -43,19 +80,21 @@ export class BraveAdapter implements AdapterInterface {
 
 	async isConnected(): Promise<boolean> {
 		try {
-			const provider = getBraveProvider();
+			const provider = this.getProvider();
 			if (!provider) return false;
-			const accounts = await provider.request({ method: 'eth_accounts' });
-			return Array.isArray(accounts) && accounts.length > 0;
+			const accounts = await provider.request?.({ method: 'eth_accounts' });
+			if (Array.isArray(accounts) && accounts.length > 0 && typeof accounts[0] === 'string' && accounts[0]) return true;
+			const sel = provider?.selectedAddress || (Array.isArray(provider?.accounts) && provider.accounts[0]);
+			return !!sel;
 		} catch {
 			return false;
 		}
 	}
 
 	async connect(): Promise<WalletAccount> {
-		const provider = getBraveProvider();
+		const provider = this.getProvider();
 		if (!provider) throw new Error('Brave Wallet not available');
-		const accounts = await provider.request({ method: 'eth_requestAccounts' });
+		const accounts = await provider.request?.({ method: 'eth_requestAccounts' });
 		const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
 		if (!addr) throw new Error('No account returned by Brave Wallet');
 		return { owner: addr, principal: addr, connected: true };
@@ -63,7 +102,7 @@ export class BraveAdapter implements AdapterInterface {
 
 	async disconnect(): Promise<void> {
 		try {
-			const provider = getBraveProvider();
+			const provider = this.getProvider();
 			if (!provider) return;
 			try {
 				await provider.request?.({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
@@ -76,11 +115,12 @@ export class BraveAdapter implements AdapterInterface {
 
 	async getPrincipal(): Promise<string | null> {
 		try {
-			const provider = getBraveProvider();
+			const provider = this.getProvider();
 			if (!provider) return null;
-			const accounts = await provider.request({ method: 'eth_accounts' });
-			const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
-			return addr || null;
+			const accounts = await provider.request?.({ method: 'eth_accounts' });
+			if (Array.isArray(accounts) && accounts.length > 0 && typeof accounts[0] === 'string' && accounts[0]) return accounts[0];
+			const sel = provider?.selectedAddress || (Array.isArray(provider?.accounts) && provider.accounts[0]);
+			return (typeof sel === 'string' && sel) ? sel : null;
 		} catch {
 			return null;
 		}
