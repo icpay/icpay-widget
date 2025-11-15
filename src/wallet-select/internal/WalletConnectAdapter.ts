@@ -12,16 +12,46 @@ export class WalletConnectAdapter implements AdapterInterface {
   }
 
   async isInstalled(): Promise<boolean> {
-    // WalletConnect does not require installation; but keep disabled by default via index.ts
-    return false;
+    try {
+      const anyWin: any = (typeof window !== 'undefined' ? window : {}) as any;
+      const eth = anyWin.ethereum;
+      if (!eth) return false;
+      if (eth.isWalletConnect || eth?.provider?.isWalletConnect) return true;
+      if (Array.isArray(eth.providers)) {
+        return !!eth.providers.find((p: any) => p && (p.isWalletConnect || p?.provider?.isWalletConnect));
+      }
+      return false;
+    } catch {
+      return false;
+    }
   }
 
   async isConnected(): Promise<boolean> {
-    return false;
+    try {
+      const anyWin: any = (typeof window !== 'undefined' ? window : {}) as any;
+      const eth = anyWin.ethereum;
+      const provider = Array.isArray(eth?.providers) ? eth.providers.find((p: any) => p && (p.isWalletConnect || p?.provider?.isWalletConnect)) : (eth && (eth.isWalletConnect || eth?.provider?.isWalletConnect) ? eth : null);
+      if (!provider) return false;
+      const accounts = await provider.request({ method: 'eth_accounts' });
+      return Array.isArray(accounts) && accounts.length > 0;
+    } catch {
+      return false;
+    }
   }
 
   async connect(): Promise<WalletAccount> {
-    throw new Error('WalletConnect is not enabled');
+    const anyWin: any = (typeof window !== 'undefined' ? window : {}) as any;
+    const eth = anyWin.ethereum;
+    // If an injected WalletConnect provider exists (e.g. WC Desktop), use it
+    const provider = Array.isArray(eth?.providers) ? eth.providers.find((p: any) => p && (p.isWalletConnect || p?.provider?.isWalletConnect)) : (eth && (eth.isWalletConnect || eth?.provider?.isWalletConnect) ? eth : null);
+    if (provider) {
+      const accounts = await provider.request({ method: 'eth_requestAccounts' });
+      const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
+      if (!addr) throw new Error('No account returned by WalletConnect');
+      return { owner: addr, principal: addr, connected: true };
+    }
+    // Otherwise, require host app to provide WalletConnect flow externally
+    throw new Error('WalletConnect requires a projectId and provider setup. Please integrate a WalletConnect provider in the host app and expose it as the injected EVM provider.');
   }
 
   async disconnect(): Promise<void> {

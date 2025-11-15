@@ -104,7 +104,7 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
           })}
         ` : html`
           <div class="header">
-            <button class="back-button" @click=${() => { try { if (opts.onBack) { opts.onBack(); } else { onClose(); } } catch {} }}>‹</button>
+            <button class="back-button" @click=${() => { try { onClose(); } catch {} }}>‹</button>
             <h1 class="title">Connect</h1>
           </div>
           <div class="wallet-list">
@@ -141,7 +141,7 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
           </div>
           <div class="footer">
             <span class="need-wallet">Need a wallet?</span>
-            <button class="get-started" @click=${() => { try { window.open('https://internetcomputer.org/wallets','_blank','noopener,noreferrer'); } catch {} }}>Get started</button>
+            <button class="get-started" @click=${() => { try { window.open('https://metamask.io/en-GB/download','_blank','noopener,noreferrer'); } catch {} }}>Get started</button>
           </div>
         `}
       </div>
