@@ -67,11 +67,13 @@ export function renderPayWithContent(opts: PayWithOptions): TemplateResult {
           return sufficient.length > 0 ? html`
             ${sufficient.map((b) => {
               const sym = (b.ledgerSymbol || '').toUpperCase();
-              const iconClass = sym === 'ETH' ? 'eth-icon' : (sym === 'USDC' ? 'usdc-icon' : (sym === 'USDT' ? 'usdt-icon' : ''));
+              const iconClass = b.logoUrl ? '' : (sym === 'ETH' ? 'eth-icon' : (sym === 'USDC' ? 'usdc-icon' : (sym === 'USDT' ? 'usdt-icon' : '')));
               return html`
                 <div class="currency-item" @click=${() => opts.onSelect(b.ledgerSymbol)}>
                   <div class="currency-icon ${iconClass}">
-                    <span>${sym.slice(0,1)}</span>
+                    ${b.logoUrl
+                      ? html`<img src="${b.logoUrl}" alt="${sym} logo" style="width:100%;height:100%;object-fit:cover" />`
+                      : html`<span>${sym.slice(0,1)}</span>`}
                   </div>
                   <div class="currency-info">
                     <div class="currency-name">${b.ledgerName}</div>
@@ -94,11 +96,13 @@ export function renderPayWithContent(opts: PayWithOptions): TemplateResult {
           return insufficient.length > 0 ? html`
             ${insufficient.map((b) => {
               const sym = (b.ledgerSymbol || '').toUpperCase();
-              const iconClass = sym === 'ETH' ? 'eth-icon' : (sym === 'USDC' ? 'usdc-icon' : (sym === 'USDT' ? 'usdt-icon' : ''));
+              const iconClass = b.logoUrl ? '' : (sym === 'ETH' ? 'eth-icon' : (sym === 'USDC' ? 'usdc-icon' : (sym === 'USDT' ? 'usdt-icon' : '')));
               return html`
                 <div class="currency-item" disabled title="Insufficient balance">
                   <div class="currency-icon ${iconClass}">
-                    <span>${sym.slice(0,1)}</span>
+                    ${b.logoUrl
+                      ? html`<img src="${b.logoUrl}" alt="${sym} logo" style="width:100%;height:100%;object-fit:cover" />`
+                      : html`<span>${sym.slice(0,1)}</span>`}
                   </div>
                   <div class="currency-info">
                     <div class="currency-name">${b.ledgerName}</div>
