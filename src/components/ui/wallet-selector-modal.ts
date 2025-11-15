@@ -124,6 +124,9 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
                   items.push(html`<div class="divider"></div>`);
                   dividerInserted = true;
                 }
+                const chainLabel = (id === 'oisy' || id === 'plug' || id === 'nfid' || id === 'ii')
+                  ? 'Internet Computer'
+                  : (isEvm ? 'Ethereum-compatible' : '');
                 items.push(html`
                   <div class="wallet-item" style="opacity:${isConnecting?0.6:1}" @click=${() => onSelect(w.id)}>
                     <div class="wallet-icon ${iconClass}">
@@ -133,7 +136,7 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
                     </div>
                     <div class="wallet-info">
                       <div class="wallet-name">${displayName}</div>
-                      ${id === 'plug' || id === 'oisy' ? html`<div class="wallet-status">Installed</div>` : null}
+                      ${chainLabel ? html`<div class="wallet-status">${chainLabel}</div>` : null}
                     </div>
                   </div>
                 `);
