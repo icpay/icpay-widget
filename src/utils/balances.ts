@@ -19,6 +19,7 @@ export type WalletBalanceEntry = {
   requiredAmount?: string;
   requiredAmountFormatted?: string;
   hasSufficientBalance?: boolean;
+  logoUrl?: string | null;
 };
 
 const EVM_WALLET_IDS = new Set(['metamask', 'coinbase', 'brave', 'rainbow', 'rabby', 'phantom', 'okx']);
@@ -133,6 +134,7 @@ export async function getWalletBalanceEntries(params: {
     requiredAmount: b.requiredAmount,
     requiredAmountFormatted: b.requiredAmountFormatted,
     hasSufficientBalance: b.hasSufficientBalance,
+    logoUrl: b.logoUrl ?? null,
   }));
 
   return {

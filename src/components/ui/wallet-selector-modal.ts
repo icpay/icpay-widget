@@ -81,8 +81,6 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
         .wallet-icon { width:48px; height:48px; border-radius:12px; margin-right:16px; display:flex; align-items:center; justify-content:center; font-size:24px; overflow:hidden; }
         .oisy-icon { background-color:#0066ff; }
         .plug-icon { background:linear-gradient(135deg,#667eea 0%, #764ba2 100%); }
-        .coinbase-icon { background-color:#0052ff; }
-        .metamask-icon { background-color:#f6851b; }
         .wallet-info { flex:1; }
         .wallet-name { font-size:16px; font-weight:500; margin-bottom:4px; }
         .wallet-status { font-size:14px; color:#888; }
@@ -115,7 +113,6 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
               normalizedWallets.forEach((w) => {
                 const id = (w.id || '').toLowerCase();
                 const displayName = getWalletFriendlyName(w.id, w.label);
-                const iconClass = id === 'oisy' ? 'oisy-icon' : (id === 'plug' ? 'plug-icon' : (id === 'coinbase' ? 'coinbase-icon' : (id === 'metamask' ? 'metamask-icon' : '')));
                 const isEvm = isEvmWalletId(id);
                 // Insert a divider when transitioning from EVM wallets to non-EVM wallets (once)
                 if (lastWasEvm === null) {
@@ -129,7 +126,7 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
                   : (isEvm ? 'Ethereum-compatible' : '');
                 items.push(html`
                   <div class="wallet-item" style="opacity:${isConnecting?0.6:1}" @click=${() => onSelect(w.id)}>
-                    <div class="wallet-icon ${iconClass}">
+                    <div class="wallet-icon">
                       ${w.icon
                         ? html`<img src="${sanitizeDataUrl(w.icon)}" alt="${displayName} logo" class="icpay-w-8 icpay-h-8" style="object-fit:contain" />`
                         : html`<span>${displayName.charAt(0)}</span>`}
