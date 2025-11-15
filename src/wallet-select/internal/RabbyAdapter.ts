@@ -26,6 +26,7 @@ export class RabbyAdapter implements AdapterInterface {
 	readonly label = 'Rabby';
 	readonly icon?: string | null;
 	private readonly config: WalletSelectConfig;
+	getEvmProvider(): any { return getRabbyProvider(); }
 
 	constructor(args: { config: WalletSelectConfig }) {
 		this.config = args.config || {};

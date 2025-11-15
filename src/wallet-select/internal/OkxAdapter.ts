@@ -2,35 +2,33 @@ import type { AdapterInterface, GetActorOptions, WalletSelectConfig, WalletAccou
 
 declare global {
 	interface Window {
-		keplr?: any;
 		ethereum?: any;
+		okxwallet?: any;
 	}
 }
 
-function getKeplrEvmProvider(): any | null {
+function getOkxProvider(): any | null {
 	try {
 		const anyWin: any = (typeof window !== 'undefined' ? window : {}) as any;
-		// Some Keplr builds expose an ethereum provider with an isKeplr flag
+		// Dedicated OKX handle if present
+		const okx = anyWin.okxwallet;
+		if (okx && (okx.isOkxWallet || okx.ethereum)) return okx.ethereum || okx;
+		// Check injected ethereum flags
 		const eth = anyWin.ethereum;
 		if (eth && Array.isArray(eth.providers)) {
-			const prov = eth.providers.find((p: any) => p && (p.isKeplr || p?.provider?.isKeplr));
-			if (prov) return prov;
+			const p = eth.providers.find((p: any) => p && (p.isOkxWallet || p?.provider?.isOkxWallet));
+			if (p) return p;
 		}
-		if (eth && (eth.isKeplr || eth?.provider?.isKeplr)) return eth;
-		// Future-proof: keplr may expose an explicit EVM provider handle
-		if (anyWin.keplr?.ethereum) return anyWin.keplr.ethereum;
-		if (typeof anyWin.keplr?.getEthereumProvider === 'function') {
-			try { return anyWin.keplr.getEthereumProvider(); } catch {}
-		}
+		if (eth && (eth.isOkxWallet || eth?.provider?.isOkxWallet)) return eth;
 		return null;
 	} catch {
 		return null;
 	}
 }
 
-export class KeplrAdapter implements AdapterInterface {
-	readonly id = 'keplr';
-	readonly label = 'Keplr';
+export class OkxAdapter implements AdapterInterface {
+	readonly id = 'okx';
+	readonly label = 'OKX Wallet';
 	readonly icon?: string | null;
 	private readonly config: WalletSelectConfig;
 
@@ -38,9 +36,11 @@ export class KeplrAdapter implements AdapterInterface {
 		this.config = args.config || {};
 	}
 
+	getEvmProvider(): any { return getOkxProvider(); }
+
 	async isInstalled(): Promise<boolean> {
 		try {
-			return !!getKeplrEvmProvider();
+			return !!getOkxProvider();
 		} catch {
 			return false;
 		}
@@ -48,7 +48,7 @@ export class KeplrAdapter implements AdapterInterface {
 
 	async isConnected(): Promise<boolean> {
 		try {
-			const provider = getKeplrEvmProvider();
+			const provider = getOkxProvider();
 			if (!provider) return false;
 			const accounts = await provider.request({ method: 'eth_accounts' });
 			return Array.isArray(accounts) && accounts.length > 0;
@@ -58,17 +58,17 @@ export class KeplrAdapter implements AdapterInterface {
 	}
 
 	async connect(): Promise<WalletAccount> {
-		const provider = getKeplrEvmProvider();
-		if (!provider) throw new Error('Keplr (EVM) not available');
+		const provider = getOkxProvider();
+		if (!provider) throw new Error('OKX Wallet not available');
 		const accounts = await provider.request({ method: 'eth_requestAccounts' });
 		const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
-		if (!addr) throw new Error('No account returned by Keplr');
+		if (!addr) throw new Error('No account returned by OKX Wallet');
 		return { owner: addr, principal: addr, connected: true };
 	}
 
 	async disconnect(): Promise<void> {
 		try {
-			const provider = getKeplrEvmProvider();
+			const provider = getOkxProvider();
 			if (!provider) return;
 			try { await provider.request?.({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] }); } catch {}
 			try { provider.removeAllListeners?.('accountsChanged'); } catch {}
@@ -79,7 +79,7 @@ export class KeplrAdapter implements AdapterInterface {
 
 	async getPrincipal(): Promise<string | null> {
 		try {
-			const provider = getKeplrEvmProvider();
+			const provider = getOkxProvider();
 			if (!provider) return null;
 			const accounts = await provider.request({ method: 'eth_accounts' });
 			const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';

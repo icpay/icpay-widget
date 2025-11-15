@@ -14,12 +14,30 @@ export class MetaMaskAdapter implements AdapterInterface {
   private readonly config: WalletSelectConfig;
 
   constructor(args: { config: WalletSelectConfig }) {
-    this.config = args.config || {};
+    this.config = args.config || ({} as any);
+  }
+
+  private getProvider(): any {
+    try {
+      const anyWin: any = (typeof window !== 'undefined' ? window : {}) as any;
+      const eth = anyWin.ethereum;
+      if (eth && Array.isArray(eth.providers)) {
+        const mm = eth.providers.find((p: any) => p && p.isMetaMask);
+        if (mm) return mm;
+      }
+      if (eth && eth.isMetaMask) return eth;
+    } catch {}
+    return null;
+  }
+
+  // Exposed for WalletSelect.getEvmProvider()
+  getEvmProvider(): any {
+    return this.getProvider();
   }
 
   async isInstalled(): Promise<boolean> {
     try {
-      return !!(typeof window !== 'undefined' && window.ethereum && window.ethereum.isMetaMask);
+      return !!this.getProvider();
     } catch {
       return false;
     }
@@ -27,8 +45,10 @@ export class MetaMaskAdapter implements AdapterInterface {
 
   async isConnected(): Promise<boolean> {
     try {
-      if (!window.ethereum) return false;
-      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      const provider = this.getProvider();
+      if (!provider) return false;
+      const req = typeof provider.request === 'function' ? provider.request({ method: 'eth_accounts' }) : Promise.resolve([]);
+      const accounts = await req;
       return Array.isArray(accounts) && accounts.length > 0;
     } catch {
       return false;
@@ -36,8 +56,9 @@ export class MetaMaskAdapter implements AdapterInterface {
   }
 
   async connect(): Promise<WalletAccount> {
-    if (!window.ethereum) throw new Error('MetaMask not available');
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    const provider = this.getProvider();
+    if (!provider) throw new Error('MetaMask not available');
+    const accounts = await provider.request?.({ method: 'eth_requestAccounts' });
     const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
     if (!addr) throw new Error('No account returned by MetaMask');
     return { owner: addr, principal: addr, connected: true };
@@ -45,25 +66,25 @@ export class MetaMaskAdapter implements AdapterInterface {
 
   async disconnect(): Promise<void> {
     try {
-      if (!window.ethereum) return;
-      // Try to open MetaMask permissions prompt so user can switch/revoke account access
+      const provider = this.getProvider() || (typeof window !== 'undefined' ? (window as any).ethereum : null);
+      if (!provider) return;
       try {
-        await window.ethereum.request?.({
+        await provider.request?.({
           method: 'wallet_requestPermissions',
           params: [{ eth_accounts: {} }]
         });
       } catch {}
-      // Best-effort: remove any cached listeners if present (defensive)
-      try { window.ethereum.removeAllListeners?.('accountsChanged'); } catch {}
-      try { window.ethereum.removeAllListeners?.('chainChanged'); } catch {}
-      try { window.ethereum.removeAllListeners?.('disconnect'); } catch {}
+      try { provider.removeAllListeners?.('accountsChanged'); } catch {}
+      try { provider.removeAllListeners?.('chainChanged'); } catch {}
+      try { provider.removeAllListeners?.('disconnect'); } catch {}
     } catch {}
   }
 
   async getPrincipal(): Promise<string | null> {
     try {
-      if (!window.ethereum) return null;
-      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      const provider = this.getProvider() || (typeof window !== 'undefined' ? (window as any).ethereum : null);
+      if (!provider) return null;
+      const accounts = await provider.request?.({ method: 'eth_accounts' });
       const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
       return addr || null;
     } catch {

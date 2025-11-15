@@ -30,6 +30,7 @@ export class PhantomAdapter implements AdapterInterface {
 	readonly label = 'Phantom';
 	readonly icon?: string | null;
 	private readonly config: WalletSelectConfig;
+	getEvmProvider(): any { return getPhantomEvmProvider(); }
 
 	constructor(args: { config: WalletSelectConfig }) {
 		this.config = args.config || {};

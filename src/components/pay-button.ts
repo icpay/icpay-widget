@@ -204,7 +204,9 @@ export class ICPayPayButton extends LitElement {
         this.walletConnected = true;
         try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
         const normalized = normalizeConnectedWallet(this.pnp, result);
-        this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
+        const evmProvider = (this.pnp as any)?.getEvmProvider?.();
+        this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }), ...(evmProvider ? { evmProvider } : {}) } as any;
+        this.sdk = null;
         const isOisy = (walletId || '').toLowerCase() === 'oisy';
         if (isOisy) {
           // Stay in modal and show a single CTA to execute the transfer from a user gesture
@@ -244,7 +246,9 @@ export class ICPayPayButton extends LitElement {
                 this.walletConnected = true;
                 try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: 'oisy' } })); } catch {}
                 const normalized = normalizeConnectedWallet(this.pnp, result);
-                this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }) };
+                const evmProvider = (this.pnp as any)?.getEvmProvider?.();
+                this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }), ...(evmProvider ? { evmProvider } : {}) } as any;
+                this.sdk = null;
                 this.oisyReadyToPay = true;
                 this.pendingAction = null;
               }).catch((err2: any) => {

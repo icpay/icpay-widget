@@ -75,7 +75,7 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
         .header { display:flex; align-items:center; margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid #333; flex-shrink:0; }
         .back-button { background:none; border:none; color:#fff; font-size:24px; cursor:pointer; padding:0; margin-right:16px; }
         .title { font-size:20px; font-weight:600; flex:1; text-align:center; margin-right:40px; }
-        .wallet-list { display:flex; flex-direction:column; gap:0; overflow-y:auto; flex:1; }
+        .wallet-list { display:flex; flex-direction:column; gap:0; overflow-y:auto; flex:1; padding-right:8px; scrollbar-gutter: stable; }
         .wallet-item { display:flex; align-items:center; padding:16px 12px; cursor:pointer; transition:background-color 0.2s; border-radius:12px; }
         .wallet-item:hover { background-color:#2a2a2a; }
         .wallet-icon { width:48px; height:48px; border-radius:12px; margin-right:16px; display:flex; align-items:center; justify-content:center; font-size:24px; overflow:hidden; }
@@ -86,7 +86,7 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
         .wallet-info { flex:1; }
         .wallet-name { font-size:16px; font-weight:500; margin-bottom:4px; }
         .wallet-status { font-size:14px; color:#888; }
-        .divider { height:1px; background-color:#333; margin:8px 0; }
+        .divider { height:0; border-top:1px solid #444; margin:8px 0; border-radius:1px; width:100%; }
         .footer { display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:16px; flex-shrink:0; }
         .need-wallet { font-size:14px; color:#888; }
         .get-started { font-size:14px; color:#0066ff; background:none; border:none; cursor:pointer; font-weight:500; }
@@ -111,13 +111,16 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
             ${(() => {
               const items: TemplateResult[] = [];
               let dividerInserted = false;
-              let nonEvmSeen = false;
+              let lastWasEvm: boolean | null = null;
               normalizedWallets.forEach((w) => {
                 const id = (w.id || '').toLowerCase();
                 const displayName = getWalletFriendlyName(w.id, w.label);
                 const iconClass = id === 'oisy' ? 'oisy-icon' : (id === 'plug' ? 'plug-icon' : (id === 'coinbase' ? 'coinbase-icon' : (id === 'metamask' ? 'metamask-icon' : '')));
                 const isEvm = isEvmWalletId(id);
-                if (!dividerInserted && isEvm && nonEvmSeen) {
+                // Insert a divider when transitioning from EVM wallets to non-EVM wallets (once)
+                if (lastWasEvm === null) {
+                  lastWasEvm = isEvm;
+                } else if (!dividerInserted && lastWasEvm === true && isEvm === false) {
                   items.push(html`<div class="divider"></div>`);
                   dividerInserted = true;
                 }
@@ -134,7 +137,7 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
                     </div>
                   </div>
                 `);
-                if (!isEvm) nonEvmSeen = true;
+                lastWasEvm = isEvm;
               });
               return items;
             })()}
