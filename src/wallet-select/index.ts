@@ -71,6 +71,11 @@ import { OisyAdapter } from './internal/OisyAdapter.js';
 import { MetaMaskAdapter } from './internal/MetaMaskAdapter.js';
 import { WalletConnectAdapter } from './internal/WalletConnectAdapter.js';
 import { CoinbaseAdapter } from './internal/CoinbaseAdapter.js';
+import { BraveAdapter } from './internal/BraveAdapter.js';
+import { RainbowAdapter } from './internal/RainbowAdapter.js';
+import { RabbyAdapter } from './internal/RabbyAdapter.js';
+import { PhantomAdapter } from './internal/PhantomAdapter.js';
+import { KeplrAdapter } from './internal/KeplrAdapter.js';
 import { getIcon } from './img/icons.js';
 
 
@@ -84,12 +89,17 @@ export class WalletSelect {
     this._config = config || {};
     const baseAdapters: Record<string, AdapterConfig> = {};
     baseAdapters.oisy = { id: 'oisy', label: 'Oisy', icon: null, enabled: true, adapter: OisyAdapter };
-    baseAdapters.nfid = { id: 'nfid', label: 'NFID', icon: null, enabled: true, adapter: NfidAdapter };
-    baseAdapters.ii = { id: 'ii', label: 'Internet Identity', icon: null, enabled: true, adapter: IIAdapter };
+    baseAdapters.nfid = { id: 'nfid', label: 'NFID', icon: null, enabled: false, adapter: NfidAdapter };
+    baseAdapters.ii = { id: 'ii', label: 'Internet Identity', icon: null, enabled: false, adapter: IIAdapter };
     baseAdapters.plug = { id: 'plug', label: 'Plug', icon: null, enabled: true, adapter: PlugAdapter };
     baseAdapters.metamask = { id: 'metamask', label: 'MetaMask', icon: null, enabled: true, adapter: MetaMaskAdapter };
     baseAdapters.walletconnect = { id: 'walletconnect', label: 'WalletConnect', icon: null, enabled: true, adapter: WalletConnectAdapter };
     baseAdapters.coinbase = { id: 'coinbase', label: 'Coinbase Wallet', icon: null, enabled: true, adapter: CoinbaseAdapter };
+    baseAdapters.brave = { id: 'brave', label: 'Brave Wallet', icon: null, enabled: true, adapter: BraveAdapter };
+    baseAdapters.rainbow = { id: 'rainbow', label: 'Rainbow', icon: null, enabled: true, adapter: RainbowAdapter };
+    baseAdapters.rabby = { id: 'rabby', label: 'Rabby', icon: null, enabled: true, adapter: RabbyAdapter };
+    baseAdapters.phantom = { id: 'phantom', label: 'Phantom', icon: null, enabled: true, adapter: PhantomAdapter };
+    baseAdapters.keplr = { id: 'keplr', label: 'Keplr', icon: null, enabled: true, adapter: KeplrAdapter };
     // Initialize adapters config with sane defaults and allow overrides
     const cfgAdapters = (this._config.adapters = this._config.adapters || {});
     const host = defaultIcHost(this._config.icHost);
@@ -130,6 +140,7 @@ export class WalletSelect {
     const idToType: Record<string, 'ic' | 'evm'> = {
       oisy: 'ic', nfid: 'ic', ii: 'ic', plug: 'ic',
       metamask: 'evm', walletconnect: 'evm', coinbase: 'evm',
+      brave: 'evm', rainbow: 'evm', rabby: 'evm', phantom: 'evm', keplr: 'evm',
     };
     return Object.values(this._adapters)
       .filter((a) => a.enabled !== false)

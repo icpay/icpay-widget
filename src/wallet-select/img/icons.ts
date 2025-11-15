@@ -14,6 +14,10 @@ import ledgerIcon from './ledger.js';
 import okexIcon from './okex.js';
 import exodusIcon from './exodus.js';
 import walletconnectIcon from './walletconnect.js';
+import braveIcon from './brave.js';
+import phantomIcon from './phantom.js';
+import rabbyIcon from './rabby.js';
+import keplrIcon from './keplr.js';
 
 const ICONS: Record<string, string> = {
   ii: iiIcon,
@@ -24,6 +28,10 @@ const ICONS: Record<string, string> = {
   metamask: metamaskIcon,
   coinbase: coinbaseIcon,
   rainbow: rainbowIcon,
+  brave: braveIcon,
+  phantom: phantomIcon,
+  rabby: rabbyIcon,
+  keplr: keplrIcon,
   ledger: ledgerIcon,
   okex: okexIcon,
   exodus: exodusIcon,
