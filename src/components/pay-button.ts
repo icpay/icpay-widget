@@ -291,7 +291,7 @@ export class ICPayPayButton extends LitElement {
         connectedWallet: (this.config as any)?.connectedWallet,
         amountUsd: Number(this.config?.amountUsd ?? 0),
         chainShortcodes: (this.config as any)?.chainShortcodes,
-        ledgerShortcodes: (this.config as any)?.ledgerShortcodes,
+        tokenShortcodes: (this.config as any)?.tokenShortcodes,
       });
       this.walletBalances = balances as WalletBalanceEntry[];
       this.pendingAction = action;
@@ -347,8 +347,8 @@ export class ICPayPayButton extends LitElement {
           if (tryX402) {
             try {
               const metadata = { network: 'evm', ledgerId: sel?.ledgerId, chainId: sel?.chainUuid, context: 'pay-button:x402' };
-              debugLog(this.config?.debug || false, 'Attempting X402 flow (EVM selection)', { amountUsd, symbol: symbolNow, x402Accepts: sel?.x402Accepts });
-              await (sdk.client as any).createPaymentX402Usd({ usdAmount: amountUsd, symbol: symbolNow, metadata });
+              debugLog(this.config?.debug || false, 'Attempting X402 flow (EVM selection)', { amountUsd, tokenShortcode: sel?.tokenShortcode, x402Accepts: sel?.x402Accepts });
+              await (sdk.client as any).createPaymentX402Usd({ usdAmount: amountUsd, tokenShortcode: (sel as any)?.tokenShortcode, metadata });
               return;
             } catch (x402Err: any) {
               debugLog(this.config?.debug || false, 'X402 payment failed (EVM selection), falling back', {
@@ -365,11 +365,9 @@ export class ICPayPayButton extends LitElement {
           // Normal wallet flow (native or non-x402 token)
           debugLog(this.config?.debug || false, 'Falling back to normal EVM wallet flow', {
             amountUsd,
-            chainUuid: sel?.chainUuid,
-            ledgerId: sel?.ledgerId,
-            symbol: symbolNow,
+            tokenShortcode: (sel as any)?.tokenShortcode,
           });
-          await (sdk.client as any).createPaymentUsd({ usdAmount: amountUsd, chainId: sel?.chainUuid, symbol: symbolNow, metadata: { network: 'evm', ledgerId: sel?.ledgerId } });
+          await (sdk.client as any).createPaymentUsd({ usdAmount: amountUsd, tokenShortcode: (sel as any)?.tokenShortcode, metadata: { network: 'evm', ledgerId: sel?.ledgerId } });
         } catch {}
       });
       return;

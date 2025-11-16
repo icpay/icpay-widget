@@ -2,6 +2,7 @@ export type WalletBalanceEntry = {
   ledgerId: string;
   ledgerName: string;
   ledgerSymbol: string;
+  tokenShortcode?: string | null;
   canisterId: string;
   // Whether this ledger supports x402/EIP-3009 flow (if provided by API)
   eip3009Version?: string | null;
@@ -94,19 +95,19 @@ export async function getWalletBalanceEntries(params: {
   connectedWallet?: { owner?: string; principal?: string } | any;
   amountUsd?: number;
   chainShortcodes?: string[];
-  ledgerShortcodes?: string[];
+  tokenShortcodes?: string[];
 }): Promise<{ balances: WalletBalanceEntry[]; totalBalancesUSD?: number; lastUpdated: Date }>
 {
-  const { sdk, lastWalletId, connectedWallet, amountUsd, chainShortcodes, ledgerShortcodes } = params;
+  const { sdk, lastWalletId, connectedWallet, amountUsd, chainShortcodes, tokenShortcodes } = params;
   let response: any;
   const lowerId = (lastWalletId || '').toLowerCase();
   const addrOrPrincipal = (connectedWallet?.owner || connectedWallet?.principal || '').toString();
   try {
     if (lowerId && EVM_WALLET_IDS.has(lowerId)) {
-      response = await (sdk?.client as any)?.getExternalWalletBalances?.({ network: 'evm', address: addrOrPrincipal, amountUsd, chainShortcodes, ledgerShortcodes });
+      response = await (sdk?.client as any)?.getExternalWalletBalances?.({ network: 'evm', address: addrOrPrincipal, amountUsd, chainShortcodes, tokenShortcodes });
     } else {
       // Prefer API for IC balances too for uniform behavior
-      response = await (sdk?.client as any)?.getExternalWalletBalances?.({ network: 'ic', principal: addrOrPrincipal, amountUsd, chainShortcodes, ledgerShortcodes });
+      response = await (sdk?.client as any)?.getExternalWalletBalances?.({ network: 'ic', principal: addrOrPrincipal, amountUsd, chainShortcodes, tokenShortcodes });
     }
   } catch {
     // Fallbacks: for IC wallets use client method; for EVM wallets, return empty set
@@ -117,6 +118,7 @@ export async function getWalletBalanceEntries(params: {
     ledgerId: b.ledgerId,
     ledgerName: b.ledgerName,
     ledgerSymbol: b.ledgerSymbol,
+    tokenShortcode: b.tokenShortcode ?? b.shortcode ?? null,
     canisterId: b.canisterId,
     eip3009Version: b?.eip3009Version ?? null,
     x402Accepts: b?.x402Accepts != null ? Boolean(b.x402Accepts) : undefined,

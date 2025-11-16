@@ -425,7 +425,7 @@ export class ICPayTipJar extends LitElement {
         connectedWallet: (this.config as any)?.connectedWallet,
         amountUsd: Number(this.selectedAmount || 0),
         chainShortcodes: (this.config as any)?.chainShortcodes,
-        ledgerShortcodes: (this.config as any)?.ledgerShortcodes,
+        tokenShortcodes: (this.config as any)?.tokenShortcodes,
       });
       this.walletBalances = balances as any[];
     } catch (e: any) {

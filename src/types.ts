@@ -45,7 +45,7 @@ export type CommonConfig = {
   chainId?: number;   // default: 0
   // Optional filtering for wallet balance checker
   chainShortcodes?: string[];   // e.g., ['base','ic']
-  ledgerShortcodes?: string[];  // e.g., ['icp','pay']
+  tokenShortcodes?: string[];  // e.g., ['icp','pay']
   // Optional wallet selection filter: which chain types to show wallets for
   chainTypes?: Array<'ic' | 'evm'>;
   // Optional metadata to include on created payment intents
