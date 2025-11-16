@@ -461,7 +461,23 @@ export class ICPayArticlePaywall extends LitElement {
         try {
           const sdk = createSdk(this.config);
           const amountUsd = Number(this.config?.priceUsd ?? 0);
-          await (sdk.client as any).createPaymentUsd({ usdAmount: amountUsd, chainId: sel?.chainUuid, symbol: sel?.ledgerSymbol, metadata: { network: 'evm', ledgerId: sel?.ledgerId } });
+          if (sel?.x402Accepts) {
+            try {
+              await (sdk.client as any).createPaymentX402Usd({
+                usdAmount: amountUsd,
+                symbol: sel?.ledgerSymbol,
+                metadata: { network: 'evm', ledgerId: sel?.ledgerId, chainId: sel?.chainUuid, context: 'article:x402' }
+              });
+              this.showBalanceModal = false;
+              return;
+            } catch { /* fallback to normal flow */ }
+          }
+          await (sdk.client as any).createPaymentUsd({
+            usdAmount: amountUsd,
+            chainId: sel?.chainUuid,
+            symbol: sel?.ledgerSymbol,
+            metadata: { network: 'evm', ledgerId: sel?.ledgerId }
+          });
         } catch {}
         this.showBalanceModal = false;
       });
