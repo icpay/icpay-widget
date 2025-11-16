@@ -414,7 +414,7 @@ export class ICPayCoffeeShop extends LitElement {
             try {
               await (sdk.client as any).createPaymentX402Usd({
                 usdAmount: amountUsd,
-                symbol: sel?.ledgerSymbol,
+                tokenShortcode: (sel as any)?.tokenShortcode,
                 metadata: { network: 'evm', ledgerId: sel?.ledgerId, chainId: sel?.chainUuid, context: 'coffee:x402', item: this.selectedItem?.name }
               });
               this.showBalanceModal = false;
@@ -423,8 +423,7 @@ export class ICPayCoffeeShop extends LitElement {
           }
           await (sdk.client as any).createPaymentUsd({
             usdAmount: amountUsd,
-            chainId: sel?.chainUuid,
-            symbol: sel?.ledgerSymbol,
+            tokenShortcode: (sel as any)?.tokenShortcode,
             metadata: { network: 'evm', ledgerId: sel?.ledgerId, item: this.selectedItem?.name }
           });
         } catch {}
