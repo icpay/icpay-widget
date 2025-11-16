@@ -10,6 +10,8 @@ import './ui/progress-bar';
 import { renderWalletSelectorModal } from './ui/wallet-selector-modal';
 import { renderTransakOnrampModal, TransakOnrampOptions } from './ui/transak-onramp-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
+import { getWalletBalanceEntries, isEvmWalletId, ensureEvmChain } from '../utils/balances';
+import { renderWalletBalanceModal } from './ui/wallet-balance-modal';
 
 // Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';
@@ -88,6 +90,11 @@ export class ICPayDonationThermometer extends LitElement {
   private onrampPollingActive: boolean = false;
   private onrampNotifyController: { stop: () => void } | null = null;
   private sdk: WidgetSdk | null = null;
+  // Integrated balances
+  @state() private showBalanceModal = false;
+  @state() private balancesLoading = false;
+  @state() private balancesError: string | null = null;
+  @state() private walletBalances: any[] = [];
   private async tryAutoConnectPNP() {
     try {
       if (!this.config || this.config?.useOwnWallet) return;
@@ -394,8 +401,7 @@ export class ICPayDonationThermometer extends LitElement {
           this.oisyReadyToPay = true;
         } else {
           this.showWalletModal = false;
-          const action = this.pendingAction; this.pendingAction = null;
-          if (action === 'donate') setTimeout(() => this.donate(), 0);
+          this.fetchAndShowBalances();
         }
       }).catch((error: any) => {
         this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
@@ -408,6 +414,67 @@ export class ICPayDonationThermometer extends LitElement {
       this.showWalletModal = false;
     }
   }
+
+  private async fetchAndShowBalances() {
+    try {
+      this.balancesLoading = true;
+      this.balancesError = null;
+      this.showBalanceModal = true;
+      const sdk = createSdk(this.config);
+      const { balances } = await getWalletBalanceEntries({
+        sdk,
+        lastWalletId: this.lastWalletId,
+        connectedWallet: (this.config as any)?.connectedWallet,
+        amountUsd: Number(this.selectedAmount || 0),
+        chainShortcodes: (this.config as any)?.chainShortcodes,
+        ledgerShortcodes: (this.config as any)?.ledgerShortcodes,
+      });
+      this.walletBalances = balances as any[];
+    } catch (e: any) {
+      this.walletBalances = [];
+      this.balancesError = (e && (e.message || String(e))) || 'Failed to load balances';
+    } finally {
+      this.balancesLoading = false;
+    }
+  }
+
+  private onSelectBalanceSymbol = (symbol: string) => {
+    if (symbol && typeof symbol === 'string') {
+      this.selectedSymbol = symbol;
+    }
+    if (isEvmWalletId(this.lastWalletId)) {
+      const sel = (this.walletBalances || []).find((b: any) => b.ledgerSymbol === (this.selectedSymbol || symbol));
+      const targetChain = sel?.chainId;
+      ensureEvmChain(targetChain, { chainName: sel?.chainName, rpcUrlPublic: (sel as any)?.rpcUrlPublic, nativeSymbol: sel?.ledgerSymbol, decimals: sel?.decimals }).then(async () => {
+        try {
+          const sdk = createSdk(this.config);
+          const amountUsd = Number(this.selectedAmount || 0);
+          if (sel?.x402Accepts) {
+            try {
+              await (sdk.client as any).createPaymentX402Usd({
+                usdAmount: amountUsd,
+                symbol: sel?.ledgerSymbol,
+                metadata: { network: 'evm', ledgerId: sel?.ledgerId, chainId: sel?.chainUuid, context: 'donation:x402' }
+              });
+              this.showBalanceModal = false;
+              return;
+            } catch {}
+          }
+          await (sdk.client as any).createPaymentUsd({
+            usdAmount: amountUsd,
+            chainId: sel?.chainUuid,
+            symbol: sel?.ledgerSymbol,
+            metadata: { network: 'evm', ledgerId: sel?.ledgerId }
+          });
+        } catch {}
+        this.showBalanceModal = false;
+      });
+      return;
+    }
+    this.showBalanceModal = false;
+    const action = this.pendingAction; this.pendingAction = null;
+    if (action === 'donate') setTimeout(() => this.donate(), 0);
+  };
 
   render() {
     if (!this.config) {
@@ -473,6 +540,15 @@ export class ICPayDonationThermometer extends LitElement {
             onOisyPay: () => { this.showWalletModal = false; this.oisyReadyToPay = false; this.donate(); }
           });
         })()}
+
+        ${renderWalletBalanceModal({
+          visible: this.showBalanceModal,
+          isLoading: this.balancesLoading,
+          error: this.balancesError,
+          balances: this.walletBalances as any,
+          onSelect: (s: string) => this.onSelectBalanceSymbol(s),
+          onClose: () => { this.showBalanceModal = false; },
+        })}
 
         ${this.showOnrampModal ? renderTransakOnrampModal({
           visible: this.showOnrampModal,
