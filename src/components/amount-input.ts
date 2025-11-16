@@ -248,7 +248,7 @@ export class ICPayAmountInput extends LitElement {
         connectedWallet: (this.config as any)?.connectedWallet,
         amountUsd: Number(this.amountUsd ?? 0),
         chainShortcodes: (this.config as any)?.chainShortcodes,
-        ledgerShortcodes: (this.config as any)?.ledgerShortcodes,
+        tokenShortcodes: (this.config as any)?.tokenShortcodes,
       });
       this.walletBalances = balances as any[];
     } catch (e: any) {
@@ -275,7 +275,7 @@ export class ICPayAmountInput extends LitElement {
             try {
               await (sdk.client as any).createPaymentX402Usd({
                 usdAmount: amountUsd,
-                symbol: sel?.ledgerSymbol,
+                tokenShortcode: (sel as any)?.tokenShortcode,
                 metadata: { network: 'evm', ledgerId: sel?.ledgerId, chainId: sel?.chainUuid, context: 'amount-input:x402' }
               });
               this.showBalanceModal = false;
@@ -286,8 +286,7 @@ export class ICPayAmountInput extends LitElement {
           }
           await (sdk.client as any).createPaymentUsd({
             usdAmount: amountUsd,
-            chainId: sel?.chainUuid,
-            symbol: sel?.ledgerSymbol,
+            tokenShortcode: (sel as any)?.tokenShortcode,
             metadata: { network: 'evm', ledgerId: sel?.ledgerId }
           });
         } catch {}
