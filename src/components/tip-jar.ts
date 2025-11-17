@@ -390,11 +390,13 @@ export class ICPayTipJar extends LitElement {
         this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
         this.errorSeverity = ErrorSeverity.ERROR;
         this.showWalletModal = false;
+        try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-error', { detail: { message: this.errorMessage, code: 'WALLET_CONNECT_ERROR' } })); } catch {}
       });
     } catch (error) {
       this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
       this.errorSeverity = ErrorSeverity.ERROR;
       this.showWalletModal = false;
+      try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-error', { detail: { message: this.errorMessage, code: 'WALLET_CONNECT_ERROR' } })); } catch {}
     }
   }
 
@@ -520,7 +522,7 @@ export class ICPayTipJar extends LitElement {
             isConnecting: false,
             onSwitchAccount: () => this.onSwitchAccount(null),
             onSelect: (walletId: string) => this.connectWithWallet(walletId),
-            onClose: () => { this.showWalletModal = false; this.oisyReadyToPay = false; },
+            onClose: () => { this.showWalletModal = false; this.oisyReadyToPay = false; try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-cancelled', { detail: { reason: 'user_cancelled' } })); } catch {} },
             onCreditCard: (this.config?.onramp?.enabled !== false) ? () => this.startOnramp() : undefined,
             creditCardLabel: this.config?.onramp?.creditCardLabel || 'Pay with credit card',
             showCreditCard: (this.config?.onramp?.enabled !== false),
