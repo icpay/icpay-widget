@@ -1407,7 +1407,9 @@ export class ICPayProgressBar extends LitElement {
         step.errorMessage = this.transformErrorMessage(errorMessage);
       }
 
-      debugLog(this.debug, `ICPay Progress: Step ${stepIndex} (${step.label}) status changed from ${oldStatus} to ${status}`);
+      if (oldStatus !== status) {
+        debugLog(this.debug, `ICPay Progress: Step ${stepIndex} (${step.label}) status changed from ${oldStatus} to ${status}`);
+      }
 
       this.requestUpdate();
     }
