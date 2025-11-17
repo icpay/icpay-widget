@@ -1508,11 +1508,9 @@ export class ICPayProgressBar extends LitElement {
 
   private renderSuccessState() {
     const displayAmount = this.currentAmount || this.amount;
-    const displayCurrency = this.currentLedgerSymbol || this.currentCurrency || this.currency;
 
     debugLog(this.debug, 'ICPay Progress: Rendering success state with:', {
       displayAmount,
-      displayCurrency,
       currentAmount: this.currentAmount,
       amount: this.amount,
       currentCurrency: this.currentCurrency,
@@ -1551,12 +1549,11 @@ export class ICPayProgressBar extends LitElement {
 
   private renderInsufficientFundsError() {
     const displayAmount = this.currentAmount || this.amount;
-    const displayCurrency = this.currentLedgerSymbol || this.currentCurrency || this.currency;
 
     return html`
       <div class="insufficient-funds-container">
         <div class="payment-summary">
-          <div class="payment-amount">Pay $${displayAmount} with ${displayCurrency}</div>
+          <div class="payment-amount">Pay $${displayAmount} with crypto</div>
         </div>
 
         <div class="error-notification">
