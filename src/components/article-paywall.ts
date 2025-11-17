@@ -341,25 +341,10 @@ export class ICPayArticlePaywall extends LitElement {
         }
       }
 
-      // Wallet is connected, proceed with payment
-      debugLog(this.config?.debug || false, 'Creating SDK for payment');
-      const sdk = createSdk(this.config);
-
-      const symbol = this.selectedSymbol || 'ICP';
-
-      debugLog(this.config?.debug || false, 'Article payment details', {
-        priceUsd: this.config.priceUsd,
-        selectedSymbol: symbol
-      });
-
-      // Do not pre-open Oisy signer tab here; let SDK handle it inside this click
-      const resp = await sdk.sendUsd(this.config.priceUsd, symbol, { context: 'article' });
-      debugLog(this.config?.debug || false, 'Article payment completed', { resp });
-
-      this.unlocked = true;
-      this.succeeded = true;
-      if (this.config.onSuccess) this.config.onSuccess({ id: resp.transactionId, status: resp.status });
-      this.dispatchEvent(new CustomEvent('icpay-unlock', { detail: { amount: this.config.priceUsd, tx: resp }, bubbles: true }));
+      // Wallet is connected; proceed to token selection to initiate payment via selection handler
+      this.showWalletModal = true;
+      await this.fetchAndShowBalances();
+      return;
     } catch (e) {
       // Handle errors using the new error handling system
       handleWidgetError(e, {
@@ -450,12 +435,11 @@ export class ICPayArticlePaywall extends LitElement {
     }
   }
 
-  private onSelectBalanceSymbol = (symbol: string) => {
-    if (symbol && typeof symbol === 'string') {
-      this.selectedSymbol = symbol;
-    }
+  private onSelectBalanceSymbol = async (shortcode: string) => {
+    const sel = (this.walletBalances || []).find((b: any) => (b as any)?.tokenShortcode === shortcode);
+    if (sel?.ledgerSymbol) this.selectedSymbol = sel.ledgerSymbol;
     if (isEvmWalletId(this.lastWalletId)) {
-      const sel = (this.walletBalances || []).find(b => b.ledgerSymbol === (this.selectedSymbol || symbol));
+      const sel = (this.walletBalances || []).find(b => (b as any)?.tokenShortcode === shortcode);
       const targetChain = sel?.chainId;
       ensureEvmChain(targetChain, { chainName: sel?.chainName, rpcUrlPublic: (sel as any)?.rpcUrlPublic, nativeSymbol: sel?.ledgerSymbol, decimals: sel?.decimals }).then(async () => {
         try {
@@ -484,7 +468,19 @@ export class ICPayArticlePaywall extends LitElement {
     }
     this.showBalanceModal = false;
     const action = this.pendingAction; this.pendingAction = null;
-    if (action === 'unlock') setTimeout(() => this.unlock(), 0);
+    if (action === 'unlock') {
+      // IC flow: send using tokenShortcode same as EVM
+      try {
+        const sel = (this.walletBalances || []).find((b: any) => (b as any)?.tokenShortcode === shortcode);
+        const sdk = createSdk(this.config);
+        const amountUsd = Number(this.config?.priceUsd ?? 0);
+        await (sdk.client as any).createPaymentUsd({
+          usdAmount: amountUsd,
+          tokenShortcode: (sel as any)?.tokenShortcode,
+          metadata: { network: 'ic', ledgerId: sel?.ledgerId }
+        });
+      } catch {}
+    }
   };
 
   render() {

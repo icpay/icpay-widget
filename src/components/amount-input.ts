@@ -259,12 +259,11 @@ export class ICPayAmountInput extends LitElement {
     }
   }
 
-  private onSelectBalanceSymbol = (symbol: string) => {
-    if (symbol && typeof symbol === 'string') {
-      this.selectedSymbol = symbol;
-    }
+  private onSelectBalanceSymbol = async (shortcode: string) => {
+    const sel = (this.walletBalances || []).find((b: any) => (b as any)?.tokenShortcode === shortcode);
+    if (sel?.ledgerSymbol) this.selectedSymbol = sel.ledgerSymbol;
     if (isEvmWalletId(this.lastWalletId)) {
-      const sel = (this.walletBalances || []).find((b: any) => b.ledgerSymbol === (this.selectedSymbol || symbol));
+      const sel = (this.walletBalances || []).find((b: any) => (b as any)?.tokenShortcode === shortcode);
       const targetChain = sel?.chainId;
       ensureEvmChain(targetChain, { chainName: sel?.chainName, rpcUrlPublic: (sel as any)?.rpcUrlPublic, nativeSymbol: sel?.ledgerSymbol, decimals: sel?.decimals }).then(async () => {
         try {
@@ -296,7 +295,19 @@ export class ICPayAmountInput extends LitElement {
     }
     this.showBalanceModal = false;
     const action = this.pendingAction; this.pendingAction = null;
-    if (action === 'pay') setTimeout(() => this.pay(), 0);
+    if (action === 'pay') {
+      // IC flow: send using tokenShortcode same as EVM
+      try {
+        const sel = (this.walletBalances || []).find((b: any) => (b as any)?.tokenShortcode === shortcode);
+        const sdk = createSdk(this.config);
+        const amountUsd = Number(this.amountUsd || 0);
+        await (sdk.client as any).createPaymentUsd({
+          usdAmount: amountUsd,
+          tokenShortcode: (sel as any)?.tokenShortcode,
+          metadata: { network: 'ic', ledgerId: sel?.ledgerId }
+        });
+      } catch {}
+    }
   };
 
   private attachTransakMessageListener() {
@@ -402,16 +413,10 @@ export class ICPayAmountInput extends LitElement {
       const ready = await this.ensureWallet();
       if (!ready) return;
 
-      const sdk = createSdk(this.config);
-      const symbol = this.selectedSymbol || 'ICP';
-      const amountUsd = Number(this.amountUsd);
-      const meta = { context: 'amount-input' } as Record<string, any>;
-
-      // Do not pre-open Oisy signer tab here; let SDK handle it inside this click
-      const resp = await sdk.sendUsd(amountUsd, symbol, meta);
-      if (this.config.onSuccess) this.config.onSuccess({ id: resp.transactionId, status: resp.status, amountUsd });
-      this.succeeded = true;
-      this.dispatchEvent(new CustomEvent('icpay-amount-pay', { detail: { amount: amountUsd, tx: resp }, bubbles: true }));
+      // Wallet is connected; proceed to token selection to initiate payment via selection handler
+      this.showWalletModal = true;
+      await this.fetchAndShowBalances();
+      return;
     } catch (e) {
       handleWidgetError(e, {
         onError: (error) => {

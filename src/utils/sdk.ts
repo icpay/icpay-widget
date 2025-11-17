@@ -87,11 +87,18 @@ export function createSdk(config: CommonConfig): WidgetSdk {
       ].forEach(forward);
     }
 
-    async function quoteUsd(usdAmount: number, ledgerCanisterId: string) {
-      return client.calculateTokenAmountFromUSD({ usdAmount, ledgerCanisterId });
+    async function quoteUsd(usdAmount: number, tokenShortcode?: string, ledgerCanisterId?: string) {
+      // Preferred path: tokenShortcode; fallback: ledgerCanisterId
+      if (typeof tokenShortcode === 'string' && tokenShortcode.trim().length > 0) {
+        return (client as any).calculateTokenAmountFromUSD({ usdAmount, tokenShortcode: tokenShortcode.toLowerCase() });
+      }
+      if (typeof ledgerCanisterId === 'string' && ledgerCanisterId.trim().length > 0) {
+        return client.calculateTokenAmountFromUSD({ usdAmount, ledgerCanisterId });
+      }
+      throw new Error('quoteUsd requires tokenShortcode or ledgerCanisterId');
     }
 
-    async function sendUsd(usdAmount: number, ledgerCanisterId: string, metadata?: Record<string, any>) {
+    async function sendUsd(usdAmount: number, tokenShortcode?: string, metadata?: Record<string, any>, ledgerCanisterId?: string) {
       // Merge global config.metadata with call-specific metadata
       const mergedMeta = { ...(config as any).metadata, ...(metadata || {}) } as Record<string, any>;
       // Description passed through to intent (components decide X402 vs wallet flow before calling us)
@@ -101,12 +108,22 @@ export function createSdk(config: CommonConfig): WidgetSdk {
         (mergedMeta as any).__description ||
         (mergedMeta as any).description ||
         fallbackDesc;
-      debugLog(Boolean(config.debug), 'Calling createPaymentUsd (flow decision handled by components)', {
+      const payload: any = {
         usdAmount,
-        ledgerCanisterId,
+        metadata: mergedMeta,
         description,
-      });
-      return (client as any).createPaymentUsd({ usdAmount, ledgerCanisterId, metadata: mergedMeta, description });
+      };
+      if (typeof tokenShortcode === 'string' && tokenShortcode.trim().length > 0) {
+        payload.tokenShortcode = tokenShortcode.toLowerCase();
+      }
+      if (typeof ledgerCanisterId === 'string' && ledgerCanisterId.trim().length > 0) {
+        payload.ledgerCanisterId = ledgerCanisterId;
+      }
+      if (!payload.tokenShortcode && !payload.ledgerCanisterId) {
+        throw new Error('sendUsd requires tokenShortcode or ledgerCanisterId');
+      }
+      debugLog(Boolean(config.debug), 'Calling createPaymentUsd (flow decision handled by components)', payload);
+      return (client as any).createPaymentUsd(payload);
     }
 
     async function startOnrampUsd(usdAmount: number, ledgerCanisterId: string, metadata?: Record<string, any>) {

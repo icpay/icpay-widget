@@ -260,26 +260,10 @@ export class ICPayPremiumContent extends LitElement {
         }
       }
 
-      // Wallet is connected, proceed with payment
-      debugLog(this.config?.debug || false, 'Creating SDK for payment');
-      const sdk = createSdk(this.config);
-
-      // Use symbol directly; SDK will resolve token address internally
-      const symbol = this.selectedSymbol || 'ICP';
-
-      debugLog(this.config?.debug || false, 'Payment details', {
-        priceUsd: this.config.priceUsd,
-        selectedSymbol: symbol
-      });
-
-      // Do not pre-open Oisy signer tab here; let SDK handle it inside this click
-      const resp = await sdk.sendUsd(this.config.priceUsd, symbol, { context: 'premium-content' });
-      debugLog(this.config?.debug || false, 'Payment completed', { resp });
-
-      this.unlocked = true;
-      this.succeeded = true;
-      if (this.config.onSuccess) this.config.onSuccess({ id: resp.transactionId, status: resp.status });
-      this.dispatchEvent(new CustomEvent('icpay-unlock', { detail: { amount: this.config.priceUsd, tx: resp }, bubbles: true }));
+      // Wallet is connected; proceed to token selection to initiate payment via selection handler
+      this.showWalletModal = true;
+      await this.fetchAndShowBalances('pay');
+      return;
     } catch (e) {
       // Handle errors using the new error handling system
       handleWidgetError(e, {
@@ -442,12 +426,11 @@ export class ICPayPremiumContent extends LitElement {
     }
   }
 
-  private onSelectBalanceSymbol = (symbol: string) => {
-    if (symbol && typeof symbol === 'string') {
-      this.selectedSymbol = symbol;
-    }
+  private onSelectBalanceSymbol = (shortcode: string) => {
+    const sel0 = (this.walletBalances || []).find(b => (b as any)?.tokenShortcode === shortcode);
+    if (sel0?.ledgerSymbol) this.selectedSymbol = sel0.ledgerSymbol;
     if (isEvmWalletId(this.lastWalletId)) {
-      const sel = (this.walletBalances || []).find(b => b.ledgerSymbol === (this.selectedSymbol || symbol));
+      const sel = (this.walletBalances || []).find(b => (b as any)?.tokenShortcode === shortcode);
       const targetChain = sel?.chainId;
       ensureEvmChain(targetChain, { chainName: sel?.chainName, rpcUrlPublic: (sel as any)?.rpcUrlPublic, nativeSymbol: sel?.ledgerSymbol, decimals: sel?.decimals }).then(async () => {
         try {

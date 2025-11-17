@@ -69,7 +69,7 @@ export function renderPayWithContent(opts: PayWithOptions): TemplateResult {
               const sym = (b.ledgerSymbol || '').toUpperCase();
               const iconClass = b.logoUrl ? '' : (sym === 'ETH' ? 'eth-icon' : (sym === 'USDC' ? 'usdc-icon' : (sym === 'USDT' ? 'usdt-icon' : '')));
               return html`
-                <div class="currency-item" @click=${() => opts.onSelect(b.ledgerSymbol)}>
+                <div class="currency-item" @click=${() => opts.onSelect((b as any).tokenShortcode || b.ledgerSymbol)}>
                   <div class="currency-icon ${iconClass}">
                     ${b.logoUrl
                       ? html`<img src="${b.logoUrl}" alt="${sym} logo" style="width:100%;height:100%;object-fit:cover" />`
