@@ -256,12 +256,14 @@ export class ICPayPayButton extends LitElement {
                 this.errorMessage = err2 instanceof Error ? err2.message : 'Wallet connection failed';
                 this.errorSeverity = ErrorSeverity.ERROR;
                 this.showWalletModal = false;
+                try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-error', { detail: { message: this.errorMessage, code: 'WALLET_CONNECT_ERROR' } })); } catch {}
               });
             } catch (initErr) {
               debugLog(this.config?.debug || false, 'Oisy new-tab init failed', initErr);
               this.errorMessage = initErr instanceof Error ? initErr.message : 'Wallet connection failed';
               this.errorSeverity = ErrorSeverity.ERROR;
               this.showWalletModal = false;
+              try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-error', { detail: { message: this.errorMessage, code: 'WALLET_CONNECT_ERROR' } })); } catch {}
             }
           })();
           return;
@@ -269,12 +271,14 @@ export class ICPayPayButton extends LitElement {
         this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
         this.errorSeverity = ErrorSeverity.ERROR;
         this.showWalletModal = false;
+        try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-error', { detail: { message: this.errorMessage, code: 'WALLET_CONNECT_ERROR' } })); } catch {}
       });
     } catch (error) {
       debugLog(this.config?.debug || false, 'Wallet connection error (sync)', error);
       this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
       this.errorSeverity = ErrorSeverity.ERROR;
       this.showWalletModal = false;
+      try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-error', { detail: { message: this.errorMessage, code: 'WALLET_CONNECT_ERROR' } })); } catch {}
     }
   }
 
@@ -424,7 +428,7 @@ export class ICPayPayButton extends LitElement {
         // Ensure any signer window/channel establishment happens directly in this click handler
         this.connectWithWallet(walletId);
       },
-      onClose: () => { this.showWalletModal = false; this.oisyReadyToPay = false; },
+        onClose: () => { this.showWalletModal = false; this.oisyReadyToPay = false; try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-cancelled', { detail: { reason: 'user_cancelled' } })); } catch {} },
       onCreditCard: onrampEnabled ? () => this.startOnramp() : undefined,
       creditCardLabel: this.config?.onramp?.creditCardLabel || 'Pay with credit card',
       showCreditCard: onrampEnabled,

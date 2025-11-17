@@ -307,9 +307,7 @@ export class ICPayProgressBar extends LitElement {
     .step.active .step-icon { }
     .step.completed .step-icon { }
 
-    .step.error .step-icon {
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    }
+    .step.error .step-icon { background: transparent; }
     .step-icon svg {
       width: 20px;
       height: 20px;
@@ -379,6 +377,21 @@ export class ICPayProgressBar extends LitElement {
       justify-content: center;
       color: #ffffff;
       font-size: 24px;
+      font-weight: bold;
+      box-sizing: border-box;
+    }
+
+    /* Error icon (pastel red) like success's green circle */
+    .error-x {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: #f87171; /* pastel red */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 20px;
       font-weight: bold;
       box-sizing: border-box;
     }
@@ -764,6 +777,8 @@ export class ICPayProgressBar extends LitElement {
     window.addEventListener('icpay-sdk-method-start', this.onMethodStart as EventListener);
     window.addEventListener('icpay-sdk-method-success', this.onMethodSuccess as EventListener);
     window.addEventListener('icpay-sdk-method-error', this.onMethodError as EventListener);
+    window.addEventListener('icpay-sdk-wallet-cancelled', this.onWalletCancelled as EventListener);
+    window.addEventListener('icpay-sdk-wallet-error', this.onWalletError as EventListener);
 
     // Transaction lifecycle events
     window.addEventListener('icpay-sdk-transaction-created', this.onTransactionCreated as EventListener);
@@ -793,6 +808,8 @@ export class ICPayProgressBar extends LitElement {
     window.removeEventListener('icpay-sdk-method-start', this.onMethodStart as EventListener);
     window.removeEventListener('icpay-sdk-method-success', this.onMethodSuccess as EventListener);
     window.removeEventListener('icpay-sdk-method-error', this.onMethodError as EventListener);
+    window.removeEventListener('icpay-sdk-wallet-cancelled', this.onWalletCancelled as EventListener);
+    window.removeEventListener('icpay-sdk-wallet-error', this.onWalletError as EventListener);
 
     // Transaction lifecycle events
     window.removeEventListener('icpay-sdk-transaction-created', this.onTransactionCreated as EventListener);
@@ -1426,6 +1443,9 @@ export class ICPayProgressBar extends LitElement {
   }
 
   private getStepIcon(step: Step): string | any {
+    if (step.status === 'error') {
+      return html`<div class="error-x">✕</div>`;
+    }
     return html`<div class="spinner"></div>`;
   }
 
@@ -1654,7 +1674,7 @@ export class ICPayProgressBar extends LitElement {
           ${this.currentSteps.map((step, index) => html`
             <div class="step ${index === this.activeIndex ? 'active' : ''} ${step.status === 'completed' ? 'completed' : ''} ${step.status === 'error' ? 'error' : ''}">
               <div class="step-icon">
-                <div class="spinner"></div>
+                ${this.getStepIcon(step)}
               </div>
               <div class="step-content">
                 <div class="step-title">${step.label}</div>
@@ -1669,6 +1689,45 @@ export class ICPayProgressBar extends LitElement {
       </div>
     `;
   }
+
+  private onWalletCancelled = (e: any) => {
+    try {
+      // Ensure the progress modal is visible if it was initiated
+      this.open = true;
+      // Mark the wallet step as error with cancelled tooltip
+      const idx = this.getStepIndexByKey('wallet');
+      if (idx >= 0) {
+        this.activeIndex = idx;
+        // Update tooltip and status
+        this.currentSteps[idx] = {
+          ...this.currentSteps[idx],
+          tooltip: 'Wallet connection cancelled',
+          status: 'error'
+        } as Step;
+        this.requestUpdate();
+      }
+    } catch {}
+  };
+
+  private onWalletError = (e: any) => {
+    try {
+      const rawMessage = e?.detail?.message || 'Wallet error';
+      const errorMessage = this.transformErrorMessage(rawMessage);
+      this.open = true;
+      const idx = this.getStepIndexByKey('wallet');
+      if (idx >= 0) {
+        this.activeIndex = idx;
+        // Update step to error with friendly tooltip and message
+        this.currentSteps[idx] = {
+          ...this.currentSteps[idx],
+          tooltip: 'Wallet connection failed',
+          status: 'error',
+          errorMessage
+        } as Step;
+        this.requestUpdate();
+      }
+    } catch {}
+  };
 
   private renderConfirmTip() {
     try {
