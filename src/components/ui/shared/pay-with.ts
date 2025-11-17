@@ -72,7 +72,7 @@ export function renderPayWithContent(opts: PayWithOptions): TemplateResult {
                 <div class="currency-item" @click=${() => opts.onSelect((b as any).tokenShortcode || b.ledgerSymbol)}>
                   <div class="currency-icon ${iconClass}">
                     ${b.logoUrl
-                      ? html`<img src="${b.logoUrl}" alt="${sym} logo" style="width:100%;height:100%;object-fit:cover" />`
+                      ? html`<img src="${b.logoUrl}" alt="${sym} logo" style="width:100%;height:100%;object-fit:fill" />`
                       : html`<span>${sym.slice(0,1)}</span>`}
                   </div>
                   <div class="currency-info">
@@ -101,7 +101,7 @@ export function renderPayWithContent(opts: PayWithOptions): TemplateResult {
                 <div class="currency-item" disabled title="Insufficient balance">
                   <div class="currency-icon ${iconClass}">
                     ${b.logoUrl
-                      ? html`<img src="${b.logoUrl}" alt="${sym} logo" style="width:100%;height:100%;object-fit:cover" />`
+                      ? html`<img src="${b.logoUrl}" alt="${sym} logo" style="width:100%;height:100%;object-fit:fill" />`
                       : html`<span>${sym.slice(0,1)}</span>`}
                   </div>
                   <div class="currency-info">
