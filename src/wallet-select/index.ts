@@ -104,6 +104,8 @@ export class WalletSelect {
     // Initialize adapters config with sane defaults and allow overrides
     const cfgAdapters = (this._config.adapters = this._config.adapters || {});
     const host = defaultIcHost(this._config.icHost);
+    // Ensure icHost is always set (used by Plug/agent); default to icp-api.io
+    if (!this._config.icHost) this._config.icHost = host;
     // Default NFID signer config
     cfgAdapters.nfid = cfgAdapters.nfid || {};
     cfgAdapters.nfid.config = {

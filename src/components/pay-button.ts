@@ -303,10 +303,10 @@ export class ICPayPayButton extends LitElement {
     }
   }
 
-  private onSelectBalanceSymbol = (symbol: string) => {
-    if (symbol && typeof symbol === 'string') {
-      this.selectedSymbol = symbol;
-    }
+  private onSelectBalanceSymbol = async (shortcode: string) => {
+    // Resolve selection by tokenShortcode; set selectedSymbol from entry for UI
+    const sel = (this.walletBalances || []).find(b => (b as any)?.tokenShortcode === shortcode);
+    if (sel?.ledgerSymbol) this.selectedSymbol = sel.ledgerSymbol;
 
     // Close wallet modal before starting progress to reveal progress bar
     this.showBalanceModal = false;
@@ -314,9 +314,8 @@ export class ICPayPayButton extends LitElement {
 
     // If EVM wallet, ensure correct network first, then emit EVM payment start
     if (isEvmWalletId(this.lastWalletId)) {
-      const sel = (this.walletBalances || []).find(b => b.ledgerSymbol === (this.selectedSymbol || symbol));
       debugLog(this.config?.debug || false, 'EVM selection made', {
-        selectedSymbol: this.selectedSymbol || symbol,
+        selectedSymbol: this.selectedSymbol,
         selPresent: !!sel,
         selSnapshot: sel ? {
           ledgerId: (sel as any)?.ledgerId,
@@ -373,7 +372,31 @@ export class ICPayPayButton extends LitElement {
       return;
     }
     const action = this.pendingAction; this.pendingAction = null;
-    if (action === 'pay') { this.skipDisconnectOnce = true; this.pay(); }
+    if (action === 'pay') {
+      // IC flow: send using tokenShortcode same as EVM
+      try {
+        const sel = (this.walletBalances || []).find(b => (b as any)?.tokenShortcode === shortcode);
+        const sdk = this.getSdk();
+        const amountUsd = Number(this.config?.amountUsd ?? 0);
+        debugLog(this.config?.debug || false, 'IC selection made', {
+          selectedSymbol: this.selectedSymbol,
+          selPresent: !!sel,
+          selSnapshot: sel ? {
+            ledgerId: (sel as any)?.ledgerId,
+            ledgerSymbol: (sel as any)?.ledgerSymbol,
+            ledgerName: (sel as any)?.ledgerName,
+            requiredAmount: (sel as any)?.requiredAmount,
+            hasSufficientBalance: (sel as any)?.hasSufficientBalance,
+            tokenShortcode: (sel as any)?.tokenShortcode,
+          } : null,
+        });
+        await (sdk.client as any).createPaymentUsd({
+          usdAmount: amountUsd,
+          tokenShortcode: (sel as any)?.tokenShortcode,
+          metadata: { network: 'ic', ledgerId: (sel as any)?.ledgerId }
+        });
+      } catch {}
+    }
   };
 
   private renderWalletModal() {
@@ -563,19 +586,11 @@ export class ICPayPayButton extends LitElement {
           principal: (cw?.owner || cw?.principal || pnpAcct?.owner || pnpAcct?.principal || null)
         });
       } catch {}
-      if (!this.selectedSymbol) this.selectedSymbol = 'ICP';
-      const symbol = this.selectedSymbol || 'ICP';
-      debugLog(this.config?.debug || false, 'Resolved ledger details', { symbol });
-      const amountUsd = Number(this.config?.amountUsd ?? 0);
-      const meta = { context: 'pay-button' } as Record<string, any>;
-
-      // Do not pre-open Oisy signer tab; SDK will open it within this user gesture
-      debugLog(this.config?.debug || false, 'Calling sdk.sendUsd', { amountUsd, symbol, meta });
-      const resp = await sdk.sendUsd(amountUsd, symbol, meta);
-      debugLog(this.config?.debug || false, 'sdk.sendUsd response', resp);
-      if (this.config.onSuccess) this.config.onSuccess({ id: resp.transactionId, status: resp.status });
-      this.succeeded = true;
-      this.dispatchEvent(new CustomEvent('icpay-pay', { detail: { amount: amountUsd, tx: resp }, bubbles: true }));
+      // Always proceed to balances selection modal; selection handler will create the payment
+      this.walletModalStep = 'balances';
+      this.showWalletModal = true;
+      await this.fetchAndShowBalances('pay');
+      return;
     } catch (e) {
       debugLog(this.config?.debug || false, 'Payment error', {
         message: (e as any)?.message,
