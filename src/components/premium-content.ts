@@ -447,7 +447,13 @@ export class ICPayPremiumContent extends LitElement {
               await (sdk.client as any).createPaymentX402Usd({
                 usdAmount: amountUsd,
                 tokenShortcode: (sel as any)?.tokenShortcode,
-                metadata: { network: 'evm', ledgerId: sel?.ledgerId, chainId: sel?.chainUuid || sel?.chainId, context: 'premium:x402' }
+                metadata: {
+                  ...(this.config as any)?.metadata,
+                  network: 'evm',
+                  ledgerId: sel?.ledgerId,
+                  chainId: sel?.chainUuid || sel?.chainId,
+                  context: 'premium:x402'
+                }
               });
               return;
             } catch { /* fallback */ }
@@ -455,7 +461,11 @@ export class ICPayPremiumContent extends LitElement {
           await (sdk.client as any).createPaymentUsd({
             usdAmount: amountUsd,
             tokenShortcode: (sel as any)?.tokenShortcode,
-            metadata: { network: 'evm', ledgerId: sel?.ledgerId }
+            metadata: {
+              ...(this.config as any)?.metadata,
+              network: 'evm',
+              ledgerId: sel?.ledgerId
+            }
           });
         } catch {}
       });

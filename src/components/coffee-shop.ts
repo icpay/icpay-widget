@@ -403,7 +403,14 @@ export class ICPayCoffeeShop extends LitElement {
               await (sdk.client as any).createPaymentX402Usd({
                 usdAmount: amountUsd,
                 tokenShortcode: (sel as any)?.tokenShortcode,
-                metadata: { network: 'evm', ledgerId: sel?.ledgerId, chainId: sel?.chainUuid, context: 'coffee:x402', item: this.selectedItem?.name }
+                metadata: {
+                  ...(this.config as any)?.metadata,
+                  network: 'evm',
+                  ledgerId: sel?.ledgerId,
+                  chainId: sel?.chainUuid,
+                  context: 'coffee:x402',
+                  item: this.selectedItem?.name
+                }
               });
               this.showBalanceModal = false;
               return;
@@ -412,7 +419,12 @@ export class ICPayCoffeeShop extends LitElement {
           await (sdk.client as any).createPaymentUsd({
             usdAmount: amountUsd,
             tokenShortcode: (sel as any)?.tokenShortcode,
-            metadata: { network: 'evm', ledgerId: sel?.ledgerId, item: this.selectedItem?.name }
+            metadata: {
+              ...(this.config as any)?.metadata,
+              network: 'evm',
+              ledgerId: sel?.ledgerId,
+              item: this.selectedItem?.name
+            }
           });
         } catch {}
         this.showBalanceModal = false;
@@ -430,7 +442,12 @@ export class ICPayCoffeeShop extends LitElement {
         await (sdk.client as any).createPaymentUsd({
           usdAmount: amountUsd,
           tokenShortcode: (sel as any)?.tokenShortcode,
-          metadata: { network: 'ic', ledgerId: sel?.ledgerId, item: this.selectedItem?.name }
+          metadata: {
+            ...(this.config as any)?.metadata,
+            network: 'ic',
+            ledgerId: sel?.ledgerId,
+            item: this.selectedItem?.name
+          }
         });
       } catch {}
     }
