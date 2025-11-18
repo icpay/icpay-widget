@@ -349,7 +349,13 @@ export class ICPayPayButton extends LitElement {
           });
           if (tryX402) {
             try {
-              const metadata = { network: 'evm', ledgerId: sel?.ledgerId, chainId: sel?.chainUuid, context: 'pay-button:x402' };
+              const metadata = {
+                ...(this.config as any)?.metadata,
+                network: 'evm',
+                ledgerId: sel?.ledgerId,
+                chainId: sel?.chainUuid,
+                context: 'pay-button:x402'
+              };
               debugLog(this.config?.debug || false, 'Attempting X402 flow (EVM selection)', { amountUsd, tokenShortcode: sel?.tokenShortcode, x402Accepts: sel?.x402Accepts });
               await (sdk.client as any).createPaymentX402Usd({ usdAmount: amountUsd, tokenShortcode: (sel as any)?.tokenShortcode, metadata });
               return;
@@ -370,7 +376,15 @@ export class ICPayPayButton extends LitElement {
             amountUsd,
             tokenShortcode: (sel as any)?.tokenShortcode,
           });
-          await (sdk.client as any).createPaymentUsd({ usdAmount: amountUsd, tokenShortcode: (sel as any)?.tokenShortcode, metadata: { network: 'evm', ledgerId: sel?.ledgerId } });
+          await (sdk.client as any).createPaymentUsd({
+            usdAmount: amountUsd,
+            tokenShortcode: (sel as any)?.tokenShortcode,
+            metadata: {
+              ...(this.config as any)?.metadata,
+              network: 'evm',
+              ledgerId: sel?.ledgerId
+            }
+          });
         } catch {}
       });
       return;
@@ -397,7 +411,11 @@ export class ICPayPayButton extends LitElement {
         await (sdk.client as any).createPaymentUsd({
           usdAmount: amountUsd,
           tokenShortcode: (sel as any)?.tokenShortcode,
-          metadata: { network: 'ic', ledgerId: (sel as any)?.ledgerId }
+          metadata: {
+            ...(this.config as any)?.metadata,
+            network: 'ic',
+            ledgerId: (sel as any)?.ledgerId
+          }
         });
       } catch {}
     }

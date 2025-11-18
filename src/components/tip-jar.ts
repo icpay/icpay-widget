@@ -438,7 +438,13 @@ export class ICPayTipJar extends LitElement {
               await (sdk.client as any).createPaymentX402Usd({
                 usdAmount: amountUsd,
                 tokenShortcode: (sel as any)?.tokenShortcode,
-                metadata: { network: 'evm', ledgerId: sel?.ledgerId, chainId: sel?.chainUuid, context: 'tip:x402' }
+                metadata: {
+                  ...(this.config as any)?.metadata,
+                  network: 'evm',
+                  ledgerId: sel?.ledgerId,
+                  chainId: sel?.chainUuid,
+                  context: 'tip:x402'
+                }
               });
               this.showBalanceModal = false;
               return;
@@ -447,7 +453,11 @@ export class ICPayTipJar extends LitElement {
           await (sdk.client as any).createPaymentUsd({
             usdAmount: amountUsd,
             tokenShortcode: (sel as any)?.tokenShortcode,
-            metadata: { network: 'evm', ledgerId: sel?.ledgerId }
+            metadata: {
+              ...(this.config as any)?.metadata,
+              network: 'evm',
+              ledgerId: sel?.ledgerId
+            }
           });
         } catch {}
         this.showBalanceModal = false;
@@ -465,7 +475,11 @@ export class ICPayTipJar extends LitElement {
         await (sdk.client as any).createPaymentUsd({
           usdAmount: amountUsd,
           tokenShortcode: (sel as any)?.tokenShortcode,
-          metadata: { network: 'ic', ledgerId: sel?.ledgerId }
+          metadata: {
+            ...(this.config as any)?.metadata,
+            network: 'ic',
+            ledgerId: sel?.ledgerId
+          }
         });
       } catch {}
     }
