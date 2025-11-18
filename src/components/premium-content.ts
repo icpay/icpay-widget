@@ -261,7 +261,8 @@ export class ICPayPremiumContent extends LitElement {
       }
 
       // Wallet is connected; proceed to token selection to initiate payment via selection handler
-      this.showWalletModal = true;
+      // Ensure wallet selector is closed before opening balances
+      this.showWalletModal = false;
       await this.fetchAndShowBalances('pay');
       return;
     } catch (e) {
@@ -434,6 +435,9 @@ export class ICPayPremiumContent extends LitElement {
     if (isEvmWalletId(this.lastWalletId)) {
       const sel = (this.walletBalances || []).find(b => (b as any)?.tokenShortcode === shortcode);
       const targetChain = sel?.chainId;
+      // Close modals immediately on selection to reveal progress UI
+      this.showBalanceModal = false;
+      this.showWalletModal = false;
       ensureEvmChain(targetChain, { chainName: sel?.chainName, rpcUrlPublic: (sel as any)?.rpcUrlPublic, nativeSymbol: sel?.ledgerSymbol, decimals: sel?.decimals }).then(async () => {
         try {
           const sdk = createSdk(this.config);
@@ -445,7 +449,6 @@ export class ICPayPremiumContent extends LitElement {
                 tokenShortcode: (sel as any)?.tokenShortcode,
                 metadata: { network: 'evm', ledgerId: sel?.ledgerId, chainId: sel?.chainUuid || sel?.chainId, context: 'premium:x402' }
               });
-              this.showBalanceModal = false;
               return;
             } catch { /* fallback */ }
           }
@@ -455,11 +458,11 @@ export class ICPayPremiumContent extends LitElement {
             metadata: { network: 'evm', ledgerId: sel?.ledgerId }
           });
         } catch {}
-        this.showBalanceModal = false;
       });
       return;
     }
     this.showBalanceModal = false;
+    this.showWalletModal = false;
     const action = this.pendingAction; this.pendingAction = null;
     if (action === 'pay') setTimeout(() => this.onPay(), 0);
   };
