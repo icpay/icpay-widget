@@ -351,10 +351,9 @@ export class ICPayPayButton extends LitElement {
             try {
               const metadata = {
                 ...(this.config as any)?.metadata,
-                network: 'evm',
-                ledgerId: sel?.ledgerId,
-                chainId: sel?.chainUuid,
-                context: 'pay-button:x402'
+                icpay_network: 'evm',
+                icpay_ledger_id: sel?.ledgerId,
+                icpay_context: 'pay-button:x402'
               };
               debugLog(this.config?.debug || false, 'Attempting X402 flow (EVM selection)', { amountUsd, tokenShortcode: sel?.tokenShortcode, x402Accepts: sel?.x402Accepts });
               await (sdk.client as any).createPaymentX402Usd({ usdAmount: amountUsd, tokenShortcode: (sel as any)?.tokenShortcode, metadata });
@@ -381,8 +380,8 @@ export class ICPayPayButton extends LitElement {
             tokenShortcode: (sel as any)?.tokenShortcode,
             metadata: {
               ...(this.config as any)?.metadata,
-              network: 'evm',
-              ledgerId: sel?.ledgerId
+              icpay_network: 'evm',
+              icpay_ledger_id: sel?.ledgerId
             }
           });
         } catch {}
@@ -413,8 +412,8 @@ export class ICPayPayButton extends LitElement {
           tokenShortcode: (sel as any)?.tokenShortcode,
           metadata: {
             ...(this.config as any)?.metadata,
-            network: 'ic',
-            ledgerId: (sel as any)?.ledgerId
+            icpay_network: 'ic',
+            icpay_ledger_id: (sel as any)?.ledgerId
           }
         });
       } catch {}
@@ -476,10 +475,10 @@ export class ICPayPayButton extends LitElement {
       if (!this.selectedSymbol) this.selectedSymbol = 'ICP';
       const symbol = this.selectedSymbol || 'ICP';
       const resp = await sdk.startOnrampUsd(amountUsd, symbol, { context: 'pay-button:onramp' });
-      const sessionId = resp?.metadata?.onramp?.sessionId || resp?.metadata?.onramp?.session_id || null;
-      const errorMessage = resp?.metadata?.onramp?.errorMessage || null;
+      const sessionId = resp?.metadata?.icpay_onramp?.sessionId || resp?.metadata?.icpay_onramp?.session_id || resp?.metadata?.onramp?.sessionId || resp?.metadata?.onramp?.session_id || null;
+      const errorMessage = resp?.metadata?.icpay_onramp?.errorMessage || resp?.metadata?.onramp?.errorMessage || null;
       this.onrampErrorMessage = errorMessage || null;
-      const paymentIntentId = resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
+      const paymentIntentId = resp?.metadata?.icpay_payment_intent_id || resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
       this.onrampPaymentIntentId = paymentIntentId;
       if (sessionId) {
         this.onrampSessionId = sessionId;

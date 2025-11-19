@@ -323,9 +323,9 @@ export class ICPayDonationThermometer extends LitElement {
       const sdk = createSdk(this.config);
       const symbol = this.selectedSymbol || 'ICP';
       const resp = await (sdk as any).startOnrampUsd(this.selectedAmount, symbol, { context: 'donation:onramp' });
-      const sessionId = resp?.metadata?.onramp?.sessionId || resp?.metadata?.onramp?.session_id || null;
-      const paymentIntentId = resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
-      const errorMessage = resp?.metadata?.onramp?.errorMessage || null;
+      const sessionId = resp?.metadata?.icpay_onramp?.sessionId || resp?.metadata?.icpay_onramp?.session_id || resp?.metadata?.onramp?.sessionId || resp?.metadata?.onramp?.session_id || null;
+      const paymentIntentId = resp?.metadata?.icpay_payment_intent_id || resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
+      const errorMessage = resp?.metadata?.icpay_onramp?.errorMessage || resp?.metadata?.onramp?.errorMessage || null;
       this.onrampPaymentIntentId = paymentIntentId;
       if (sessionId) {
         this.onrampSessionId = sessionId;
@@ -442,10 +442,9 @@ export class ICPayDonationThermometer extends LitElement {
                 tokenShortcode: (sel as any)?.tokenShortcode,
                 metadata: {
                   ...(this.config as any)?.metadata,
-                  network: 'evm',
-                  ledgerId: sel?.ledgerId,
-                  chainId: sel?.chainUuid,
-                  context: 'donation:x402'
+                  icpay_network: 'evm',
+                  icpay_ledger_id: sel?.ledgerId,
+                  icpay_context: 'donation:x402'
                 }
               });
               this.showBalanceModal = false;
@@ -457,8 +456,8 @@ export class ICPayDonationThermometer extends LitElement {
             tokenShortcode: (sel as any)?.tokenShortcode,
             metadata: {
               ...(this.config as any)?.metadata,
-              network: 'evm',
-              ledgerId: sel?.ledgerId
+              icpay_network: 'evm',
+              icpay_ledger_id: sel?.ledgerId
             }
           });
         } catch {}
@@ -479,8 +478,8 @@ export class ICPayDonationThermometer extends LitElement {
           tokenShortcode: (sel as any)?.tokenShortcode,
           metadata: {
             ...(this.config as any)?.metadata,
-            network: 'ic',
-            ledgerId: sel?.ledgerId
+            icpay_network: 'ic',
+            icpay_ledger_id: sel?.ledgerId
           }
         });
       } catch {}

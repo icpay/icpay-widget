@@ -30,7 +30,7 @@ export function createSdk(config: CommonConfig): WidgetSdk {
       client: {} as any,
       quoteUsd: async () => ({ tokenAmountDecimals: '0' } as any),
       sendUsd: async () => ({ transactionId: '0', status: 'pending' } as any),
-      startOnrampUsd: async () => ({ transactionId: '0', status: 'pending', metadata: { onramp: { sessionId: null } } } as any),
+      startOnrampUsd: async () => ({ transactionId: '0', status: 'pending', metadata: { icpay_onramp: { sessionId: null } } } as any),
       notifyIntentUntilComplete: () => ({ stop: () => {} })
     };
   }
