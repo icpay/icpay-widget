@@ -69,7 +69,7 @@ import { IIAdapter } from './internal/IIAdapter.js';
 import { NfidAdapter } from './internal/NfidAdapter.js';
 import { OisyAdapter } from './internal/OisyAdapter.js';
 import { MetaMaskAdapter } from './internal/MetaMaskAdapter.js';
-// import { WalletConnectAdapter } from './internal/WalletConnectAdapter.js'; // Disabled
+import { WalletConnectAdapter } from './internal/WalletConnectAdapter.js';
 import { CoinbaseAdapter } from './internal/CoinbaseAdapter.js';
 import { BraveAdapter } from './internal/BraveAdapter.js';
 import { RainbowAdapter } from './internal/RainbowAdapter.js';
@@ -90,7 +90,8 @@ export class WalletSelect {
     const baseAdapters: Record<string, AdapterConfig> = {};
     baseAdapters.metamask = { id: 'metamask', label: 'MetaMask', icon: null, enabled: true, adapter: MetaMaskAdapter };
     baseAdapters.coinbase = { id: 'coinbase', label: 'Coinbase Wallet', icon: null, enabled: true, adapter: CoinbaseAdapter };
-    // baseAdapters.walletconnect = { id: 'walletconnect', label: 'WalletConnect', icon: null, enabled: false, adapter: WalletConnectAdapter }; // Disabled
+    // WalletConnect is disabled by default; enable via config.adapters.walletconnect.enabled = true and provide projectId
+    baseAdapters.walletconnect = { id: 'walletconnect', label: 'WalletConnect', icon: null, enabled: false, adapter: WalletConnectAdapter };
     baseAdapters.phantom = { id: 'phantom', label: 'Phantom', icon: null, enabled: true, adapter: PhantomAdapter };
     // Temporarily disable Rainbow due to provider interoperability issues
     baseAdapters.rainbow = { id: 'rainbow', label: 'Rainbow', icon: null, enabled: false, adapter: RainbowAdapter };
@@ -120,13 +121,13 @@ export class WalletSelect {
       hostUrl: cfgAdapters.oisy.config?.hostUrl || host,
       transport: { ...(cfgAdapters.oisy.config?.transport || {}) }
     };
-    // Default WalletConnect test config (disabled)
-    // cfgAdapters.walletconnect = cfgAdapters.walletconnect || {};
-    // cfgAdapters.walletconnect.config = {
-    //   ...(cfgAdapters.walletconnect.config || {}),
-    //   projectId: cfgAdapters.walletconnect.config?.projectId || '',
-    //   chains: cfgAdapters.walletconnect.config?.chains || [8453, 84532]
-    // };
+    // Default WalletConnect container for config (kept disabled unless explicitly enabled)
+    cfgAdapters.walletconnect = cfgAdapters.walletconnect || {};
+    cfgAdapters.walletconnect.config = {
+      ...(cfgAdapters.walletconnect.config || {}),
+      projectId: cfgAdapters.walletconnect.config?.projectId || '',
+      chains: cfgAdapters.walletconnect.config?.chains || [8453, 84532]
+    };
     // Keep Plug/II entries present for symmetry
     cfgAdapters.plug = cfgAdapters.plug || {};
     cfgAdapters.ii = cfgAdapters.ii || {};
@@ -149,7 +150,7 @@ export class WalletSelect {
     const allowedTypes = Array.isArray(this._config.chainTypes) ? this._config.chainTypes.map((t) => String(t).toLowerCase()) : null;
     const idToType: Record<string, 'ic' | 'evm'> = {
       oisy: 'ic', nfid: 'ic', ii: 'ic', plug: 'ic',
-      metamask: 'evm', /*walletconnect: 'evm',*/ coinbase: 'evm',
+      metamask: 'evm', walletconnect: 'evm', coinbase: 'evm',
       brave: 'evm', rainbow: 'evm', rabby: 'evm', phantom: 'evm', okx: 'evm',
     };
     return Object.values(this._adapters)
