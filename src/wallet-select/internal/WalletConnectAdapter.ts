@@ -175,6 +175,8 @@ export class WalletConnectAdapter implements AdapterInterface {
   readonly icon?: string | null;
   private readonly config: WalletSelectConfig;
   private wcProvider: any | null = null;
+  private wcProviderProxy: any | null = null;
+  private wcRedirect: { native?: string; universal?: string } | null = null;
 
   constructor(args: { config: WalletSelectConfig }) {
     this.config = args.config || {};
@@ -202,6 +204,7 @@ export class WalletConnectAdapter implements AdapterInterface {
   }
 
   getEvmProvider(): any {
+    if (this.wcProviderProxy) return this.wcProviderProxy;
     if (this.wcProvider) return this.wcProvider;
     return this.getInjectedWcProvider();
   }
@@ -249,6 +252,69 @@ export class WalletConnectAdapter implements AdapterInterface {
     }
   }
 
+  private isMobileBrowser(): boolean {
+    try {
+      const nav: any = (typeof navigator !== 'undefined' ? navigator : (window as any)?.navigator);
+      const ua = String(nav?.userAgent || '').toLowerCase();
+      return /iphone|ipad|ipod|android|mobile|windows phone/.test(ua);
+    } catch {
+      return false;
+    }
+  }
+
+  private openWalletAppIfPossible(): void {
+    if (!this.isMobileBrowser()) return;
+    try {
+      const redirect = this.wcRedirect || {};
+      const url = redirect.native || redirect.universal || '';
+      if (!url) return;
+      try { window.location.href = url; } catch { try { window.open(url, '_self', 'noopener,noreferrer'); } catch {} }
+    } catch {}
+  }
+
+  private wrapProviderForMobileWake(provider: any): any {
+    if (!provider || typeof provider.request !== 'function') return provider;
+    const shouldWake = (method?: string) => {
+      if (!this.isMobileBrowser()) return false;
+      if (!method) return false;
+      const m = method.toLowerCase();
+      // Methods that will require user approval in wallet app
+      return (
+        m === 'eth_sendtransaction' ||
+        m === 'eth_signtransaction' ||
+        m === 'eth_sign' ||
+        m === 'personal_sign' ||
+        m === 'eth_signtypeddata' ||
+        m === 'eth_signtypeddata_v3' ||
+        m === 'eth_signtypeddata_v4' ||
+        m === 'wallet_switchethereumchain' ||
+        m === 'wallet_addethereumchain' ||
+        m === 'wallet_requestpermissions'
+      );
+    };
+    const self = this;
+    const proxy = new Proxy(provider, {
+      get(target: any, prop: PropertyKey, receiver: any) {
+        if (prop === 'request') {
+          return async function (args: any) {
+            try {
+              const method = (args && (args.method || (typeof args === 'object' && args?.method))) as string | undefined;
+              if (shouldWake(method)) {
+                // Attempt to foreground the wallet app before sending the request
+                self.openWalletAppIfPossible();
+                // brief delay to allow OS to start the app switch
+                try { await new Promise((r) => setTimeout(r, 50)); } catch {}
+              }
+            } catch {}
+            return target.request.apply(target, arguments as any);
+          };
+        }
+        return Reflect.get(target, prop, receiver);
+      }
+    });
+    return proxy;
+  }
+
   private async initGlobalProvider(): Promise<any | null> {
     try {
       const g: any = (typeof window !== 'undefined' ? window : {}) as any;
@@ -277,7 +343,15 @@ export class WalletConnectAdapter implements AdapterInterface {
       try {
         await ensureQrLib();
         provider.on?.('display_uri', (uri: string) => {
-          try { showQrOverlay(uri); } catch {}
+          try {
+            if (this.isMobileBrowser()) {
+              // Best-effort deep link to MetaMask universal WC link; many users use MetaMask Mobile.
+              const mm = `https://metamask.app.link/wc?uri=${encodeURIComponent(uri)}`;
+              try { window.location.href = mm; } catch { try { window.open(mm, '_self', 'noopener,noreferrer'); } catch {} }
+            } else {
+              showQrOverlay(uri);
+            }
+          } catch {}
         });
         provider.on?.('disconnect', () => { try { hideQrOverlay(); } catch {} });
       } catch {}
@@ -293,7 +367,8 @@ export class WalletConnectAdapter implements AdapterInterface {
     const injected = this.getInjectedWcProvider();
     if (injected) {
       this.wcProvider = injected;
-      const accounts = await injected.request({ method: 'eth_requestAccounts' });
+      this.wcProviderProxy = this.wrapProviderForMobileWake(this.wcProvider);
+      const accounts = await this.wcProviderProxy.request({ method: 'eth_requestAccounts' });
       const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
       if (!addr) throw new Error('No account returned by WalletConnect');
       return { owner: addr, principal: addr, connected: true };
@@ -302,7 +377,15 @@ export class WalletConnectAdapter implements AdapterInterface {
     const provider = await this.initGlobalProvider();
     if (provider) {
       this.wcProvider = provider;
-      const accounts = await provider.request?.({ method: 'eth_requestAccounts' });
+      try {
+        // Capture redirect metadata if available to foreground wallet app on mobile
+        const redirect = (provider?.session?.peer?.metadata?.redirect) || (provider?.session?.peer?.metadata?.redirects) || null;
+        if (redirect && (redirect.native || redirect.universal)) {
+          this.wcRedirect = { native: redirect.native, universal: redirect.universal };
+        }
+      } catch {}
+      this.wcProviderProxy = this.wrapProviderForMobileWake(this.wcProvider);
+      const accounts = await this.wcProviderProxy.request?.({ method: 'eth_requestAccounts' });
       const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
       try { hideQrOverlay(); } catch {}
       if (!addr) throw new Error('No account returned by WalletConnect');
