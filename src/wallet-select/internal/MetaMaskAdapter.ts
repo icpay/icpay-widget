@@ -17,6 +17,17 @@ export class MetaMaskAdapter implements AdapterInterface {
     this.config = args.config || ({} as any);
   }
 
+  private isMobileBrowser(): boolean {
+    try {
+      const nav: any = (typeof navigator !== 'undefined' ? navigator : (window as any)?.navigator);
+      const ua = String(nav?.userAgent || '').toLowerCase();
+      // Broad mobile check; avoids false positives on desktop
+      return /iphone|ipad|ipod|android|mobile|windows phone/.test(ua);
+    } catch {
+      return false;
+    }
+  }
+
   private getProvider(): any {
     try {
       const anyWin: any = (typeof window !== 'undefined' ? window : {}) as any;
@@ -57,7 +68,27 @@ export class MetaMaskAdapter implements AdapterInterface {
 
   async connect(): Promise<WalletAccount> {
     const provider = this.getProvider();
-    if (!provider) throw new Error('MetaMask not available');
+    // If provider is missing on mobile browsers, attempt MetaMask deep link into in-app browser
+    if (!provider) {
+      if (typeof window !== 'undefined' && this.isMobileBrowser()) {
+        try {
+          const href = String(window.location?.href || '');
+          // Use MetaMask universal link to open the dapp URL inside MetaMask's in-app browser
+          const sanitized = href.replace(/^https?:\/\//i, '');
+          const deepLink = `https://metamask.app.link/dapp/${sanitized}`;
+          try {
+            // Emit an event so host apps can track the redirect attempt
+            try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-deeplink', { detail: { wallet: 'metamask', url: deepLink } })); } catch {}
+            window.location.href = deepLink;
+          } catch {
+            // Fallback to window.open if assignment fails
+            try { window.open(deepLink, '_self', 'noopener,noreferrer'); } catch {}
+          }
+        } catch {}
+        throw new Error('Opening MetaMask… If nothing happens, install MetaMask and try again.');
+      }
+      throw new Error('MetaMask not available');
+    }
     const accounts = await provider.request?.({ method: 'eth_requestAccounts' });
     const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
     if (!addr) throw new Error('No account returned by MetaMask');
