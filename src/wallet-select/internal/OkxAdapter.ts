@@ -7,6 +7,16 @@ declare global {
 	}
 }
 
+function isMobileBrowser(): boolean {
+	try {
+		const nav: any = (typeof navigator !== 'undefined' ? navigator : (window as any)?.navigator);
+		const ua = String(nav?.userAgent || '').toLowerCase();
+		return /iphone|ipad|ipod|android|mobile|windows phone/.test(ua);
+	} catch {
+		return false;
+	}
+}
+
 function getOkxProvider(): any | null {
 	try {
 		const anyWin: any = (typeof window !== 'undefined' ? window : {}) as any;
@@ -20,6 +30,8 @@ function getOkxProvider(): any | null {
 			if (p) return p;
 		}
 		if (eth && (eth.isOkxWallet || eth?.provider?.isOkxWallet)) return eth;
+		// Mobile in-app browsers sometimes miss flags; accept generic provider on mobile
+		if (isMobileBrowser() && eth && typeof eth.request === 'function') return eth;
 		return null;
 	} catch {
 		return null;
@@ -58,9 +70,45 @@ export class OkxAdapter implements AdapterInterface {
 	}
 
 	async connect(): Promise<WalletAccount> {
-		const provider = getOkxProvider();
-		if (!provider) throw new Error('OKX Wallet not available');
-		const accounts = await provider.request({ method: 'eth_requestAccounts' });
+		let provider = getOkxProvider();
+		if (!provider) {
+			if (typeof window !== 'undefined' && isMobileBrowser()) {
+				try {
+					const href = String(window.location?.href || '');
+					// Try OKX scheme; some platforms require scheme. Provide a fallback to download page.
+					const scheme = `okx://wallet/dapp/url?url=${encodeURIComponent(href)}`;
+					try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-deeplink', { detail: { wallet: 'okx', url: scheme } })); } catch {}
+					try { window.location.href = scheme; } catch { try { window.open(scheme, '_self', 'noopener,noreferrer'); } catch {} }
+				} catch {}
+				throw new Error('Opening OKX Wallet… If nothing happens, install OKX Wallet and try again.');
+			}
+			throw new Error('OKX Wallet not available');
+		}
+		const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+		const getAccountsOnce = async (): Promise<string[]> => {
+			try {
+				const a1 = await provider.request?.({ method: 'eth_accounts' });
+				if (Array.isArray(a1) && a1.length > 0) return a1;
+			} catch {}
+			try {
+				const a2 = await provider.request?.({ method: 'eth_requestAccounts' });
+				if (Array.isArray(a2) && a2.length > 0) return a2;
+			} catch (err: any) {
+				if (err && (err.code === 4001 || err.code === '4001')) throw new Error('Connection request was rejected');
+			}
+			try {
+				await provider.request?.({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
+				const a3 = await provider.request?.({ method: 'eth_accounts' });
+				if (Array.isArray(a3) && a3.length > 0) return a3;
+			} catch {}
+			return [];
+		};
+		let accounts: string[] = [];
+		for (let i = 0; i < 3 && accounts.length === 0; i++) {
+			provider = getOkxProvider() || provider;
+			accounts = await getAccountsOnce();
+			if (accounts.length === 0) await delay(300);
+		}
 		const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
 		if (!addr) throw new Error('No account returned by OKX Wallet');
 		return { owner: addr, principal: addr, connected: true };
