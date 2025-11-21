@@ -86,7 +86,7 @@ export function renderPayWithContent(opts: PayWithOptions): TemplateResult {
                 </div>
               `;
             })}
-          ` : html`<div class="muted" style="margin-bottom:8px">You have no balances on verified ledgers.</div>`;
+          ` : html`<div class="muted" style="margin-bottom:8px">You have no balances on verified tokens.</div>`;
         })()}
 
         ${(() => {

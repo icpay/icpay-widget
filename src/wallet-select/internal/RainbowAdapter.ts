@@ -6,6 +6,16 @@ declare global {
 	}
 }
 
+function isMobileBrowser(): boolean {
+	try {
+		const nav: any = (typeof navigator !== 'undefined' ? navigator : (window as any)?.navigator);
+		const ua = String(nav?.userAgent || '').toLowerCase();
+		return /iphone|ipad|ipod|android|mobile|windows phone/.test(ua);
+	} catch {
+		return false;
+	}
+}
+
 function getRainbowProvider(): any | null {
 	try {
 		const anyWin: any = (typeof window !== 'undefined' ? window : {}) as any;
@@ -15,6 +25,8 @@ function getRainbowProvider(): any | null {
 			if (rainbow) return rainbow;
 		}
 		if (eth && eth.isRainbow) return eth;
+		// Mobile in-app browsers sometimes miss flags; accept generic provider on mobile
+		if (isMobileBrowser() && eth && typeof eth.request === 'function') return eth;
 		return null;
 	} catch {
 		return null;
@@ -52,9 +64,44 @@ export class RainbowAdapter implements AdapterInterface {
 	}
 
 	async connect(): Promise<WalletAccount> {
-		const provider = getRainbowProvider();
-		if (!provider) throw new Error('Rainbow not available');
-		const accounts = await provider.request({ method: 'eth_requestAccounts' });
+		let provider = getRainbowProvider();
+		if (!provider) {
+			if (typeof window !== 'undefined' && isMobileBrowser()) {
+				try {
+					const href = String(window.location?.href || '');
+					const deepLink = `https://rnbwapp.com/browse/${encodeURIComponent(href)}`;
+					try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-deeplink', { detail: { wallet: 'rainbow', url: deepLink } })); } catch {}
+					try { window.location.href = deepLink; } catch { try { window.open(deepLink, '_self', 'noopener,noreferrer'); } catch {} }
+				} catch {}
+				throw new Error('Opening Rainbow… If nothing happens, install Rainbow and try again.');
+			}
+			throw new Error('Rainbow not available');
+		}
+		const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+		const getAccountsOnce = async (): Promise<string[]> => {
+			try {
+				const a1 = await provider.request?.({ method: 'eth_accounts' });
+				if (Array.isArray(a1) && a1.length > 0) return a1;
+			} catch {}
+			try {
+				const a2 = await provider.request?.({ method: 'eth_requestAccounts' });
+				if (Array.isArray(a2) && a2.length > 0) return a2;
+			} catch (err: any) {
+				if (err && (err.code === 4001 || err.code === '4001')) throw new Error('Connection request was rejected');
+			}
+			try {
+				await provider.request?.({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
+				const a3 = await provider.request?.({ method: 'eth_accounts' });
+				if (Array.isArray(a3) && a3.length > 0) return a3;
+			} catch {}
+			return [];
+		};
+		let accounts: string[] = [];
+		for (let i = 0; i < 3 && accounts.length === 0; i++) {
+			provider = getRainbowProvider() || provider;
+			accounts = await getAccountsOnce();
+			if (accounts.length === 0) await delay(300);
+		}
 		const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
 		if (!addr) throw new Error('No account returned by Rainbow');
 		return { owner: addr, principal: addr, connected: true };
