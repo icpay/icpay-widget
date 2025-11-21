@@ -37,6 +37,9 @@ export class MetaMaskAdapter implements AdapterInterface {
         if (mm) return mm;
       }
       if (eth && eth.isMetaMask) return eth;
+      // On some mobile environments (in-app browsers), flags may be missing.
+      // If we're on mobile and ethereum.request exists, optimistically use it.
+      if (this.isMobileBrowser() && eth && typeof eth.request === 'function') return eth;
     } catch {}
     return null;
   }
@@ -67,7 +70,7 @@ export class MetaMaskAdapter implements AdapterInterface {
   }
 
   async connect(): Promise<WalletAccount> {
-    const provider = this.getProvider();
+    let provider = this.getProvider();
     // If provider is missing on mobile browsers, attempt MetaMask deep link into in-app browser
     if (!provider) {
       if (typeof window !== 'undefined' && this.isMobileBrowser()) {
@@ -89,7 +92,40 @@ export class MetaMaskAdapter implements AdapterInterface {
       }
       throw new Error('MetaMask not available');
     }
-    const accounts = await provider.request?.({ method: 'eth_requestAccounts' });
+
+    // Robust account request flow with retries and permissions fallback
+    const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const getAccountsOnce = async (): Promise<string[]> => {
+      try {
+        const a1 = await provider.request?.({ method: 'eth_accounts' });
+        if (Array.isArray(a1) && a1.length > 0) return a1;
+      } catch {}
+      try {
+        const a2 = await provider.request?.({ method: 'eth_requestAccounts' });
+        if (Array.isArray(a2) && a2.length > 0) return a2;
+      } catch (err: any) {
+        if (err && (err.code === 4001 || err.code === '4001')) {
+          throw new Error('Connection request was rejected');
+        }
+        // continue to permissions fallback below
+      }
+      try {
+        await provider.request?.({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
+        const a3 = await provider.request?.({ method: 'eth_accounts' });
+        if (Array.isArray(a3) && a3.length > 0) return a3;
+      } catch {}
+      return [];
+    };
+
+    // Try a few times to account for slow injection/UX on mobile
+    let accounts: string[] = [];
+    for (let i = 0; i < 3 && accounts.length === 0; i++) {
+      // Refresh provider reference in case injection changed
+      provider = this.getProvider() || provider;
+      accounts = await getAccountsOnce();
+      if (accounts.length === 0) await delay(300);
+    }
+
     const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
     if (!addr) throw new Error('No account returned by MetaMask');
     return { owner: addr, principal: addr, connected: true };
