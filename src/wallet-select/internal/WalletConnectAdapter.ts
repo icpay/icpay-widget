@@ -212,7 +212,9 @@ export class WalletConnectAdapter implements AdapterInterface {
       const g: any = (typeof window !== 'undefined' ? window : {}) as any;
       const hasV2 = !!getWcV2Ctor(g);
       const cfg = this.getAdapterConfig();
-      if (hasV2 && (cfg.projectId || cfg.chains)) return true;
+      const hasProjectId = !!(cfg.projectId || cfg.projectID);
+      // Only consider WC available if a projectId is configured (unless injected WC provider exists)
+      if (hasV2 && hasProjectId) return true;
       return false;
     } catch {
       return false;
