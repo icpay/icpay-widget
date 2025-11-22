@@ -92,6 +92,13 @@ function isMobileBrowserGlobal(): boolean {
   }
 }
 
+function isAndroid(): boolean {
+  try {
+    const ua = String((typeof navigator !== 'undefined' ? navigator.userAgent : '') || '').toLowerCase();
+    return ua.includes('android');
+  } catch { return false; }
+}
+
 function isMetaMaskMobileUA(): boolean {
   try {
     const ua = String((typeof navigator !== 'undefined' ? navigator.userAgent : '') || '').toLowerCase();
@@ -167,19 +174,35 @@ async function showQrOverlay(uri: string): Promise<void> {
       try { window.location.href = url; } catch { try { window.open(url, '_self', 'noopener,noreferrer'); } catch {} }
     };
     const openCoinbase = (wcUri: string) => {
-      // Try multiple strategies on Android: universal, native scheme, double-encoded, and Android intent
+      // Try multiple strategies; prefer Android-native first on Android
       let cbUrl = '';
       try { cbUrl = encodeURIComponent(((typeof window !== 'undefined' ? window.location?.href : '') || '')); } catch {}
       const single = encodeURIComponent(wcUri);
       const doubleEnc = encodeURIComponent(single);
       const universal = `https://go.cb-w.com/wc?uri=${single}${cbUrl ? `&cb_url=${cbUrl}` : ''}`;
       const universalDouble = `https://go.cb-w.com/wc?uri=${doubleEnc}${cbUrl ? `&cb_url=${cbUrl}` : ''}`;
-      const native = `cbwallet://wc?uri=${single}`;
-      const androidIntent = `intent://wc?uri=${single}#Intent;package=org.toshi;scheme=cbwallet;end`;
-      openUrl(universal);
-      try { setTimeout(() => openUrl(native), 350); } catch {}
-      try { setTimeout(() => openUrl(universalDouble), 700); } catch {}
-      try { setTimeout(() => openUrl(androidIntent), 1200); } catch {}
+      // Known native schemes used historically by Coinbase Wallet (try all)
+      const native1 = `coinbasewallet://wc?uri=${single}`;
+      const native2 = `cbwallet://wc?uri=${single}`;
+      const native3 = `coinbase://wallet/wc?uri=${single}`;
+      // Android intent with package (Coinbase Wallet a.k.a. Toshi)
+      const androidIntent1 = `intent://wc?uri=${single}#Intent;package=org.toshi;scheme=wc;end`;
+      const androidIntent2 = `intent://wc?uri=${single}#Intent;package=org.toshi;scheme=coinbasewallet;end`;
+      if (isAndroid()) {
+        openUrl(androidIntent1);
+        try { setTimeout(() => openUrl(native1), 350); } catch {}
+        try { setTimeout(() => openUrl(androidIntent2), 700); } catch {}
+        try { setTimeout(() => openUrl(universal), 1050); } catch {}
+        try { setTimeout(() => openUrl(native2), 1350); } catch {}
+        try { setTimeout(() => openUrl(native3), 1650); } catch {}
+        try { setTimeout(() => openUrl(universalDouble), 1950); } catch {}
+      } else {
+        openUrl(universal);
+        try { setTimeout(() => openUrl(native1), 350); } catch {}
+        try { setTimeout(() => openUrl(native2), 700); } catch {}
+        try { setTimeout(() => openUrl(native3), 1050); } catch {}
+        try { setTimeout(() => openUrl(universalDouble), 1400); } catch {}
+      }
     };
     const createBtn = (label: string, iconKey: string | null, onClick: () => void) => {
       const btn = d.createElement('button') as HTMLButtonElement;
