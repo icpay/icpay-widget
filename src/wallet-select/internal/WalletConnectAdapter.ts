@@ -1,16 +1,26 @@
 import type { AdapterInterface, GetActorOptions, WalletSelectConfig, WalletAccount } from '../index.js';
-import { Actor, HttpAgent } from '@dfinity/agent';
 
 let wcProviderScriptLoaded = false;
 let qrLibScriptLoaded = false;
+
+// Default WalletConnect chains authorized during pairing.
+// Keep this list small and maintained here; token picker will drive switching later.
+const DEFAULT_WC_CHAINS: number[] = [8453, 84532]; // Base mainnet, Base Sepolia
 
 async function loadScriptOnce(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
       const d: any = (typeof document !== 'undefined' ? document : null);
       if (!d) return resolve();
-      const existing = Array.from(d.getElementsByTagName('script')).find((s: any) => s && s.src === src);
-      if (existing) return resolve();
+      const scripts = Array.from(d.getElementsByTagName('script')) as HTMLScriptElement[];
+      const existing = scripts.find((s: HTMLScriptElement) => s && s.src === src) as HTMLScriptElement | undefined;
+      if (existing) {
+        // If existing script is type="module", it won't expose a UMD global; inject a non-module script
+        const t = String((existing as HTMLScriptElement).type || '').toLowerCase();
+        if (t !== 'module') {
+          return resolve();
+        }
+      }
       const el = d.createElement('script');
       el.src = src;
       el.async = true;
@@ -33,13 +43,22 @@ async function loadAnyScript(urls: string[]): Promise<boolean> {
   return false;
 }
 
-function getWcV2Ctor(g: any): any | null {
+function getWcV2Ctor(g: any, cfg?: any): any | null {
+  const custom = (cfg && typeof cfg.globalVar === 'string' && cfg.globalVar.trim()) ? cfg.globalVar.trim() : null;
   const cands = [
+    custom ? g?.[custom]?.default : null,
+    custom ? g?.[custom] : null,
+    g?.['@walletconnect/ethereum-provider']?.default,
+    g?.['@walletconnect/ethereum-provider'],
+    g?.WalletConnect?.EthereumProvider?.default,
+    g?.WalletConnect?.EthereumProvider,
     g?.EthereumProvider?.default,
     g?.EthereumProvider,
     g?.WalletConnectEthereumProvider?.default,
-    g?.WalletConnectEthereumProvider
-  ];
+    g?.WalletConnectEthereumProvider,
+    g?.WalletConnectProvider?.default, // v1-style global fallback
+    g?.WalletConnectProvider,
+  ].filter(Boolean);
   for (const c of cands) if (typeof c === 'function' || (c && typeof c.init === 'function')) return c;
   return null;
 }
@@ -59,28 +78,31 @@ async function waitFor(predicate: () => any, timeoutMs = 1500, intervalMs = 50):
   });
 }
 
-function defaultRpcForChain(chainId: number): string | null {
-  switch (Number(chainId)) {
-    case 8453: return 'https://mainnet.base.org';
-    case 84532: return 'https://sepolia.base.org';
-    default: return null;
-  }
-}
+// No-op to avoid bundling heavy WC provider into widget; rely on global UMD via CDN or host-provided script
+async function tryDynamicImportV2(): Promise<void> { return; }
 
-async function tryDynamicImportV2(): Promise<void> {
+function isMobileBrowserGlobal(): boolean {
   try {
-    const g: any = (typeof window !== 'undefined' ? window : {}) as any;
-    if (!g?.EthereumProvider && !g?.WalletConnectEthereumProvider) {
-      const mod: any = await import(/* @vite-ignore */ '@walletconnect/ethereum-provider');
-      const ctor = mod?.EthereumProvider || mod?.default;
-      if (ctor) (g as any).EthereumProvider = ctor;
-    }
-  } catch {}
+    const nav: any = (typeof navigator !== 'undefined' ? navigator : (window as any)?.navigator);
+    const ua = String(nav?.userAgent || '').toLowerCase();
+    return /iphone|ipad|ipod|android|mobile|windows phone/.test(ua);
+  } catch {
+    return false;
+  }
 }
 
 async function ensureQrLib(): Promise<void> {
   const g: any = (typeof window !== 'undefined' ? window : {}) as any;
   if (g?.QRCode && typeof g.QRCode?.toCanvas === 'function') return;
+  // Try dynamic import first (avoids CSP/CDN issues if bundled)
+  try {
+    const mod: any = await import(/* @vite-ignore */ 'qrcode');
+    const QR = (mod && (mod.default || mod)) || null;
+    if (QR && typeof QR.toCanvas === 'function') {
+      (g as any).QRCode = QR;
+      return;
+    }
+  } catch {}
   if (!qrLibScriptLoaded) {
     const ok = await loadAnyScript([
       'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js',
@@ -91,24 +113,24 @@ async function ensureQrLib(): Promise<void> {
   await waitFor(() => {
     const w: any = (typeof window !== 'undefined' ? window : {}) as any;
     return w?.QRCode && typeof w.QRCode?.toCanvas === 'function';
-  }, 1500, 50);
+  }, 2000, 50);
 }
 
-function showQrOverlay(uri: string): void {
+async function showQrOverlay(uri: string): Promise<void> {
   try {
     const d: any = (typeof document !== 'undefined' ? document : null);
     if (!d) return;
     let overlay = d.getElementById('icpay-wc-overlay') as HTMLElement | null;
     if (!overlay) {
-      overlay = d.createElement('div');
-      overlay.id = 'icpay-wc-overlay';
-      overlay.style.position = 'fixed';
-      overlay.style.inset = '0';
-      overlay.style.background = 'rgba(0,0,0,0.55)';
-      overlay.style.display = 'flex';
-      overlay.style.alignItems = 'center';
-      overlay.style.justifyContent = 'center';
-      overlay.style.zIndex = '999999';
+      const ov = d.createElement('div') as HTMLElement;
+      ov.id = 'icpay-wc-overlay';
+      ov.style.position = 'fixed';
+      ov.style.inset = '0';
+      ov.style.background = 'rgba(0,0,0,0.55)';
+      ov.style.display = 'flex';
+      ov.style.alignItems = 'center';
+      ov.style.justifyContent = 'center';
+      ov.style.zIndex = '999999';
       const box = d.createElement('div');
       box.style.background = '#1a1a1a';
       box.style.border = '1px solid #333';
@@ -130,13 +152,17 @@ function showQrOverlay(uri: string): void {
       canvas.style.height = '260px';
       canvas.style.background = '#fff';
       canvas.style.borderRadius = '8px';
-      const link = d.createElement('a');
-      link.href = uri;
-      link.textContent = 'Open in wallet';
-      link.style.color = '#4da3ff';
-      link.style.fontSize = '12px';
-      link.style.marginTop = '10px';
-      link.target = '_blank';
+      const isMobile = isMobileBrowserGlobal();
+      if (isMobile) {
+        const link = d.createElement('a') as HTMLAnchorElement;
+        link.href = uri;
+        link.textContent = 'Open in wallet';
+        link.style.color = '#4da3ff';
+        link.style.fontSize = '12px';
+        link.style.marginTop = '10px';
+        link.target = '_blank';
+        box.appendChild(link);
+      }
       const close = d.createElement('button');
       close.textContent = 'Close';
       close.style.marginTop = '12px';
@@ -145,15 +171,17 @@ function showQrOverlay(uri: string): void {
       close.style.border = '1px solid #444';
       close.style.padding = '6px 10px';
       close.style.borderRadius = '8px';
-      close.onclick = () => { try { d.body.removeChild(overlay as any); } catch {} };
+      close.onclick = () => { try { const cur = d.getElementById('icpay-wc-overlay'); if (cur && cur.parentNode) cur.parentNode.removeChild(cur); } catch {} };
       box.appendChild(title);
       box.appendChild(canvas);
-      box.appendChild(link);
       box.appendChild(close);
-      overlay.appendChild(box);
-      d.body.appendChild(overlay);
+      ov.appendChild(box);
+      d.body.appendChild(ov);
+      overlay = ov;
     }
     const canvas = d.getElementById('icpay-wc-qr-canvas') as HTMLCanvasElement | null;
+    // Ensure lib is ready then draw
+    await ensureQrLib();
     const w: any = (typeof window !== 'undefined' ? window : {}) as any;
     if (canvas && w?.QRCode?.toCanvas) {
       try { w.QRCode.toCanvas(canvas, uri, { width: 260, margin: 2 }); } catch {}
@@ -238,17 +266,54 @@ export class WalletConnectAdapter implements AdapterInterface {
   private async ensureV2Globals(cfg: any): Promise<void> {
     const g: any = (typeof window !== 'undefined' ? window : {}) as any;
     await tryDynamicImportV2();
-    if (!getWcV2Ctor(g)) {
+    if (!getWcV2Ctor(g, cfg)) {
+      // Load self-hosted (or custom) UMD scripts only.
       if (!wcProviderScriptLoaded) {
-        const ok = await loadAnyScript([
-          'https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2/dist/index.umd.js',
-          'https://unpkg.com/@walletconnect/ethereum-provider@2/dist/index.umd.js',
-          'https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2/dist/index.umd.min.js',
-          'https://unpkg.com/@walletconnect/ethereum-provider@2/dist/index.umd.min.js'
-        ]);
+        const custom = (cfg && (cfg.umdUrls || cfg.umdUrl)) || null;
+        // Try self-hosted relative to current script first
+        const selfUrls: string[] = [];
+        try {
+          const d: any = (typeof document !== 'undefined' ? document : null);
+          if (d) {
+            const scripts = Array.from(d.getElementsByTagName('script')) as HTMLScriptElement[];
+            const isRelevant = (u: string) => {
+              const v = u.toLowerCase();
+              return v.includes('icpay-embed') || v.includes('widget.icpay') || v.includes('icpay-widget');
+            };
+            scripts.forEach((s: HTMLScriptElement) => {
+              try {
+                const src = String(s?.src || '');
+                if (!src || !isRelevant(src)) return;
+                const idx = src.lastIndexOf('/');
+                if (idx > 0) {
+                  const base = src.slice(0, idx);
+                  selfUrls.push(`${base}/wc/index.umd.js`, `${base}/index.umd.js`);
+                }
+              } catch {}
+            });
+          }
+        } catch {}
+        // WordPress plugin well-known locations (same-origin)
+        const origin = (typeof window !== 'undefined' && (window as any).location && (window as any).location.origin)
+          ? (window as any).location.origin
+          : '';
+        const wpUrls: string[] = origin
+          ? [
+              `${origin}/wp-content/plugins/icpay-payments/assets/js/wc/index.umd.js`,
+              `${origin}/wp-content/plugins/instant-crypto-payments-for-woocommerce/assets/js/wc/index.umd.js`,
+            ]
+          : [];
+        const urls: string[] = [
+          ...(Array.isArray(custom)
+            ? custom.filter(Boolean)
+            : (typeof custom === 'string' && custom.trim() ? [custom.trim()] : [])),
+          ...selfUrls,
+          ...wpUrls,
+        ];
+        const ok = await loadAnyScript(urls);
         wcProviderScriptLoaded = ok;
       }
-      await waitFor(() => getWcV2Ctor((typeof window !== 'undefined' ? window : {}) as any), 2000, 50);
+      await waitFor(() => getWcV2Ctor((typeof window !== 'undefined' ? window : {}) as any, cfg), 2000, 100);
     }
   }
 
@@ -324,20 +389,34 @@ export class WalletConnectAdapter implements AdapterInterface {
       if (!hasProjectId) return null;
 
       await this.ensureV2Globals(cfg);
-      const EthereumProviderCtor: any = getWcV2Ctor(g);
-      if (!EthereumProviderCtor) return null; // v2 only
+      let EthereumProviderCtor: any = getWcV2Ctor(g, cfg);
+      if (!EthereumProviderCtor) {
+        EthereumProviderCtor = await waitFor(() => getWcV2Ctor((typeof window !== 'undefined' ? window : {}) as any, cfg), 4000, 100);
+      }
+      if (!EthereumProviderCtor) return null; // not available
+      try {
+        if ((this.config as any)?.debug) {
+          console.debug('[ICPay WC] Using ctor', {
+            isFn: typeof EthereumProviderCtor === 'function',
+            hasInit: !!(EthereumProviderCtor && typeof EthereumProviderCtor.init === 'function'),
+            name: (EthereumProviderCtor && (EthereumProviderCtor.name || EthereumProviderCtor.constructor?.name)) || 'unknown'
+          });
+        }
+      } catch {}
       const projectId = String(cfg.projectId || cfg.projectID);
-      const chains: number[] = Array.isArray(cfg.chains) ? cfg.chains.map((c: any) => Number(c)) : [1];
+      // Do not allow site config to pick chains; the widget controls networks.
+      const chains: number[] = DEFAULT_WC_CHAINS.slice();
+      const optionalChains: number[] = DEFAULT_WC_CHAINS.slice();
       const metadata = cfg.metadata || {
         name: (g?.document?.title || 'ICPay Widget'),
         description: 'ICPay WalletConnect',
-        url: (g?.location?.origin || 'https://icpay.dev'),
+        url: (g?.location?.origin || 'https://icpay.org'),
         icons: cfg.icons || [(g?.location?.origin ? g.location.origin + '/favicon.ico' : 'https://walletconnect.com/walletconnect-logo.png')]
       };
       // Force showQrModal false to use our custom overlay
       const provider = typeof EthereumProviderCtor.init === 'function'
-        ? await EthereumProviderCtor.init({ projectId, chains, showQrModal: false, metadata, relayUrl: 'wss://relay.walletconnect.com' })
-        : new EthereumProviderCtor({ projectId, chains, showQrModal: false, metadata, relayUrl: 'wss://relay.walletconnect.com' });
+        ? await EthereumProviderCtor.init({ projectId, chains, optionalChains, showQrModal: false, metadata, relayUrl: 'wss://relay.walletconnect.com' })
+        : new EthereumProviderCtor({ projectId, chains, optionalChains, showQrModal: false, metadata, relayUrl: 'wss://relay.walletconnect.com' });
 
       // Listen for display_uri to render our QR
       try {
@@ -356,7 +435,7 @@ export class WalletConnectAdapter implements AdapterInterface {
         provider.on?.('disconnect', () => { try { hideQrOverlay(); } catch {} });
       } catch {}
 
-      try { await provider.enable?.(); } catch {}
+      // Do not call enable() here; connect flow is triggered explicitly in connect()
       return provider;
     } catch {
       return null;
@@ -385,14 +464,56 @@ export class WalletConnectAdapter implements AdapterInterface {
         }
       } catch {}
       this.wcProviderProxy = this.wrapProviderForMobileWake(this.wcProvider);
-      const accounts = await this.wcProviderProxy.request?.({ method: 'eth_requestAccounts' });
+      // Explicitly trigger WC connect to emit display_uri and wait for pairing
+      try { await this.wcProviderProxy.connect?.(); } catch {}
+      // Wait for accounts to be available (poll + event fallback)
+      const waitForAccounts = async (timeoutMs = 60000): Promise<string[]> => {
+        const start = Date.now();
+        return new Promise<string[]>(async (resolve, reject) => {
+          let done = false;
+          const finish = (accts: string[] | null, err?: any) => {
+            if (done) return;
+            done = true;
+            try { hideQrOverlay(); } catch {}
+            if (accts && accts.length > 0) resolve(accts);
+            else reject(err || new Error('No account returned by WalletConnect'));
+          };
+          try {
+            const onAccounts = (accts: any) => {
+              const a = Array.isArray(accts) ? accts : [];
+              if (a.length > 0) finish(a);
+            };
+            this.wcProviderProxy.on?.('accountsChanged', onAccounts);
+            // Poll as a fallback in case events don't fire
+            while (!done && Date.now() - start < timeoutMs) {
+              try {
+                const a1 = await this.wcProviderProxy.request?.({ method: 'eth_accounts' });
+                if (Array.isArray(a1) && a1.length > 0) {
+                  this.wcProviderProxy.removeListener?.('accountsChanged', onAccounts);
+                  return finish(a1);
+                }
+              } catch {}
+              await new Promise(r => setTimeout(r, 500));
+            }
+            this.wcProviderProxy.removeListener?.('accountsChanged', onAccounts);
+            finish(null, new Error('Timed out waiting for WalletConnect approval'));
+          } catch (e) {
+            finish(null, e);
+          }
+        });
+      };
+      const accounts = await waitForAccounts();
       const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
-      try { hideQrOverlay(); } catch {}
       if (!addr) throw new Error('No account returned by WalletConnect');
       return { owner: addr, principal: addr, connected: true };
     }
 
-    throw new Error('WalletConnect requires a projectId and provider setup. Include WalletConnect EthereumProvider (v2) globally (CSP must allow CDN) or add it as a dependency, then try again.');
+    const cfg = this.getAdapterConfig();
+    const hasProjectId = !!(cfg?.projectId || cfg?.projectID);
+    if (!hasProjectId) {
+      throw new Error('WalletConnect projectId is not configured. Set plugNPlay.adapters.walletconnect.config.projectId to enable WalletConnect.');
+    }
+    throw new Error('WalletConnect provider not available. Ensure the self-hosted EthereumProvider UMD is available (dist/wc/index.umd.js) or provide plugNPlay.adapters.walletconnect.config.umdUrls.');
   }
 
   async disconnect(): Promise<void> {

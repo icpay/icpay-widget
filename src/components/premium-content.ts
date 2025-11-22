@@ -438,7 +438,7 @@ export class ICPayPremiumContent extends LitElement {
       // Close modals immediately on selection to reveal progress UI
       this.showBalanceModal = false;
       this.showWalletModal = false;
-      ensureEvmChain(targetChain, { chainName: sel?.chainName, rpcUrlPublic: (sel as any)?.rpcUrlPublic, nativeSymbol: sel?.ledgerSymbol, decimals: sel?.decimals }).then(async () => {
+      ensureEvmChain(targetChain, { provider: (this.pnp as any)?.getEvmProvider?.() || (this.config as any)?.evmProvider, chainName: sel?.chainName, rpcUrlPublic: (sel as any)?.rpcUrlPublic, nativeSymbol: sel?.ledgerSymbol, decimals: sel?.decimals }).then(async () => {
         try {
           const sdk = createSdk(this.config);
           const amountUsd = Number(this.config?.priceUsd ?? 0);

@@ -334,7 +334,7 @@ export class ICPayPayButton extends LitElement {
         } : null,
       });
       const targetChain = sel?.chainId;
-      ensureEvmChain(targetChain, { chainName: sel?.chainName, rpcUrlPublic: (sel as any)?.rpcUrlPublic, nativeSymbol: sel?.ledgerSymbol, decimals: sel?.decimals }).then(async () => {
+      ensureEvmChain(targetChain, { provider: (this.pnp as any)?.getEvmProvider?.() || (this.config as any)?.evmProvider, chainName: sel?.chainName, rpcUrlPublic: (sel as any)?.rpcUrlPublic, nativeSymbol: sel?.ledgerSymbol, decimals: sel?.decimals }).then(async () => {
         try {
         const sdk = this.getSdk();
         const amountUsd = Number(this.config?.amountUsd ?? 0);
