@@ -5,8 +5,10 @@ let wcProviderScriptLoaded = false;
 let qrLibScriptLoaded = false;
 
 // Default WalletConnect chains authorized during pairing.
-// Keep this list small and maintained here; token picker will drive switching later.
+// Keep this list minimal; widget will handle switching later.
 const DEFAULT_WC_CHAINS: number[] = [8453, 84532]; // Base mainnet, Base Sepolia
+// Some wallets (e.g., Coinbase) are more permissive when Ethereum mainnet (1) is allowed optionally.
+const DEFAULT_WC_OPTIONAL_CHAINS: number[] = [8453, 84532];
 
 async function loadScriptOnce(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -203,10 +205,9 @@ async function showQrOverlay(uri: string): Promise<void> {
     const openCoinbase = (wcUri: string) => {
       // Safer sequence: try universal first; if the page is still visible shortly after, try one native scheme.
       // Avoid Android intents and extra native variants to prevent bad URL pages.
-      let cbUrl = '';
-      try { cbUrl = encodeURIComponent(((typeof window !== 'undefined' ? window.location?.href : '') || '')); } catch {}
       const single = encodeURIComponent(wcUri);
-      const universal = `https://go.cb-w.com/wc?uri=${single}${cbUrl ? `&cb_url=${cbUrl}` : ''}`;
+      // Do NOT append cb_url; Coinbase sometimes treats it as dapp-open instead of WC pairing
+      const universal = `https://go.cb-w.com/wc?uri=${single}`;
       const native = `coinbasewallet://wc?uri=${single}`;
       openUrl(universal);
       // If wallet didn't open (page still visible), try native after a short delay
@@ -586,7 +587,7 @@ export class WalletConnectAdapter implements AdapterInterface {
       const projectId = String(cfg.projectId || cfg.projectID);
       // Do not allow site config to pick chains; the widget controls networks.
       const chains: number[] = DEFAULT_WC_CHAINS.slice();
-      const optionalChains: number[] = DEFAULT_WC_CHAINS.slice();
+      const optionalChains: number[] = DEFAULT_WC_OPTIONAL_CHAINS.slice();
       // Be explicit about methods/events to match wallet expectations (Coinbase, etc.)
       const methods: string[] = [
         'eth_requestAccounts',
