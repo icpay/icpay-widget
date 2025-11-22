@@ -167,13 +167,19 @@ async function showQrOverlay(uri: string): Promise<void> {
       try { window.location.href = url; } catch { try { window.open(url, '_self', 'noopener,noreferrer'); } catch {} }
     };
     const openCoinbase = (wcUri: string) => {
+      // Try multiple strategies on Android: universal, native scheme, double-encoded, and Android intent
       let cbUrl = '';
       try { cbUrl = encodeURIComponent(((typeof window !== 'undefined' ? window.location?.href : '') || '')); } catch {}
-      const universal = `https://go.cb-w.com/wc?uri=${encodeURIComponent(wcUri)}${cbUrl ? `&cb_url=${cbUrl}` : ''}`;
-      const native = `cbwallet://wc?uri=${encodeURIComponent(wcUri)}`;
+      const single = encodeURIComponent(wcUri);
+      const doubleEnc = encodeURIComponent(single);
+      const universal = `https://go.cb-w.com/wc?uri=${single}${cbUrl ? `&cb_url=${cbUrl}` : ''}`;
+      const universalDouble = `https://go.cb-w.com/wc?uri=${doubleEnc}${cbUrl ? `&cb_url=${cbUrl}` : ''}`;
+      const native = `cbwallet://wc?uri=${single}`;
+      const androidIntent = `intent://wc?uri=${single}#Intent;package=org.toshi;scheme=cbwallet;end`;
       openUrl(universal);
-      // Fallback to native scheme shortly after if universal link is not handled
-      try { setTimeout(() => openUrl(native), 400); } catch {}
+      try { setTimeout(() => openUrl(native), 350); } catch {}
+      try { setTimeout(() => openUrl(universalDouble), 700); } catch {}
+      try { setTimeout(() => openUrl(androidIntent), 1200); } catch {}
     };
     const createBtn = (label: string, iconKey: string | null, onClick: () => void) => {
       const btn = d.createElement('button') as HTMLButtonElement;
@@ -227,7 +233,7 @@ async function showQrOverlay(uri: string): Promise<void> {
       box.style.flexDirection = 'column';
       box.style.alignItems = 'center';
       const title = d.createElement('div');
-      title.textContent = 'Scan with your wallet';
+      title.textContent = 'Connect with your wallet';
       title.style.color = '#fff';
       title.style.fontSize = '16px';
       title.style.marginBottom = '12px';
@@ -253,36 +259,42 @@ async function showQrOverlay(uri: string): Promise<void> {
         const okLikely = isOkxMobileUA();
         const phLikely = isPhantomMobileUA();
         // Generic: open installed wallet chooser (wc: URI)
-        linksWrap.appendChild(createBtn('Open installed wallet', 'walletconnect', () => openUrl(uri)));
+        linksWrap.appendChild(createBtn('Open installed wallet (WalletConnect)', 'walletconnect', () => { try { hideQrOverlay(); } catch {} openUrl(uri); }));
         if (mmLikely || !cbLikely) {
-          linksWrap.appendChild(
-            createBtn('Open with MetaMask', 'metamask', () => openUrl(`https://metamask.app.link/wc?uri=${encodeURIComponent(uri)}`))
-          );
+          linksWrap.appendChild(createBtn('MetaMask with WalletConnect', 'metamask', () => {
+            try { hideQrOverlay(); } catch {}
+            openUrl(`https://metamask.app.link/wc?uri=${encodeURIComponent(uri)}`);
+          }));
         }
         if (cbLikely || !mmLikely) {
-          linksWrap.appendChild(
-            createBtn('Open with Coinbase Wallet', 'coinbase', () => openCoinbase(uri))
-          );
+          linksWrap.appendChild(createBtn('Coinbase Wallet with WalletConnect', 'coinbase', () => {
+            try { hideQrOverlay(); } catch {}
+            openCoinbase(uri);
+          }));
         }
         if (rbLikely) {
-          linksWrap.appendChild(
-            createBtn('Open with Rainbow', 'rainbow', () => openUrl(`https://rnbwapp.com/wc?uri=${encodeURIComponent(uri)}`))
-          );
+          linksWrap.appendChild(createBtn('Rainbow with WalletConnect', 'rainbow', () => {
+            try { hideQrOverlay(); } catch {}
+            openUrl(`https://rnbwapp.com/wc?uri=${encodeURIComponent(uri)}`);
+          }));
         }
         if (trLikely) {
-          linksWrap.appendChild(
-            createBtn('Open with Trust Wallet', 'walletconnect', () => openUrl(`https://link.trustwallet.com/wc?uri=${encodeURIComponent(uri)}`))
-          );
+          linksWrap.appendChild(createBtn('Trust Wallet with WalletConnect', 'walletconnect', () => {
+            try { hideQrOverlay(); } catch {}
+            openUrl(`https://link.trustwallet.com/wc?uri=${encodeURIComponent(uri)}`);
+          }));
         }
         if (okLikely) {
-          linksWrap.appendChild(
-            createBtn('Open with OKX Wallet', 'okx', () => openUrl(`okx://wallet/wc?uri=${encodeURIComponent(uri)}`))
-          );
+          linksWrap.appendChild(createBtn('OKX Wallet with WalletConnect', 'okx', () => {
+            try { hideQrOverlay(); } catch {}
+            openUrl(`okx://wallet/wc?uri=${encodeURIComponent(uri)}`);
+          }));
         }
         if (phLikely) {
-          linksWrap.appendChild(
-            createBtn('Open with Phantom', 'phantom', () => openUrl(`https://phantom.app/ul/wc?uri=${encodeURIComponent(uri)}`))
-          );
+          linksWrap.appendChild(createBtn('Phantom with WalletConnect', 'phantom', () => {
+            try { hideQrOverlay(); } catch {}
+            openUrl(`https://phantom.app/ul/wc?uri=${encodeURIComponent(uri)}`);
+          }));
         }
         box.appendChild(linksWrap);
       }
@@ -296,7 +308,9 @@ async function showQrOverlay(uri: string): Promise<void> {
       close.style.borderRadius = '8px';
       close.onclick = () => { try { const cur = d.getElementById('icpay-wc-overlay'); if (cur && cur.parentNode) cur.parentNode.removeChild(cur); } catch {} };
       box.appendChild(title);
-      box.appendChild(canvas);
+      if (!isMobile) {
+        box.appendChild(canvas);
+      }
       box.appendChild(close);
       ov.appendChild(box);
       d.body.appendChild(ov);
@@ -601,19 +615,30 @@ export class WalletConnectAdapter implements AdapterInterface {
               const a = Array.isArray(accts) ? accts : [];
               if (a.length > 0) finish(a);
             };
+            const onVisibility = async () => {
+              try {
+                const doc: any = (typeof document !== 'undefined' ? document : null);
+                if (doc && doc.visibilityState === 'visible') {
+                  try { await this.wcProviderProxy.request?.({ method: 'eth_requestAccounts' }); } catch {}
+                }
+              } catch {}
+            };
             this.wcProviderProxy.on?.('accountsChanged', onAccounts);
+            try { document.addEventListener('visibilitychange', onVisibility); } catch {}
             // Poll as a fallback in case events don't fire
             while (!done && Date.now() - start < timeoutMs) {
               try {
                 const a1 = await this.wcProviderProxy.request?.({ method: 'eth_accounts' });
                 if (Array.isArray(a1) && a1.length > 0) {
                   this.wcProviderProxy.removeListener?.('accountsChanged', onAccounts);
+                  try { document.removeEventListener('visibilitychange', onVisibility); } catch {}
                   return finish(a1);
                 }
               } catch {}
               await new Promise(r => setTimeout(r, 500));
             }
             this.wcProviderProxy.removeListener?.('accountsChanged', onAccounts);
+            try { document.removeEventListener('visibilitychange', onVisibility); } catch {}
             finish(null, new Error('Timed out waiting for WalletConnect approval'));
           } catch (e) {
             finish(null, e);
