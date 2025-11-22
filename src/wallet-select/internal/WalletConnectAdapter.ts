@@ -91,6 +91,48 @@ function isMobileBrowserGlobal(): boolean {
   }
 }
 
+function isMetaMaskMobileUA(): boolean {
+  try {
+    const ua = String((typeof navigator !== 'undefined' ? navigator.userAgent : '') || '').toLowerCase();
+    return ua.includes('metamask');
+  } catch { return false; }
+}
+
+function isCoinbaseMobileUA(): boolean {
+  try {
+    const ua = String((typeof navigator !== 'undefined' ? navigator.userAgent : '') || '').toLowerCase();
+    return ua.includes('coinbasewallet') || ua.includes('coinbase');
+  } catch { return false; }
+}
+
+function isRainbowMobileUA(): boolean {
+  try {
+    const ua = String((typeof navigator !== 'undefined' ? navigator.userAgent : '') || '').toLowerCase();
+    return ua.includes('rainbow');
+  } catch { return false; }
+}
+
+function isTrustMobileUA(): boolean {
+  try {
+    const ua = String((typeof navigator !== 'undefined' ? navigator.userAgent : '') || '').toLowerCase();
+    return ua.includes('trust') || ua.includes('trustwallet');
+  } catch { return false; }
+}
+
+function isOkxMobileUA(): boolean {
+  try {
+    const ua = String((typeof navigator !== 'undefined' ? navigator.userAgent : '') || '').toLowerCase();
+    return ua.includes('okx');
+  } catch { return false; }
+}
+
+function isPhantomMobileUA(): boolean {
+  try {
+    const ua = String((typeof navigator !== 'undefined' ? navigator.userAgent : '') || '').toLowerCase();
+    return ua.includes('phantom');
+  } catch { return false; }
+}
+
 async function ensureQrLib(): Promise<void> {
   const g: any = (typeof window !== 'undefined' ? window : {}) as any;
   if (g?.QRCode && typeof g.QRCode?.toCanvas === 'function') return;
@@ -154,6 +196,12 @@ async function showQrOverlay(uri: string): Promise<void> {
       canvas.style.borderRadius = '8px';
       const isMobile = isMobileBrowserGlobal();
       if (isMobile) {
+        const linksWrap = d.createElement('div');
+        linksWrap.style.display = 'flex';
+        linksWrap.style.flexDirection = 'column';
+        linksWrap.style.alignItems = 'center';
+        linksWrap.style.gap = '6px';
+        // Generic WC deep link (lets OS show app chooser)
         const link = d.createElement('a') as HTMLAnchorElement;
         link.href = uri;
         link.textContent = 'Open in wallet';
@@ -161,7 +209,73 @@ async function showQrOverlay(uri: string): Promise<void> {
         link.style.fontSize = '12px';
         link.style.marginTop = '10px';
         link.target = '_blank';
-        box.appendChild(link);
+        linksWrap.appendChild(link);
+        // Explicit helpers (show only when likely relevant)
+        const mmLikely = isMetaMaskMobileUA();
+        const cbLikely = isCoinbaseMobileUA();
+        const rbLikely = isRainbowMobileUA();
+        const trLikely = isTrustMobileUA();
+        const okLikely = isOkxMobileUA();
+        const phLikely = isPhantomMobileUA();
+        if (mmLikely || !cbLikely) {
+          const linkMM = d.createElement('a') as HTMLAnchorElement;
+          linkMM.href = `https://metamask.app.link/wc?uri=${encodeURIComponent(uri)}`;
+          linkMM.textContent = 'Open with MetaMask';
+          linkMM.style.color = '#4da3ff';
+          linkMM.style.fontSize = '12px';
+          linkMM.target = '_blank';
+          linksWrap.appendChild(linkMM);
+        }
+        if (cbLikely || !mmLikely) {
+          const linkCB = d.createElement('a') as HTMLAnchorElement;
+          linkCB.href = `https://go.cb-w.com/wc?uri=${encodeURIComponent(uri)}`;
+          linkCB.textContent = 'Open with Coinbase Wallet';
+          linkCB.style.color = '#4da3ff';
+          linkCB.style.fontSize = '12px';
+          linkCB.target = '_blank';
+          linksWrap.appendChild(linkCB);
+        }
+        if (rbLikely) {
+          const linkRB = d.createElement('a') as HTMLAnchorElement;
+          // Rainbow universal link
+          linkRB.href = `https://rnbwapp.com/wc?uri=${encodeURIComponent(uri)}`;
+          linkRB.textContent = 'Open with Rainbow';
+          linkRB.style.color = '#4da3ff';
+          linkRB.style.fontSize = '12px';
+          linkRB.target = '_blank';
+          linksWrap.appendChild(linkRB);
+        }
+        if (trLikely) {
+          const linkTR = d.createElement('a') as HTMLAnchorElement;
+          // Trust Wallet universal link
+          linkTR.href = `https://link.trustwallet.com/wc?uri=${encodeURIComponent(uri)}`;
+          linkTR.textContent = 'Open with Trust Wallet';
+          linkTR.style.color = '#4da3ff';
+          linkTR.style.fontSize = '12px';
+          linkTR.target = '_blank';
+          linksWrap.appendChild(linkTR);
+        }
+        if (okLikely) {
+          const linkOK = d.createElement('a') as HTMLAnchorElement;
+          // OKX deep link (best-effort)
+          linkOK.href = `okx://wallet/wc?uri=${encodeURIComponent(uri)}`;
+          linkOK.textContent = 'Open with OKX Wallet';
+          linkOK.style.color = '#4da3ff';
+          linkOK.style.fontSize = '12px';
+          linkOK.target = '_blank';
+          linksWrap.appendChild(linkOK);
+        }
+        if (phLikely) {
+          const linkPH = d.createElement('a') as HTMLAnchorElement;
+          // Phantom universal link (best-effort)
+          linkPH.href = `https://phantom.app/ul/wc?uri=${encodeURIComponent(uri)}`;
+          linkPH.textContent = 'Open with Phantom';
+          linkPH.style.color = '#4da3ff';
+          linkPH.style.fontSize = '12px';
+          linkPH.target = '_blank';
+          linksWrap.appendChild(linkPH);
+        }
+        box.appendChild(linksWrap);
       }
       const close = d.createElement('button');
       close.textContent = 'Close';
@@ -418,20 +532,10 @@ export class WalletConnectAdapter implements AdapterInterface {
         ? await EthereumProviderCtor.init({ projectId, chains, optionalChains, showQrModal: false, metadata, relayUrl: 'wss://relay.walletconnect.com' })
         : new EthereumProviderCtor({ projectId, chains, optionalChains, showQrModal: false, metadata, relayUrl: 'wss://relay.walletconnect.com' });
 
-      // Listen for display_uri to render our QR
+      // Listen for display_uri to render our QR (and mobile deep-link choices)
       try {
         await ensureQrLib();
-        provider.on?.('display_uri', (uri: string) => {
-          try {
-            if (this.isMobileBrowser()) {
-              // Best-effort deep link to MetaMask universal WC link; many users use MetaMask Mobile.
-              const mm = `https://metamask.app.link/wc?uri=${encodeURIComponent(uri)}`;
-              try { window.location.href = mm; } catch { try { window.open(mm, '_self', 'noopener,noreferrer'); } catch {} }
-            } else {
-              showQrOverlay(uri);
-            }
-          } catch {}
-        });
+        provider.on?.( 'display_uri', (uri: string) => { try { showQrOverlay(uri); } catch {} } );
         provider.on?.('disconnect', () => { try { hideQrOverlay(); } catch {} });
       } catch {}
 
