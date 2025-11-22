@@ -228,7 +228,10 @@ async function showQrOverlay(uri: string): Promise<void> {
         }
         if (cbLikely || !mmLikely) {
           const linkCB = d.createElement('a') as HTMLAnchorElement;
-          linkCB.href = `https://go.cb-w.com/wc?uri=${encodeURIComponent(uri)}`;
+          // Include cb_url so Coinbase can bounce back to the dapp after approval
+          let cbUrl = '';
+          try { cbUrl = encodeURIComponent(((typeof window !== 'undefined' ? window.location?.href : '') || '')); } catch {}
+          linkCB.href = `https://go.cb-w.com/wc?uri=${encodeURIComponent(uri)}${cbUrl ? `&cb_url=${cbUrl}` : ''}`;
           linkCB.textContent = 'Open with Coinbase Wallet';
           linkCB.style.color = '#4da3ff';
           linkCB.style.fontSize = '12px';
@@ -570,6 +573,8 @@ export class WalletConnectAdapter implements AdapterInterface {
       this.wcProviderProxy = this.wrapProviderForMobileWake(this.wcProvider);
       // Explicitly trigger WC connect to emit display_uri and wait for pairing
       try { await this.wcProviderProxy.connect?.(); } catch {}
+      // Proactively request accounts (some wallets, e.g. Coinbase, require this after pairing)
+      try { await this.wcProviderProxy.request?.({ method: 'eth_requestAccounts' }); } catch {}
       // Wait for accounts to be available (poll + event fallback)
       const waitForAccounts = async (timeoutMs = 60000): Promise<string[]> => {
         const start = Date.now();
