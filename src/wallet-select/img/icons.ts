@@ -12,7 +12,7 @@ import coinbaseIcon from './coinbase.js';
 import rainbowIcon from './rainbow.js';
 import ledgerIcon from './ledger.js';
 import okxIcon from './okx.js';
-// import walletconnectIcon from './walletconnect.js'; // Disabled
+import walletconnectIcon from './walletconnect.js'; // Disabled
 import braveIcon from './brave.js';
 import phantomIcon from './phantom.js';
 import rabbyIcon from './rabby.js';
@@ -31,7 +31,7 @@ const ICONS: Record<string, string> = {
   rabby: rabbyIcon,
   ledger: ledgerIcon,
   okx: okxIcon,
-  // walletconnect: walletconnectIcon, // Disabled
+  walletconnect: walletconnectIcon
 };
 
 export function getIcon(id: string, fallback?: string | null): string | null {

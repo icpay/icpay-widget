@@ -53,23 +53,28 @@ declare global {
   interface Window { ethereum?: any }
 }
 
-export async function ensureEvmChain(targetChainId?: number | string, opts?: { chainName?: string; rpcUrlPublic?: string; nativeSymbol?: string; decimals?: number }): Promise<boolean> {
+export async function ensureEvmChain(
+  targetChainId?: number | string,
+  opts?: { provider?: any; chainName?: string; rpcUrlPublic?: string; nativeSymbol?: string; decimals?: number }
+): Promise<boolean> {
   try {
-    if (!window.ethereum || targetChainId === undefined || targetChainId === null) return true;
+    const provider: any = (opts as any)?.provider || (typeof window !== 'undefined' ? (window as any).ethereum : null);
+    if (!provider || targetChainId === undefined || targetChainId === null) return true;
     const desiredDec = typeof targetChainId === 'number'
       ? targetChainId
       : (String(targetChainId).startsWith('0x') ? parseInt(String(targetChainId), 16) : parseInt(String(targetChainId), 10));
     if (!Number.isFinite(desiredDec)) return true;
-    const currentHex: string = await window.ethereum.request({ method: 'eth_chainId' });
+    const currentHex: string = await provider.request({ method: 'eth_chainId' });
     const current = parseInt(currentHex, 16);
     if (current === desiredDec) return true;
     const hex = '0x' + desiredDec.toString(16);
-    await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hex }] });
+    await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hex }] });
     return true;
   } catch (e) {
     // Try addEthereumChain fallback using provided chain metadata
     try {
-      if (!window.ethereum || targetChainId === undefined || targetChainId === null) return false;
+      const provider: any = (opts as any)?.provider || (typeof window !== 'undefined' ? (window as any).ethereum : null);
+      if (!provider || targetChainId === undefined || targetChainId === null) return false;
       const desiredDec = typeof targetChainId === 'number'
         ? targetChainId
         : (String(targetChainId).startsWith('0x') ? parseInt(String(targetChainId), 16) : parseInt(String(targetChainId), 10));
@@ -81,7 +86,7 @@ export async function ensureEvmChain(targetChainId?: number | string, opts?: { c
         symbol: opts?.nativeSymbol || 'ETH',
         decimals: (typeof opts?.decimals === 'number' && isFinite(opts.decimals) ? opts.decimals : 18)
       } as any;
-      await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: hex, chainName, rpcUrls, nativeCurrency }] });
+      await provider.request({ method: 'wallet_addEthereumChain', params: [{ chainId: hex, chainName, rpcUrls, nativeCurrency }] });
       return true;
     } catch {
       return false;

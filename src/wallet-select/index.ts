@@ -128,6 +128,14 @@ export class WalletSelect {
       projectId: cfgAdapters.walletconnect.config?.projectId || '',
       chains: cfgAdapters.walletconnect.config?.chains || [8453, 84532]
     };
+    // If WalletConnect is enabled but no projectId provided, hide it to prevent broken UX
+    try {
+      const wcEnabled = (cfgAdapters.walletconnect?.enabled !== false);
+      const wcProjectId = String(cfgAdapters.walletconnect?.config?.projectId || '').trim();
+      if (wcEnabled && !wcProjectId) {
+        (baseAdapters as any).walletconnect.enabled = false;
+      }
+    } catch {}
     // Keep Plug/II entries present for symmetry
     cfgAdapters.plug = cfgAdapters.plug || {};
     cfgAdapters.ii = cfgAdapters.ii || {};
@@ -154,7 +162,17 @@ export class WalletSelect {
       brave: 'evm', rainbow: 'evm', rabby: 'evm', phantom: 'evm', okx: 'evm',
     };
     return Object.values(this._adapters)
-      .filter((a) => a.enabled !== false)
+      .filter((a) => {
+        if (a.enabled === false) return false;
+        // Additional synchronous availability gate for WalletConnect: require projectId
+        if (a.id === 'walletconnect') {
+          try {
+            const wcProjectId = String((this._config as any)?.adapters?.walletconnect?.config?.projectId || '').trim();
+            if (!wcProjectId) return false;
+          } catch { return false; }
+        }
+        return true;
+      })
       .filter((a) => {
         if (!allowedTypes || allowedTypes.length === 0) return true;
         const t = idToType[a.id];

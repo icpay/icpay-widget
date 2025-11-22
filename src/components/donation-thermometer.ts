@@ -431,7 +431,7 @@ export class ICPayDonationThermometer extends LitElement {
     if (isEvmWalletId(this.lastWalletId)) {
       const sel = (this.walletBalances || []).find((b: any) => (b as any)?.tokenShortcode === shortcode);
       const targetChain = sel?.chainId;
-      ensureEvmChain(targetChain, { chainName: sel?.chainName, rpcUrlPublic: (sel as any)?.rpcUrlPublic, nativeSymbol: sel?.ledgerSymbol, decimals: sel?.decimals }).then(async () => {
+      ensureEvmChain(targetChain, { provider: (this.pnp as any)?.getEvmProvider?.() || (this.config as any)?.evmProvider, chainName: sel?.chainName, rpcUrlPublic: (sel as any)?.rpcUrlPublic, nativeSymbol: sel?.ledgerSymbol, decimals: sel?.decimals }).then(async () => {
         try {
           const sdk = createSdk(this.config);
           const amountUsd = Number(this.selectedAmount || 0);
