@@ -7,8 +7,8 @@ let qrLibScriptLoaded = false;
 // Default WalletConnect chains authorized during pairing.
 // Keep this list minimal; widget will handle switching later.
 const DEFAULT_WC_CHAINS: number[] = [8453, 84532]; // Base mainnet, Base Sepolia
-// Some wallets (e.g., Coinbase) are more permissive when Ethereum mainnet (1) is allowed optionally.
-const DEFAULT_WC_OPTIONAL_CHAINS: number[] = [8453, 84532];
+// Some wallets (e.g., Coinbase/Phantom) are more permissive when Ethereum mainnet (1) is allowed optionally.
+const DEFAULT_WC_OPTIONAL_CHAINS: number[] = [1, 8453, 84532];
 
 async function loadScriptOnce(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -701,7 +701,7 @@ export class WalletConnectAdapter implements AdapterInterface {
       try { await this.wcProvider.disconnect?.(); } catch {}
       this.wcProviderProxy = this.wrapProviderForMobileWake(this.wcProvider);
       // Explicitly trigger WC connect to emit display_uri and wait for pairing
-      try { await this.wcProviderProxy.connect?.(); } catch {}
+      try { await this.wcProviderProxy.connect?.({ chains: DEFAULT_WC_CHAINS.slice(), optionalChains: DEFAULT_WC_OPTIONAL_CHAINS.slice() }); } catch {}
       // Proactively request accounts (some wallets, e.g. Coinbase, require this after pairing)
       try { await this.wcProviderProxy.request?.({ method: 'eth_requestAccounts' }); } catch {}
       // Some providers expose enable(); try it as an additional nudge
