@@ -1,4 +1,5 @@
 import type { AdapterInterface, GetActorOptions, WalletSelectConfig, WalletAccount } from '../index.js';
+import { getIcon } from '../img/icons.js';
 
 let wcProviderScriptLoaded = false;
 let qrLibScriptLoaded = false;
@@ -162,6 +163,48 @@ async function showQrOverlay(uri: string): Promise<void> {
   try {
     const d: any = (typeof document !== 'undefined' ? document : null);
     if (!d) return;
+    const openUrl = (url: string) => {
+      try { window.location.href = url; } catch { try { window.open(url, '_self', 'noopener,noreferrer'); } catch {} }
+    };
+    const openCoinbase = (wcUri: string) => {
+      let cbUrl = '';
+      try { cbUrl = encodeURIComponent(((typeof window !== 'undefined' ? window.location?.href : '') || '')); } catch {}
+      const universal = `https://go.cb-w.com/wc?uri=${encodeURIComponent(wcUri)}${cbUrl ? `&cb_url=${cbUrl}` : ''}`;
+      const native = `cbwallet://wc?uri=${encodeURIComponent(wcUri)}`;
+      openUrl(universal);
+      // Fallback to native scheme shortly after if universal link is not handled
+      try { setTimeout(() => openUrl(native), 400); } catch {}
+    };
+    const createBtn = (label: string, iconKey: string | null, onClick: () => void) => {
+      const btn = d.createElement('button') as HTMLButtonElement;
+      btn.style.display = 'flex';
+      btn.style.alignItems = 'center';
+      btn.style.gap = '8px';
+      btn.style.padding = '8px 12px';
+      btn.style.borderRadius = '10px';
+      btn.style.border = '1px solid #444';
+      btn.style.background = '#2a2a2a';
+      btn.style.color = '#fff';
+      btn.style.cursor = 'pointer';
+      btn.style.width = '100%';
+      btn.style.justifyContent = 'center';
+      const img = d.createElement('img') as HTMLImageElement;
+      const iconUrl = iconKey ? getIcon(iconKey) : null;
+      if (iconUrl) {
+        img.src = iconUrl;
+        img.alt = iconKey || 'wallet';
+        img.style.width = '18px';
+        img.style.height = '18px';
+        img.style.display = 'block';
+        btn.appendChild(img);
+      }
+      const span = d.createElement('span') as HTMLSpanElement;
+      span.textContent = label;
+      span.style.fontSize = '13px';
+      btn.appendChild(span);
+      btn.onclick = (e) => { try { e.preventDefault(); } catch {} try { onClick(); } catch {} };
+      return btn;
+    };
     let overlay = d.getElementById('icpay-wc-overlay') as HTMLElement | null;
     if (!overlay) {
       const ov = d.createElement('div') as HTMLElement;
@@ -199,84 +242,47 @@ async function showQrOverlay(uri: string): Promise<void> {
         const linksWrap = d.createElement('div');
         linksWrap.style.display = 'flex';
         linksWrap.style.flexDirection = 'column';
-        linksWrap.style.alignItems = 'center';
-        linksWrap.style.gap = '6px';
-        // Generic WC deep link (lets OS show app chooser)
-        const link = d.createElement('a') as HTMLAnchorElement;
-        link.href = uri;
-        link.textContent = 'Open in wallet';
-        link.style.color = '#4da3ff';
-        link.style.fontSize = '12px';
-        link.style.marginTop = '10px';
-        link.target = '_blank';
-        linksWrap.appendChild(link);
-        // Explicit helpers (show only when likely relevant)
+        linksWrap.style.alignItems = 'stretch';
+        linksWrap.style.gap = '8px';
+        linksWrap.style.width = '100%';
+        // Buttons for installed/likely wallets
         const mmLikely = isMetaMaskMobileUA();
         const cbLikely = isCoinbaseMobileUA();
         const rbLikely = isRainbowMobileUA();
         const trLikely = isTrustMobileUA();
         const okLikely = isOkxMobileUA();
         const phLikely = isPhantomMobileUA();
+        // Generic: open installed wallet chooser (wc: URI)
+        linksWrap.appendChild(createBtn('Open installed wallet', 'walletconnect', () => openUrl(uri)));
         if (mmLikely || !cbLikely) {
-          const linkMM = d.createElement('a') as HTMLAnchorElement;
-          linkMM.href = `https://metamask.app.link/wc?uri=${encodeURIComponent(uri)}`;
-          linkMM.textContent = 'Open with MetaMask';
-          linkMM.style.color = '#4da3ff';
-          linkMM.style.fontSize = '12px';
-          linkMM.target = '_blank';
-          linksWrap.appendChild(linkMM);
+          linksWrap.appendChild(
+            createBtn('Open with MetaMask', 'metamask', () => openUrl(`https://metamask.app.link/wc?uri=${encodeURIComponent(uri)}`))
+          );
         }
         if (cbLikely || !mmLikely) {
-          const linkCB = d.createElement('a') as HTMLAnchorElement;
-          // Include cb_url so Coinbase can bounce back to the dapp after approval
-          let cbUrl = '';
-          try { cbUrl = encodeURIComponent(((typeof window !== 'undefined' ? window.location?.href : '') || '')); } catch {}
-          linkCB.href = `https://go.cb-w.com/wc?uri=${encodeURIComponent(uri)}${cbUrl ? `&cb_url=${cbUrl}` : ''}`;
-          linkCB.textContent = 'Open with Coinbase Wallet';
-          linkCB.style.color = '#4da3ff';
-          linkCB.style.fontSize = '12px';
-          linkCB.target = '_blank';
-          linksWrap.appendChild(linkCB);
+          linksWrap.appendChild(
+            createBtn('Open with Coinbase Wallet', 'coinbase', () => openCoinbase(uri))
+          );
         }
         if (rbLikely) {
-          const linkRB = d.createElement('a') as HTMLAnchorElement;
-          // Rainbow universal link
-          linkRB.href = `https://rnbwapp.com/wc?uri=${encodeURIComponent(uri)}`;
-          linkRB.textContent = 'Open with Rainbow';
-          linkRB.style.color = '#4da3ff';
-          linkRB.style.fontSize = '12px';
-          linkRB.target = '_blank';
-          linksWrap.appendChild(linkRB);
+          linksWrap.appendChild(
+            createBtn('Open with Rainbow', 'rainbow', () => openUrl(`https://rnbwapp.com/wc?uri=${encodeURIComponent(uri)}`))
+          );
         }
         if (trLikely) {
-          const linkTR = d.createElement('a') as HTMLAnchorElement;
-          // Trust Wallet universal link
-          linkTR.href = `https://link.trustwallet.com/wc?uri=${encodeURIComponent(uri)}`;
-          linkTR.textContent = 'Open with Trust Wallet';
-          linkTR.style.color = '#4da3ff';
-          linkTR.style.fontSize = '12px';
-          linkTR.target = '_blank';
-          linksWrap.appendChild(linkTR);
+          linksWrap.appendChild(
+            createBtn('Open with Trust Wallet', 'walletconnect', () => openUrl(`https://link.trustwallet.com/wc?uri=${encodeURIComponent(uri)}`))
+          );
         }
         if (okLikely) {
-          const linkOK = d.createElement('a') as HTMLAnchorElement;
-          // OKX deep link (best-effort)
-          linkOK.href = `okx://wallet/wc?uri=${encodeURIComponent(uri)}`;
-          linkOK.textContent = 'Open with OKX Wallet';
-          linkOK.style.color = '#4da3ff';
-          linkOK.style.fontSize = '12px';
-          linkOK.target = '_blank';
-          linksWrap.appendChild(linkOK);
+          linksWrap.appendChild(
+            createBtn('Open with OKX Wallet', 'okx', () => openUrl(`okx://wallet/wc?uri=${encodeURIComponent(uri)}`))
+          );
         }
         if (phLikely) {
-          const linkPH = d.createElement('a') as HTMLAnchorElement;
-          // Phantom universal link (best-effort)
-          linkPH.href = `https://phantom.app/ul/wc?uri=${encodeURIComponent(uri)}`;
-          linkPH.textContent = 'Open with Phantom';
-          linkPH.style.color = '#4da3ff';
-          linkPH.style.fontSize = '12px';
-          linkPH.target = '_blank';
-          linksWrap.appendChild(linkPH);
+          linksWrap.appendChild(
+            createBtn('Open with Phantom', 'phantom', () => openUrl(`https://phantom.app/ul/wc?uri=${encodeURIComponent(uri)}`))
+          );
         }
         box.appendChild(linksWrap);
       }
@@ -297,11 +303,14 @@ async function showQrOverlay(uri: string): Promise<void> {
       overlay = ov;
     }
     const canvas = d.getElementById('icpay-wc-qr-canvas') as HTMLCanvasElement | null;
-    // Ensure lib is ready then draw
-    await ensureQrLib();
-    const w: any = (typeof window !== 'undefined' ? window : {}) as any;
-    if (canvas && w?.QRCode?.toCanvas) {
-      try { w.QRCode.toCanvas(canvas, uri, { width: 260, margin: 2 }); } catch {}
+    // On desktop we draw QR; on mobile we rely on wallet buttons and skip QR
+    const isMobile = isMobileBrowserGlobal();
+    if (!isMobile) {
+      await ensureQrLib();
+      const w: any = (typeof window !== 'undefined' ? window : {}) as any;
+      if (canvas && w?.QRCode?.toCanvas) {
+        try { w.QRCode.toCanvas(canvas, uri, { width: 260, margin: 2 }); } catch {}
+      }
     }
   } catch {}
 }
