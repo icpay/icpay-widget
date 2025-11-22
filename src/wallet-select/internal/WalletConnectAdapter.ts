@@ -331,12 +331,11 @@ async function showQrOverlay(uri: string): Promise<void> {
             openUrl(`okx://wallet/wc?uri=${encodeURIComponent(uri)}`);
           }));
         }
-        if (phLikely) {
-          linksWrap.appendChild(createBtn('Phantom with WalletConnect', 'phantom', () => {
-            setWaitingState();
-            openUrl(`https://phantom.app/ul/wc?uri=${encodeURIComponent(uri)}`);
-          }));
-        }
+        // Always offer Phantom explicitly; many Android installs do not expose a clear UA
+        linksWrap.appendChild(createBtn('Phantom with WalletConnect', 'phantom', () => {
+          setWaitingState();
+          openUrl(`https://phantom.app/ul/wc?uri=${encodeURIComponent(uri)}`);
+        }));
         box.appendChild(linksWrap);
       }
       const close = d.createElement('button');

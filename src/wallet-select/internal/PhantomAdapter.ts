@@ -1,4 +1,5 @@
 import type { AdapterInterface, GetActorOptions, WalletSelectConfig, WalletAccount } from '../index.js';
+import { WalletConnectAdapter } from './WalletConnectAdapter.js';
 
 declare global {
 	interface Window {
@@ -71,13 +72,9 @@ export class PhantomAdapter implements AdapterInterface {
 		let provider = getPhantomEvmProvider();
 		if (!provider) {
 			if (typeof window !== 'undefined' && isMobileBrowser()) {
-				try {
-					const href = String(window.location?.href || '');
-					const deepLink = `https://phantom.app/ul/browse/${encodeURIComponent(href)}`;
-					try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-deeplink', { detail: { wallet: 'phantom', url: deepLink } })); } catch {}
-					try { window.location.href = deepLink; } catch { try { window.open(deepLink, '_self', 'noopener,noreferrer'); } catch {} }
-				} catch {}
-				throw new Error('Opening Phantom… If nothing happens, install Phantom and try again.');
+				// Delegate to WalletConnect on mobile; Phantom does not inject into external browsers
+				const wc = new WalletConnectAdapter({ config: this.config });
+				return await wc.connect();
 			}
 			throw new Error('Phantom (EVM) not available');
 		}
