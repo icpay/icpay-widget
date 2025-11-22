@@ -554,6 +554,27 @@ export class WalletConnectAdapter implements AdapterInterface {
       // Do not allow site config to pick chains; the widget controls networks.
       const chains: number[] = DEFAULT_WC_CHAINS.slice();
       const optionalChains: number[] = DEFAULT_WC_CHAINS.slice();
+      // Be explicit about methods/events to match wallet expectations (Coinbase, etc.)
+      const methods: string[] = [
+        'eth_requestAccounts',
+        'eth_accounts',
+        'eth_chainId',
+        'personal_sign',
+        'eth_sign',
+        'eth_signTypedData',
+        'eth_signTypedData_v3',
+        'eth_signTypedData_v4',
+        'eth_sendTransaction',
+        'wallet_switchEthereumChain',
+        'wallet_addEthereumChain'
+      ];
+      const events: string[] = [
+        'accountsChanged',
+        'chainChanged',
+        'connect',
+        'disconnect',
+        'message'
+      ];
       const metadata = cfg.metadata || {
         name: (g?.document?.title || 'ICPay Widget'),
         description: 'ICPay WalletConnect',
@@ -562,8 +583,30 @@ export class WalletConnectAdapter implements AdapterInterface {
       };
       // Force showQrModal false to use our custom overlay
       const provider = typeof EthereumProviderCtor.init === 'function'
-        ? await EthereumProviderCtor.init({ projectId, chains, optionalChains, showQrModal: false, metadata, relayUrl: 'wss://relay.walletconnect.com' })
-        : new EthereumProviderCtor({ projectId, chains, optionalChains, showQrModal: false, metadata, relayUrl: 'wss://relay.walletconnect.com' });
+        ? await EthereumProviderCtor.init({
+            projectId,
+            chains,
+            optionalChains,
+            showQrModal: false,
+            metadata,
+            relayUrl: 'wss://relay.walletconnect.com',
+            methods,
+            optionalMethods: methods,
+            events,
+            optionalEvents: events
+          })
+        : new EthereumProviderCtor({
+            projectId,
+            chains,
+            optionalChains,
+            showQrModal: false,
+            metadata,
+            relayUrl: 'wss://relay.walletconnect.com',
+            methods,
+            optionalMethods: methods,
+            events,
+            optionalEvents: events
+          });
 
       // Listen for display_uri to render our QR (and mobile deep-link choices)
       try {
@@ -638,6 +681,8 @@ export class WalletConnectAdapter implements AdapterInterface {
                 const doc: any = (typeof document !== 'undefined' ? document : null);
                 if (doc && doc.visibilityState === 'visible') {
                   try { await this.wcProviderProxy.request?.({ method: 'eth_requestAccounts' }); } catch {}
+                // As a last resort, try to re-connect the provider to prompt wallet again
+                try { await this.wcProviderProxy.connect?.(); } catch {}
                 }
               } catch {}
             };
