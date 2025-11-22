@@ -173,36 +173,46 @@ async function showQrOverlay(uri: string): Promise<void> {
     const openUrl = (url: string) => {
       try { window.location.href = url; } catch { try { window.open(url, '_self', 'noopener,noreferrer'); } catch {} }
     };
+    // Keep track of any scheduled deep-link attempts and cancel once the user leaves the page
+    const scheduled: any[] = [];
+    const scheduleIfVisible = (fn: () => void, delayMs: number) => {
+      try {
+        const id = setTimeout(() => {
+          try {
+            const doc: any = (typeof document !== 'undefined' ? document : null);
+            if (doc && doc.visibilityState === 'hidden') return; // user already switched to wallet
+            fn();
+          } catch {}
+        }, delayMs) as any;
+        scheduled.push(id);
+      } catch {}
+    };
+    const clearScheduled = () => {
+      try { scheduled.forEach((id) => { try { clearTimeout(id as any); } catch {} }); } catch {}
+      scheduled.length = 0;
+    };
+    const onVisChange = () => {
+      try {
+        const doc: any = (typeof document !== 'undefined' ? document : null);
+        if (doc && doc.visibilityState === 'hidden') {
+          clearScheduled();
+        }
+      } catch {}
+    };
+    try { document.addEventListener('visibilitychange', onVisChange); } catch {}
     const openCoinbase = (wcUri: string) => {
-      // Try multiple strategies; prefer Android-native first on Android
+      // Safer sequence: try universal first; if the page is still visible shortly after, try one native scheme.
+      // Avoid Android intents and extra native variants to prevent bad URL pages.
       let cbUrl = '';
       try { cbUrl = encodeURIComponent(((typeof window !== 'undefined' ? window.location?.href : '') || '')); } catch {}
       const single = encodeURIComponent(wcUri);
-      const doubleEnc = encodeURIComponent(single);
       const universal = `https://go.cb-w.com/wc?uri=${single}${cbUrl ? `&cb_url=${cbUrl}` : ''}`;
-      const universalDouble = `https://go.cb-w.com/wc?uri=${doubleEnc}${cbUrl ? `&cb_url=${cbUrl}` : ''}`;
-      // Known native schemes used historically by Coinbase Wallet (try all)
-      const native1 = `coinbasewallet://wc?uri=${single}`;
-      const native2 = `cbwallet://wc?uri=${single}`;
-      const native3 = `coinbase://wallet/wc?uri=${single}`;
-      // Android intent with package (Coinbase Wallet a.k.a. Toshi)
-      const androidIntent1 = `intent://wc?uri=${single}#Intent;package=org.toshi;scheme=wc;end`;
-      const androidIntent2 = `intent://wc?uri=${single}#Intent;package=org.toshi;scheme=coinbasewallet;end`;
-      if (isAndroid()) {
-        openUrl(androidIntent1);
-        try { setTimeout(() => openUrl(native1), 350); } catch {}
-        try { setTimeout(() => openUrl(androidIntent2), 700); } catch {}
-        try { setTimeout(() => openUrl(universal), 1050); } catch {}
-        try { setTimeout(() => openUrl(native2), 1350); } catch {}
-        try { setTimeout(() => openUrl(native3), 1650); } catch {}
-        try { setTimeout(() => openUrl(universalDouble), 1950); } catch {}
-      } else {
-        openUrl(universal);
-        try { setTimeout(() => openUrl(native1), 350); } catch {}
-        try { setTimeout(() => openUrl(native2), 700); } catch {}
-        try { setTimeout(() => openUrl(native3), 1050); } catch {}
-        try { setTimeout(() => openUrl(universalDouble), 1400); } catch {}
-      }
+      const native = `coinbasewallet://wc?uri=${single}`;
+      openUrl(universal);
+      // If wallet didn't open (page still visible), try native after a short delay
+      scheduleIfVisible(() => openUrl(native), 600);
+      // Cleanup any pending attempts after a reasonable time window
+      scheduleIfVisible(() => { clearScheduled(); try { document.removeEventListener('visibilitychange', onVisChange); } catch {} }, 4000);
     };
     const createBtn = (label: string, iconKey: string | null, onClick: () => void) => {
       const btn = d.createElement('button') as HTMLButtonElement;
