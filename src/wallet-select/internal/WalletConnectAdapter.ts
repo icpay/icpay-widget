@@ -660,6 +660,23 @@ export class WalletConnectAdapter implements AdapterInterface {
   }
 
   async connect(): Promise<WalletAccount> {
+    // Proactively clear stale WalletConnect v1/v2 residues that can block mobile approval screens
+    try {
+      const keysToNuke: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i) as string;
+        if (!k) continue;
+        if (
+          k === 'walletconnect' ||
+          k.startsWith('wc@') ||
+          k.startsWith('@walletconnect/') ||
+          k.toLowerCase().includes('walletconnect')
+        ) {
+          keysToNuke.push(k);
+        }
+      }
+      keysToNuke.forEach((k) => { try { localStorage.removeItem(k); } catch {} });
+    } catch {}
     const injected = this.getInjectedWcProvider();
     if (injected) {
       this.wcProvider = injected;
@@ -680,6 +697,8 @@ export class WalletConnectAdapter implements AdapterInterface {
           this.wcRedirect = { native: redirect.native, universal: redirect.universal };
         }
       } catch {}
+      // Ensure clean session state before starting a fresh connect
+      try { await this.wcProvider.disconnect?.(); } catch {}
       this.wcProviderProxy = this.wrapProviderForMobileWake(this.wcProvider);
       // Explicitly trigger WC connect to emit display_uri and wait for pairing
       try { await this.wcProviderProxy.connect?.(); } catch {}
