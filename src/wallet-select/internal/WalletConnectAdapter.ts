@@ -385,6 +385,7 @@ export class WalletConnectAdapter implements AdapterInterface {
   private wcProvider: any | null = null;
   private wcProviderProxy: any | null = null;
   private wcRedirect: { native?: string; universal?: string } | null = null;
+  private lastDisplayUri: string | null = null;
 
   constructor(args: { config: WalletSelectConfig }) {
     this.config = args.config || {};
@@ -644,7 +645,10 @@ export class WalletConnectAdapter implements AdapterInterface {
       // Listen for display_uri to render our QR (and mobile deep-link choices)
       try {
         await ensureQrLib();
-        provider.on?.( 'display_uri', (uri: string) => { try { showQrOverlay(uri); } catch {} } );
+        provider.on?.( 'display_uri', (uri: string) => {
+          try { this.lastDisplayUri = uri; } catch {}
+          try { showQrOverlay(uri); } catch {}
+        } );
         provider.on?.('disconnect', () => { try { hideQrOverlay(); } catch {} });
       } catch {}
 
@@ -716,6 +720,14 @@ export class WalletConnectAdapter implements AdapterInterface {
                   try { await this.wcProviderProxy.request?.({ method: 'eth_requestAccounts' }); } catch {}
                 // As a last resort, try to re-connect the provider to prompt wallet again
                 try { await this.wcProviderProxy.connect?.(); } catch {}
+                  // If still no accounts and we have a pending WC URI, re-open generic wc: link to foreground wallet chooser
+                  try {
+                    const aNow = await this.wcProviderProxy.request?.({ method: 'eth_accounts' });
+                    const noAcc = !(Array.isArray(aNow) && aNow.length > 0);
+                    if (noAcc && this.isMobileBrowser() && this.lastDisplayUri) {
+                      try { window.location.href = this.lastDisplayUri; } catch { try { window.open(this.lastDisplayUri, '_self', 'noopener,noreferrer'); } catch {} }
+                    }
+                  } catch {}
                 }
               } catch {}
             };
