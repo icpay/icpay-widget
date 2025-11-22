@@ -251,6 +251,13 @@ async function showQrOverlay(uri: string): Promise<void> {
         linksWrap.style.alignItems = 'stretch';
         linksWrap.style.gap = '8px';
         linksWrap.style.width = '100%';
+        const setWaitingState = () => {
+          try {
+            title.textContent = 'Waiting for approval in your wallet...';
+            linksWrap.style.pointerEvents = 'none';
+            linksWrap.style.opacity = '0.7';
+          } catch {}
+        };
         // Buttons for installed/likely wallets
         const mmLikely = isMetaMaskMobileUA();
         const cbLikely = isCoinbaseMobileUA();
@@ -259,40 +266,40 @@ async function showQrOverlay(uri: string): Promise<void> {
         const okLikely = isOkxMobileUA();
         const phLikely = isPhantomMobileUA();
         // Generic: open installed wallet chooser (wc: URI)
-        linksWrap.appendChild(createBtn('Open installed wallet (WalletConnect)', 'walletconnect', () => { try { hideQrOverlay(); } catch {} openUrl(uri); }));
+        linksWrap.appendChild(createBtn('Open installed wallet (WalletConnect)', 'walletconnect', () => { setWaitingState(); openUrl(uri); }));
         if (mmLikely || !cbLikely) {
           linksWrap.appendChild(createBtn('MetaMask with WalletConnect', 'metamask', () => {
-            try { hideQrOverlay(); } catch {}
+            setWaitingState();
             openUrl(`https://metamask.app.link/wc?uri=${encodeURIComponent(uri)}`);
           }));
         }
         if (cbLikely || !mmLikely) {
           linksWrap.appendChild(createBtn('Coinbase Wallet with WalletConnect', 'coinbase', () => {
-            try { hideQrOverlay(); } catch {}
+            setWaitingState();
             openCoinbase(uri);
           }));
         }
         if (rbLikely) {
           linksWrap.appendChild(createBtn('Rainbow with WalletConnect', 'rainbow', () => {
-            try { hideQrOverlay(); } catch {}
+            setWaitingState();
             openUrl(`https://rnbwapp.com/wc?uri=${encodeURIComponent(uri)}`);
           }));
         }
         if (trLikely) {
           linksWrap.appendChild(createBtn('Trust Wallet with WalletConnect', 'walletconnect', () => {
-            try { hideQrOverlay(); } catch {}
+            setWaitingState();
             openUrl(`https://link.trustwallet.com/wc?uri=${encodeURIComponent(uri)}`);
           }));
         }
         if (okLikely) {
           linksWrap.appendChild(createBtn('OKX Wallet with WalletConnect', 'okx', () => {
-            try { hideQrOverlay(); } catch {}
+            setWaitingState();
             openUrl(`okx://wallet/wc?uri=${encodeURIComponent(uri)}`);
           }));
         }
         if (phLikely) {
           linksWrap.appendChild(createBtn('Phantom with WalletConnect', 'phantom', () => {
-            try { hideQrOverlay(); } catch {}
+            setWaitingState();
             openUrl(`https://phantom.app/ul/wc?uri=${encodeURIComponent(uri)}`);
           }));
         }
@@ -598,6 +605,17 @@ export class WalletConnectAdapter implements AdapterInterface {
       try { await this.wcProviderProxy.connect?.(); } catch {}
       // Proactively request accounts (some wallets, e.g. Coinbase, require this after pairing)
       try { await this.wcProviderProxy.request?.({ method: 'eth_requestAccounts' }); } catch {}
+      // Some providers expose enable(); try it as an additional nudge
+      try { await this.wcProviderProxy.enable?.(); } catch {}
+      // Listen for connect and try fetching accounts when it fires
+      try {
+        this.wcProviderProxy.on?.('connect', async () => {
+          try {
+            const a = await this.wcProviderProxy.request?.({ method: 'eth_accounts' });
+            if (Array.isArray(a) && a.length > 0) { try { hideQrOverlay(); } catch {} }
+          } catch {}
+        });
+      } catch {}
       // Wait for accounts to be available (poll + event fallback)
       const waitForAccounts = async (timeoutMs = 60000): Promise<string[]> => {
         const start = Date.now();
