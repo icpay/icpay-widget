@@ -334,7 +334,7 @@ async function showQrOverlay(uri: string): Promise<void> {
         // Always offer Phantom explicitly; many Android installs do not expose a clear UA
         linksWrap.appendChild(createBtn('Phantom with WalletConnect', 'phantom', () => {
           setWaitingState();
-          openUrl(`https://phantom.app/ul/wc?uri=${encodeURIComponent(uri)}`);
+          openUrl(`https://phantom.app/ul/v1/wc?uri=${encodeURIComponent(uri)}`);
         }));
         box.appendChild(linksWrap);
       }
@@ -387,6 +387,7 @@ export class WalletConnectAdapter implements AdapterInterface {
   private wcRedirect: { native?: string; universal?: string } | null = null;
   private lastDisplayUri: string | null = null;
   private autoOpenedWcDeepLink = false;
+  private autoOpenedPhantom = false;
 
   constructor(args: { config: WalletSelectConfig }) {
     this.config = args.config || {};
@@ -654,6 +655,12 @@ export class WalletConnectAdapter implements AdapterInterface {
             if (isMobileBrowserGlobal() && !this.autoOpenedWcDeepLink && typeof uri === 'string' && uri.startsWith('wc:')) {
               this.autoOpenedWcDeepLink = true;
               try { window.location.href = uri; } catch { try { window.open(uri, '_self', 'noopener,noreferrer'); } catch {} }
+            }
+            // If Phantom UA detected, prefer Phantom-specific universal link (v1 path) once
+            if (isMobileBrowserGlobal() && isPhantomMobileUA() && !this.autoOpenedPhantom && typeof uri === 'string') {
+              this.autoOpenedPhantom = true;
+              const pUrl = `https://phantom.app/ul/v1/wc?uri=${encodeURIComponent(uri)}`;
+              try { window.location.href = pUrl; } catch { try { window.open(pUrl, '_self', 'noopener,noreferrer'); } catch {} }
             }
           } catch {}
         } );
