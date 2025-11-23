@@ -5,8 +5,8 @@ let wcProviderScriptLoaded = false;
 let qrLibScriptLoaded = false;
 
 // Default WalletConnect chains authorized during pairing.
-// Keep this list minimal; widget will handle switching later.
-const DEFAULT_WC_CHAINS: number[] = [8453, 84532]; // Base mainnet, Base Sepolia
+// Include Ethereum mainnet for better compatibility with mobile wallets.
+const DEFAULT_WC_CHAINS: number[] = [1, 8453, 84532]; // Ethereum, Base, Base Sepolia
 // Some wallets (e.g., Coinbase/Phantom) are more permissive when Ethereum mainnet (1) is allowed optionally.
 const DEFAULT_WC_OPTIONAL_CHAINS: number[] = [1, 8453, 84532];
 
@@ -386,6 +386,7 @@ export class WalletConnectAdapter implements AdapterInterface {
   private wcProviderProxy: any | null = null;
   private wcRedirect: { native?: string; universal?: string } | null = null;
   private lastDisplayUri: string | null = null;
+  private autoOpenedWcDeepLink = false;
 
   constructor(args: { config: WalletSelectConfig }) {
     this.config = args.config || {};
@@ -648,6 +649,13 @@ export class WalletConnectAdapter implements AdapterInterface {
         provider.on?.( 'display_uri', (uri: string) => {
           try { this.lastDisplayUri = uri; } catch {}
           try { showQrOverlay(uri); } catch {}
+          // On mobile, automatically open the generic wc: deep link once to trigger OS wallet chooser
+          try {
+            if (isMobileBrowserGlobal() && !this.autoOpenedWcDeepLink && typeof uri === 'string' && uri.startsWith('wc:')) {
+              this.autoOpenedWcDeepLink = true;
+              try { window.location.href = uri; } catch { try { window.open(uri, '_self', 'noopener,noreferrer'); } catch {} }
+            }
+          } catch {}
         } );
         provider.on?.('disconnect', () => { try { hideQrOverlay(); } catch {} });
       } catch {}
