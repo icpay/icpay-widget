@@ -1,5 +1,6 @@
 import type { AdapterInterface, GetActorOptions, WalletSelectConfig, WalletAccount } from '../index.js';
 import { getIcon } from '../img/icons.js';
+import walletconnectIconUrl from '../img/walletconnect.js';
 
 let wcProviderScriptLoaded = false;
 let qrLibScriptLoaded = false;
@@ -611,12 +612,44 @@ export class WalletConnectAdapter implements AdapterInterface {
         'disconnect',
         'message'
       ];
-      const metadata = cfg.metadata || {
-        name: (g?.document?.title || 'ICPay Widget'),
-        description: 'ICPay WalletConnect',
-        url: (g?.location?.origin || 'https://icpay.org'),
-        icons: cfg.icons || [(g?.location?.origin ? g.location.origin + '/favicon.ico' : 'https://walletconnect.com/walletconnect-logo.png')]
-      };
+      // Build robust dapp metadata; wallets like Coinbase/Phantom require non-empty values and HTTPS icons
+      const siteOrigin = (() => {
+        try {
+          const o = String(g?.location?.origin || '').trim();
+          return (o && /^https?:\/\//.test(o)) ? o : 'https://widget.icpay.org';
+        } catch { return 'https://widget.icpay.org'; }
+      })();
+      const metaName = (() => {
+        try {
+          const n = String((cfg?.metadata?.name || g?.document?.title || 'ICPay Widget')).trim();
+          return n || 'ICPay Widget';
+        } catch { return 'ICPay Widget'; }
+      })();
+      const metaDesc = (() => {
+        try {
+          const d = String((cfg?.metadata?.description || 'ICPay mobile connect')).trim();
+          return d || 'ICPay mobile connect';
+        } catch { return 'ICPay mobile connect'; }
+      })();
+      const metaUrl = (() => {
+        try {
+          const u = String((cfg?.metadata?.url || siteOrigin)).trim();
+          return u || siteOrigin;
+        } catch { return siteOrigin; }
+      })();
+      const metaIcons = (() => {
+        try {
+          const fromCfg = (Array.isArray(cfg?.metadata?.icons) ? cfg?.metadata?.icons : (Array.isArray(cfg?.icons) ? cfg?.icons : null)) || null;
+          const candidates = (fromCfg && fromCfg.length > 0)
+            ? fromCfg
+            : [siteOrigin + '/favicon.ico', siteOrigin + '/apple-touch-icon.png'];
+          const httpsOnly = (candidates as any[]).filter((i: any) => typeof i === 'string' && /^https?:\/\//.test(i as string)) as string[];
+          return httpsOnly.length > 0 ? httpsOnly : [siteOrigin + '/favicon.ico'];
+        } catch {
+          return [siteOrigin + '/favicon.ico'];
+        }
+      })();
+      const metadata = { name: metaName, description: metaDesc, url: metaUrl, icons: metaIcons };
       // Force showQrModal false to use our custom overlay
       const provider = typeof EthereumProviderCtor.init === 'function'
         ? await EthereumProviderCtor.init({
