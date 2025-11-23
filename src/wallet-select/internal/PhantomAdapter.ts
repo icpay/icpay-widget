@@ -1,5 +1,5 @@
 import type { AdapterInterface, GetActorOptions, WalletSelectConfig, WalletAccount } from '../index.js';
-// Avoid static import of 'phantom-connect' to prevent consumer bundlers from requiring it.
+// Load Phantom Connect at runtime to avoid build-time resolution issues in consumers
 async function loadPhantomConnectCtor(): Promise<any | null> {
 	try {
 		const dynamicImport = (new Function('m', 'return import(m)')) as (m: string) => Promise<any>;
@@ -130,7 +130,14 @@ export class PhantomAdapter implements AdapterInterface {
 			})();
 			const PhantomConnectCtor = await loadPhantomConnectCtor();
 			if (!PhantomConnectCtor) {
-				throw new Error('Phantom Connect SDK not available');
+				// Fallback: open in Phantom's in-app browser to inject provider
+				try {
+					const href = String(g?.location?.href || '');
+					const deepLink = `https://phantom.app/ul/browse/${encodeURIComponent(href)}`;
+					try { g.dispatchEvent(new CustomEvent('icpay-sdk-wallet-deeplink', { detail: { wallet: 'phantom', url: deepLink } })); } catch {}
+					try { g.location.href = deepLink; } catch { try { g.open(deepLink, '_self', 'noopener,noreferrer'); } catch {} }
+				} catch {}
+				throw new Error('Opening Phantom… If nothing happens, install Phantom and try again.');
 			}
 			this.phantomClient = new PhantomConnectCtor({
 				network: 'evm',
