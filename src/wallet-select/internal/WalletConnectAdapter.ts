@@ -306,6 +306,20 @@ async function showQrOverlay(uri: string): Promise<void> {
           setWaitingState();
           openUrl(`https://phantom.app/ul/v1/wc?uri=${encodeURIComponent(uri)}`);
         }));
+        linksWrap.appendChild(createBtn('OKX Wallet with WalletConnect', 'okx', () => {
+          setWaitingState();
+          openUrl(`okx://wallet/wc?uri=${encodeURIComponent(uri)}`);
+        }));
+        // Rabby mobile may not expose a dedicated deep link; use system chooser via wc:
+        linksWrap.appendChild(createBtn('Rabby with WalletConnect', 'rabby', () => {
+          setWaitingState();
+          openUrl(uri);
+        }));
+        // Generic system chooser for other installed wallets
+        linksWrap.appendChild(createBtn('More wallets (system chooser)', 'walletconnect', () => {
+          setWaitingState();
+          openUrl(uri);
+        }));
         box.appendChild(linksWrap);
       }
       const close = d.createElement('button');
