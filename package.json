@@ -1,6 +1,6 @@
 {
   "name": "@ic-pay/icpay-widget",
-  "version": "1.2.49",
+  "version": "1.2.50",
   "description": "ICPay embeddable payment widgets as framework-agnostic Web Components",
   "homepage": "https://github.com/icpay/icpay-widget#readme",
   "bugs": {
@@ -29,12 +29,33 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/react/index.ts --format esm --dts --minify --sourcemap --clean --external @ic-pay/icpay-sdk,react,react-dom && pnpm build:css && pnpm copy:wc",
+    "build": "tsup && pnpm build:css && pnpm copy:wc",
     "build:css": "tailwindcss -i src/styles/tailwind.css -o dist/tailwind.css --minify",
-    "dev": "tsup src/index.ts --watch --format esm,iife --global-name ICPayWidget --dts --external @ic-pay/icpay-sdk",
-    "build:embed": "tsup src/index.ts --format iife --global-name ICPayWidget --minify --sourcemap --no-splitting --platform=browser && node -e \"const fs=require('fs');if(fs.existsSync('dist/index.global.js')){fs.renameSync('dist/index.global.js','dist/index.embed.js');if(fs.existsSync('dist/index.global.js.map'))fs.renameSync('dist/index.global.js.map','dist/index.embed.js.map');}\" && pnpm copy:wc",
+    "dev": "tsup --watch --format esm,iife --global-name ICPayWidget --dts",
+    "build:embed": "tsup --format iife --global-name ICPayWidget --minify --sourcemap --no-splitting --platform=browser && node -e \"const fs=require('fs');if(fs.existsSync('dist/index.global.js')){fs.renameSync('dist/index.global.js','dist/index.embed.js');if(fs.existsSync('dist/index.global.js.map'))fs.renameSync('dist/index.global.js.map','dist/index.embed.js.map');}\" && pnpm copy:wc",
     "copy:wc": "node scripts/copy-wc-umd.cjs",
     "prepare": "pnpm build"
+  },
+  "tsup": {
+    "entry": [
+      "src/index.ts",
+      "src/react/index.ts"
+    ],
+    "format": [
+      "esm"
+    ],
+    "dts": true,
+    "sourcemap": true,
+    "clean": true,
+    "minify": true,
+    "external": [
+      "@ic-pay/icpay-sdk",
+      "react",
+      "react-dom"
+    ],
+    "noExternal": [
+      "phantom-connect"
+    ]
   },
   "dependencies": {
     "@dfinity/agent": "^3.4.2",
