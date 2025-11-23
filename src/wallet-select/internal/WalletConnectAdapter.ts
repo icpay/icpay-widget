@@ -293,49 +293,11 @@ async function showQrOverlay(uri: string): Promise<void> {
             linksWrap.style.opacity = '0.7';
           } catch {}
         };
-        // Buttons for installed/likely wallets
-        const mmLikely = isMetaMaskMobileUA();
-        const cbLikely = isCoinbaseMobileUA();
-        const rbLikely = isRainbowMobileUA();
-        const trLikely = isTrustMobileUA();
-        const okLikely = isOkxMobileUA();
-        const phLikely = isPhantomMobileUA();
-        // Generic: open installed wallet chooser (wc: URI)
-        linksWrap.appendChild(createBtn('Open installed wallet (WalletConnect)', 'walletconnect', () => { setWaitingState(); openUrl(uri); }));
-        if (mmLikely || !cbLikely) {
-          linksWrap.appendChild(createBtn('MetaMask with WalletConnect', 'metamask', () => {
-            setWaitingState();
-            openUrl(`https://metamask.app.link/wc?uri=${encodeURIComponent(uri)}`);
-          }));
-        }
-        if (cbLikely || !mmLikely) {
-          linksWrap.appendChild(createBtn('Coinbase Wallet with WalletConnect', 'coinbase', () => {
-            setWaitingState();
-            openCoinbase(uri);
-          }));
-        }
-        if (rbLikely) {
-          linksWrap.appendChild(createBtn('Rainbow with WalletConnect', 'rainbow', () => {
-            setWaitingState();
-            openUrl(`https://rnbwapp.com/wc?uri=${encodeURIComponent(uri)}`);
-          }));
-        }
-        if (trLikely) {
-          linksWrap.appendChild(createBtn('Trust Wallet with WalletConnect', 'walletconnect', () => {
-            setWaitingState();
-            openUrl(`https://link.trustwallet.com/wc?uri=${encodeURIComponent(uri)}`);
-          }));
-        }
-        if (okLikely) {
-          linksWrap.appendChild(createBtn('OKX Wallet with WalletConnect', 'okx', () => {
-            setWaitingState();
-            openUrl(`okx://wallet/wc?uri=${encodeURIComponent(uri)}`);
-          }));
-        }
-        // Always offer Phantom explicitly; many Android installs do not expose a clear UA
-        linksWrap.appendChild(createBtn('Phantom with WalletConnect', 'phantom', () => {
+        // Single universal chooser button (recommended WC flow)
+        linksWrap.appendChild(createBtn('Open with WalletConnect', 'walletconnect', () => {
           setWaitingState();
-          openUrl(`https://phantom.app/ul/v1/wc?uri=${encodeURIComponent(uri)}`);
+          const chooser = `https://walletconnect.com/wc?uri=${encodeURIComponent(uri)}`;
+          openUrl(chooser);
         }));
         box.appendChild(linksWrap);
       }
@@ -683,17 +645,12 @@ export class WalletConnectAdapter implements AdapterInterface {
         provider.on?.( 'display_uri', (uri: string) => {
           try { this.lastDisplayUri = uri; } catch {}
           try { showQrOverlay(uri); } catch {}
-          // On mobile, automatically open the generic wc: deep link once to trigger OS wallet chooser
+          // On mobile, automatically open the WalletConnect universal chooser once
           try {
-            if (isMobileBrowserGlobal() && !this.autoOpenedWcDeepLink && typeof uri === 'string' && uri.startsWith('wc:')) {
+            if (isMobileBrowserGlobal() && !this.autoOpenedWcDeepLink && typeof uri === 'string') {
               this.autoOpenedWcDeepLink = true;
-              try { window.location.href = uri; } catch { try { window.open(uri, '_self', 'noopener,noreferrer'); } catch {} }
-            }
-            // If Phantom UA detected, prefer Phantom-specific universal link (v1 path) once
-            if (isMobileBrowserGlobal() && isPhantomMobileUA() && !this.autoOpenedPhantom && typeof uri === 'string') {
-              this.autoOpenedPhantom = true;
-              const pUrl = `https://phantom.app/ul/v1/wc?uri=${encodeURIComponent(uri)}`;
-              try { window.location.href = pUrl; } catch { try { window.open(pUrl, '_self', 'noopener,noreferrer'); } catch {} }
+              const chooser = `https://walletconnect.com/wc?uri=${encodeURIComponent(uri)}`;
+              try { window.location.href = chooser; } catch { try { window.open(chooser, '_self', 'noopener,noreferrer'); } catch {} }
             }
           } catch {}
         } );
@@ -787,12 +744,13 @@ export class WalletConnectAdapter implements AdapterInterface {
                   try { await this.wcProviderProxy.request?.({ method: 'eth_requestAccounts' }); } catch {}
                 // As a last resort, try to re-connect the provider to prompt wallet again
                 try { await this.wcProviderProxy.connect?.(); } catch {}
-                  // If still no accounts and we have a pending WC URI, re-open generic wc: link to foreground wallet chooser
+                  // If still no accounts and we have a pending WC URI, re-open WalletConnect universal chooser
                   try {
                     const aNow = await this.wcProviderProxy.request?.({ method: 'eth_accounts' });
                     const noAcc = !(Array.isArray(aNow) && aNow.length > 0);
                     if (noAcc && this.isMobileBrowser() && this.lastDisplayUri) {
-                      try { window.location.href = this.lastDisplayUri; } catch { try { window.open(this.lastDisplayUri, '_self', 'noopener,noreferrer'); } catch {} }
+                      const chooser = `https://walletconnect.com/wc?uri=${encodeURIComponent(this.lastDisplayUri)}`;
+                      try { window.location.href = chooser; } catch { try { window.open(chooser, '_self', 'noopener,noreferrer'); } catch {} }
                     }
                   } catch {}
                 }
