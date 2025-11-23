@@ -1,14 +1,4 @@
 import type { AdapterInterface, GetActorOptions, WalletSelectConfig, WalletAccount } from '../index.js';
-// Load Phantom Connect at runtime to avoid build-time resolution issues in consumers
-async function loadPhantomConnectCtor(): Promise<any | null> {
-	try {
-		const dynamicImport = (new Function('m', 'return import(m)')) as (m: string) => Promise<any>;
-		const mod = await dynamicImport('phantom-connect');
-		return (mod && (mod.PhantomConnect || mod.default)) || null;
-	} catch {
-		return null;
-	}
-}
 import { WalletConnectAdapter } from './WalletConnectAdapter.js';
 
 declare global {
@@ -53,8 +43,6 @@ export class PhantomAdapter implements AdapterInterface {
 	readonly label = 'Phantom';
 	readonly icon?: string | null;
 	private readonly config: WalletSelectConfig;
-	private phantomClient: any | null = null;
-	private phantomSession: any | null = null;
 	getEvmProvider(): any { return getPhantomEvmProvider(); }
 
 	constructor(args: { config: WalletSelectConfig }) {
@@ -84,7 +72,7 @@ export class PhantomAdapter implements AdapterInterface {
 		let provider = getPhantomEvmProvider();
 		if (!provider) {
 			if (typeof window !== 'undefined' && isMobileBrowser()) {
-				// Use Phantom Connect on mobile to establish an EVM session
+				// Open current page inside Phantom's in-app browser; Phantom injects EVM provider there
 				return await this.connectPhantomDeepLink();
 			}
 			throw new Error('Phantom (EVM) not available');
@@ -122,33 +110,11 @@ export class PhantomAdapter implements AdapterInterface {
 	private async connectPhantomDeepLink(): Promise<WalletAccount> {
 		try {
 			const g: any = (typeof window !== 'undefined' ? window : {}) as any;
-			const dappId = (() => {
-				try { const t = String(g?.document?.title || '').trim(); return t || 'ICPay Widget'; } catch { return 'ICPay Widget'; }
-			})();
-			const appUrl = (() => {
-				try { const o = String(g?.location?.origin || '').trim(); return o || 'https://widget.icpay.org'; } catch { return 'https://widget.icpay.org'; }
-			})();
-			const PhantomConnectCtor = await loadPhantomConnectCtor();
-			if (!PhantomConnectCtor) {
-				// Fallback: open in Phantom's in-app browser to inject provider
-				try {
-					const href = String(g?.location?.href || '');
-					const deepLink = `https://phantom.app/ul/browse/${encodeURIComponent(href)}`;
-					try { g.dispatchEvent(new CustomEvent('icpay-sdk-wallet-deeplink', { detail: { wallet: 'phantom', url: deepLink } })); } catch {}
-					try { g.location.href = deepLink; } catch { try { g.open(deepLink, '_self', 'noopener,noreferrer'); } catch {} }
-				} catch {}
-				throw new Error('Opening Phantom… If nothing happens, install Phantom and try again.');
-			}
-			this.phantomClient = new PhantomConnectCtor({
-				network: 'evm',
-				dappId,
-				appUrl
-			} as any);
-			const session = await (this.phantomClient as any).connect();
-			this.phantomSession = session || null;
-			const address = (session && (session.publicKey || session.address)) || '';
-			if (!address) throw new Error('No account returned by Phantom Connect');
-			return { owner: address, principal: address, connected: true };
+			const href = String(g?.location?.href || '');
+			const deepLink = `https://phantom.app/ul/browse/${encodeURIComponent(href)}`;
+			try { g.dispatchEvent(new CustomEvent('icpay-sdk-wallet-deeplink', { detail: { wallet: 'phantom', url: deepLink } })); } catch {}
+			try { g.location.href = deepLink; } catch { try { g.open(deepLink, '_self', 'noopener,noreferrer'); } catch {} }
+			throw new Error('Opening Phantom… If nothing happens, install Phantom and try again.');
 		} catch (e: any) {
 			throw new Error(e?.message || 'Phantom connection failed');
 		}
@@ -164,7 +130,6 @@ export class PhantomAdapter implements AdapterInterface {
 			try { provider.removeAllListeners?.('accountsChanged'); } catch {}
 			try { provider.removeAllListeners?.('chainChanged'); } catch {}
 			try { provider.removeAllListeners?.('disconnect'); } catch {}
-			try { await (this.phantomClient as any)?.disconnect?.(); } catch {}
 		} catch {}
 	}
 

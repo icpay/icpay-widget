@@ -85,6 +85,16 @@ export class WalletSelect {
   private _activeAdapter: AdapterInterface | null = null;
   private _account: WalletAccount | null = null;
 
+  private isMobileBrowser(): boolean {
+    try {
+      const nav: any = (typeof navigator !== 'undefined' ? navigator : (globalThis as any)?.navigator);
+      const ua = String(nav?.userAgent || '').toLowerCase();
+      return /iphone|ipad|ipod|android|mobile|windows phone/.test(ua);
+    } catch {
+      return false;
+    }
+  }
+
   constructor(config?: WalletSelectConfig) {
     this._config = config || {};
     const baseAdapters: Record<string, AdapterConfig> = {};
@@ -171,6 +181,8 @@ export class WalletSelect {
             if (!wcProjectId) return false;
           } catch { return false; }
         }
+        // Hide Rabby on mobile (not supported)
+        if (a.id === 'rabby' && this.isMobileBrowser()) return false;
         return true;
       })
       .filter((a) => {
