@@ -1,5 +1,14 @@
 import type { AdapterInterface, GetActorOptions, WalletSelectConfig, WalletAccount } from '../index.js';
-import { PhantomConnect } from 'phantom-connect';
+// Avoid static import of 'phantom-connect' to prevent consumer bundlers from requiring it.
+async function loadPhantomConnectCtor(): Promise<any | null> {
+	try {
+		const dynamicImport = (new Function('m', 'return import(m)')) as (m: string) => Promise<any>;
+		const mod = await dynamicImport('phantom-connect');
+		return (mod && (mod.PhantomConnect || mod.default)) || null;
+	} catch {
+		return null;
+	}
+}
 import { WalletConnectAdapter } from './WalletConnectAdapter.js';
 
 declare global {
@@ -44,7 +53,7 @@ export class PhantomAdapter implements AdapterInterface {
 	readonly label = 'Phantom';
 	readonly icon?: string | null;
 	private readonly config: WalletSelectConfig;
-	private phantomClient: PhantomConnect | null = null;
+	private phantomClient: any | null = null;
 	private phantomSession: any | null = null;
 	getEvmProvider(): any { return getPhantomEvmProvider(); }
 
@@ -119,7 +128,11 @@ export class PhantomAdapter implements AdapterInterface {
 			const appUrl = (() => {
 				try { const o = String(g?.location?.origin || '').trim(); return o || 'https://widget.icpay.org'; } catch { return 'https://widget.icpay.org'; }
 			})();
-			this.phantomClient = new PhantomConnect({
+			const PhantomConnectCtor = await loadPhantomConnectCtor();
+			if (!PhantomConnectCtor) {
+				throw new Error('Phantom Connect SDK not available');
+			}
+			this.phantomClient = new PhantomConnectCtor({
 				network: 'evm',
 				dappId,
 				appUrl
