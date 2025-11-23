@@ -1,4 +1,5 @@
 import type { AdapterInterface, GetActorOptions, WalletSelectConfig, WalletAccount } from '../index.js';
+import { PhantomConnect } from 'phantom-connect';
 import { WalletConnectAdapter } from './WalletConnectAdapter.js';
 
 declare global {
@@ -43,6 +44,8 @@ export class PhantomAdapter implements AdapterInterface {
 	readonly label = 'Phantom';
 	readonly icon?: string | null;
 	private readonly config: WalletSelectConfig;
+	private phantomClient: PhantomConnect | null = null;
+	private phantomSession: any | null = null;
 	getEvmProvider(): any { return getPhantomEvmProvider(); }
 
 	constructor(args: { config: WalletSelectConfig }) {
@@ -72,9 +75,8 @@ export class PhantomAdapter implements AdapterInterface {
 		let provider = getPhantomEvmProvider();
 		if (!provider) {
 			if (typeof window !== 'undefined' && isMobileBrowser()) {
-				// Delegate to WalletConnect on mobile; Phantom does not inject into external browsers
-				const wc = new WalletConnectAdapter({ config: this.config });
-				return await wc.connect();
+				// Use Phantom Connect on mobile to establish an EVM session
+				return await this.connectPhantomDeepLink();
 			}
 			throw new Error('Phantom (EVM) not available');
 		}
@@ -108,6 +110,30 @@ export class PhantomAdapter implements AdapterInterface {
 		return { owner: addr, principal: addr, connected: true };
 	}
 
+	private async connectPhantomDeepLink(): Promise<WalletAccount> {
+		try {
+			const g: any = (typeof window !== 'undefined' ? window : {}) as any;
+			const dappId = (() => {
+				try { const t = String(g?.document?.title || '').trim(); return t || 'ICPay Widget'; } catch { return 'ICPay Widget'; }
+			})();
+			const appUrl = (() => {
+				try { const o = String(g?.location?.origin || '').trim(); return o || 'https://widget.icpay.org'; } catch { return 'https://widget.icpay.org'; }
+			})();
+			this.phantomClient = new PhantomConnect({
+				network: 'evm',
+				dappId,
+				appUrl
+			} as any);
+			const session = await (this.phantomClient as any).connect();
+			this.phantomSession = session || null;
+			const address = (session && (session.publicKey || session.address)) || '';
+			if (!address) throw new Error('No account returned by Phantom Connect');
+			return { owner: address, principal: address, connected: true };
+		} catch (e: any) {
+			throw new Error(e?.message || 'Phantom connection failed');
+		}
+	}
+
 	async disconnect(): Promise<void> {
 		try {
 			const provider = getPhantomEvmProvider();
@@ -118,6 +144,7 @@ export class PhantomAdapter implements AdapterInterface {
 			try { provider.removeAllListeners?.('accountsChanged'); } catch {}
 			try { provider.removeAllListeners?.('chainChanged'); } catch {}
 			try { provider.removeAllListeners?.('disconnect'); } catch {}
+			try { await (this.phantomClient as any)?.disconnect?.(); } catch {}
 		} catch {}
 	}
 
