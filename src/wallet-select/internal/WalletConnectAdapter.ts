@@ -156,13 +156,6 @@ async function ensureQrLib(): Promise<void> {
       return;
     }
   } catch {}
-  if (!qrLibScriptLoaded) {
-    const ok = await loadAnyScript([
-      'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js',
-      'https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js'
-    ]);
-    qrLibScriptLoaded = ok;
-  }
   await waitFor(() => {
     const w: any = (typeof window !== 'undefined' ? window : {}) as any;
     return w?.QRCode && typeof w.QRCode?.toCanvas === 'function';
