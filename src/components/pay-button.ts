@@ -207,17 +207,9 @@ export class ICPayPayButton extends LitElement {
         const evmProvider = (this.pnp as any)?.getEvmProvider?.();
         this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }), ...(evmProvider ? { evmProvider } : {}) } as any;
         this.sdk = null;
-        const isOisy = (walletId || '').toLowerCase() === 'oisy';
-        if (isOisy) {
-          // Stay in modal and show a single CTA to execute the transfer from a user gesture
-          this.oisyReadyToPay = true;
-          // Prevent auto-pay via updated() resume logic
-          this.pendingAction = null;
-        } else {
-          // Keep wallet modal open; advance to balances step and load balances inside it
-          this.walletModalStep = 'balances';
-          this.fetchAndShowBalances('pay');
-        }
+        // Keep wallet modal open; advance to balances step and load balances inside it
+        this.walletModalStep = 'balances';
+        this.fetchAndShowBalances('pay');
       }).catch((error: any) => {
         debugLog(this.config?.debug || false, 'Wallet connection error', error);
         const isOisy = (walletId || '').toLowerCase() === 'oisy';
@@ -249,8 +241,9 @@ export class ICPayPayButton extends LitElement {
                 const evmProvider = (this.pnp as any)?.getEvmProvider?.();
                 this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }), ...(evmProvider ? { evmProvider } : {}) } as any;
                 this.sdk = null;
-                this.oisyReadyToPay = true;
-                this.pendingAction = null;
+                // Advance directly to balances like Plug (IC)
+                this.walletModalStep = 'balances';
+                this.fetchAndShowBalances('pay');
               }).catch((err2: any) => {
                 debugLog(this.config?.debug || false, 'Oisy retry connect (new tab) failed', err2);
                 this.errorMessage = err2 instanceof Error ? err2.message : 'Wallet connection failed';
