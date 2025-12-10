@@ -343,14 +343,9 @@ export class ICPayCoffeeShop extends LitElement {
         const evmProvider = (this.pnp as any)?.getEvmProvider?.();
         this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }), ...(evmProvider ? { evmProvider } : {}) } as any;
         this.sdk = null;
-        const isOisy = this.lastWalletId === 'oisy';
-        if (isOisy) {
-          this.oisyReadyToPay = true;
-        } else {
-          this.showWalletModal = false;
-          // Open token-balance picker after any successful wallet connect
-          this.fetchAndShowBalances();
-        }
+        // After any successful wallet connect (including Oisy), open token-balance picker
+        this.showWalletModal = false;
+        this.fetchAndShowBalances();
       }).catch((error: any) => {
         this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
         this.errorSeverity = ErrorSeverity.ERROR;
