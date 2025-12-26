@@ -23,7 +23,8 @@ export type WalletBalanceEntry = {
   logoUrl?: string | null;
 };
 
-const EVM_WALLET_IDS = new Set(['metamask', 'walletconnect', 'coinbase', 'brave', 'rainbow', 'rabby', 'phantom', 'okx']);
+const EVM_WALLET_IDS = new Set(['metamask', 'walletconnect', 'coinbase', 'brave', 'rainbow', 'rabby', 'okx']);
+const SOL_WALLET_IDS = new Set(['phantom']);
 
 export function isEvmWalletId(walletId?: string | null): boolean {
   if (!walletId) return false;
@@ -110,6 +111,8 @@ export async function getWalletBalanceEntries(params: {
   try {
     if (lowerId && EVM_WALLET_IDS.has(lowerId)) {
       response = await (sdk?.client as any)?.getExternalWalletBalances?.({ network: 'evm', address: addrOrPrincipal, amountUsd, chainShortcodes, tokenShortcodes });
+    } else if (lowerId && SOL_WALLET_IDS.has(lowerId)) {
+      response = await (sdk?.client as any)?.getExternalWalletBalances?.({ network: 'sol', address: addrOrPrincipal, amountUsd, chainShortcodes, tokenShortcodes });
     } else {
       // Prefer API for IC balances too for uniform behavior
       response = await (sdk?.client as any)?.getExternalWalletBalances?.({ network: 'ic', principal: addrOrPrincipal, amountUsd, chainShortcodes, tokenShortcodes });

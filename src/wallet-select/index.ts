@@ -6,7 +6,7 @@ export type WalletSelectConfig = {
   icHost?: string;
   derivationOrigin?: string;
   adapters?: Partial<Record<string, { adapter?: any; config?: any; enabled?: boolean; label?: string; icon?: string }>>;
-  chainTypes?: Array<'ic' | 'evm'>; // optional: restrict which wallets to show
+  chainTypes?: Array<'ic' | 'evm' | 'sol'>; // optional: restrict which wallets to show
 };
 
 export type GetActorOptions = {
@@ -166,10 +166,11 @@ export class WalletSelect {
 
   getEnabledWallets(): any[] {
     const allowedTypes = Array.isArray(this._config.chainTypes) ? this._config.chainTypes.map((t) => String(t).toLowerCase()) : null;
-    const idToType: Record<string, 'ic' | 'evm'> = {
+    const idToType: Record<string, 'ic' | 'evm' | 'sol'> = {
       oisy: 'ic', nfid: 'ic', ii: 'ic', plug: 'ic',
       metamask: 'evm', walletconnect: 'evm', coinbase: 'evm',
-      brave: 'evm', rainbow: 'evm', rabby: 'evm', phantom: 'evm', okx: 'evm',
+      brave: 'evm', rainbow: 'evm', rabby: 'evm', okx: 'evm',
+      phantom: 'sol',
     };
     return Object.values(this._adapters)
       .filter((a) => {
@@ -214,6 +215,24 @@ export class WalletSelect {
       }
     } catch {}
     try { return (typeof window !== 'undefined' ? (window as any).ethereum : null) || null; } catch { return null; }
+  }
+
+  // Expose the active Solana provider (if adapter supports it). Falls back to window.phantom.solana or window.solana.
+  getSolanaProvider(): any {
+    try {
+      const anyAdapter: any = this._activeAdapter as any;
+      if (anyAdapter && typeof anyAdapter.getSolanaProvider === 'function') {
+        const prov = anyAdapter.getSolanaProvider();
+        if (prov) return prov;
+      }
+    } catch {}
+    try {
+      const w: any = (typeof window !== 'undefined' ? window : {}) as any;
+      if (w?.phantom?.solana) return w.phantom.solana;
+      return w?.solana || null;
+    } catch {
+      return null;
+    }
   }
 
   connect(walletId?: string): Promise<WalletAccount> {

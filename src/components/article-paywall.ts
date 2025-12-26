@@ -319,7 +319,8 @@ export class ICPayArticlePaywall extends LitElement {
                 this.walletConnected = true;
                 const normalized = normalizeConnectedWallet(this.pnp, { owner: principal, principal, connected: true });
                 const evmProvider = (this.pnp as any)?.getEvmProvider?.();
-                this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }), ...(evmProvider ? { evmProvider } : {}) } as any;
+                const solanaProvider = (this.pnp as any)?.getSolanaProvider?.();
+                this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }), ...(evmProvider ? { evmProvider } : {}), ...(solanaProvider ? { solanaProvider } : {}) } as any;
                 this.sdk = null;
                 try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: 'oisy' } })); } catch {}
                 this.unlock();

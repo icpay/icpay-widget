@@ -5,6 +5,7 @@ declare global {
 	interface Window {
 		ethereum?: any;
 		phantom?: { ethereum?: any; solana?: any } | undefined;
+		solana?: any;
 	}
 }
 
@@ -38,12 +39,27 @@ function getPhantomEvmProvider(): any | null {
 	}
 }
 
+function getPhantomSolanaProvider(): any | null {
+	try {
+		const anyWin: any = (typeof window !== 'undefined' ? window : {}) as any;
+		// Prefer the dedicated Phantom Solana provider if present
+		if (anyWin.phantom && anyWin.phantom.solana) return anyWin.phantom.solana;
+		// Fallback to window.solana
+		if (anyWin.solana) return anyWin.solana;
+		return null;
+	} catch {
+		return null;
+	}
+}
+
 export class PhantomAdapter implements AdapterInterface {
 	readonly id = 'phantom';
 	readonly label = 'Phantom';
 	readonly icon?: string | null;
 	private readonly config: WalletSelectConfig;
-	getEvmProvider(): any { return getPhantomEvmProvider(); }
+	// Keep for compatibility; return null since we will use SOL provider
+	getEvmProvider(): any { return null; }
+	getSolanaProvider(): any { return getPhantomSolanaProvider(); }
 
 	constructor(args: { config: WalletSelectConfig }) {
 		this.config = args.config || {};
@@ -51,7 +67,7 @@ export class PhantomAdapter implements AdapterInterface {
 
 	async isInstalled(): Promise<boolean> {
 		try {
-			return !!getPhantomEvmProvider();
+			return !!getPhantomSolanaProvider();
 		} catch {
 			return false;
 		}
@@ -59,87 +75,65 @@ export class PhantomAdapter implements AdapterInterface {
 
 	async isConnected(): Promise<boolean> {
 		try {
-			const provider = getPhantomEvmProvider();
+			const provider = getPhantomSolanaProvider();
 			if (!provider) return false;
-			const accounts = await provider.request({ method: 'eth_accounts' });
-			return Array.isArray(accounts) && accounts.length > 0;
+			// Phantom SOL exposes isConnected and publicKey
+			if (provider.isConnected && provider.publicKey) return true;
+			try {
+				await provider.connect();
+				return !!provider.publicKey;
+			} catch {
+				return false;
+			}
 		} catch {
 			return false;
 		}
 	}
 
 	async connect(): Promise<WalletAccount> {
-		let provider = getPhantomEvmProvider();
+		let provider = getPhantomSolanaProvider();
 		if (!provider) {
 			if (typeof window !== 'undefined' && isMobileBrowser()) {
-				// Open current page inside Phantom's in-app browser; Phantom injects EVM provider there
-				return await this.connectPhantomDeepLink();
+				// On mobile, attempt Phantom connect which should trigger the app if available
+				// If unavailable, present a friendly error
+				try {
+					provider = getPhantomSolanaProvider();
+					if (!provider) throw new Error('Phantom (Solana) not available');
+				} catch (e: any) {
+					throw new Error('Phantom (Solana) not available');
+				}
 			}
-			throw new Error('Phantom (EVM) not available');
+			throw new Error('Phantom (Solana) not available');
 		}
-		const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
-		const getAccountsOnce = async (): Promise<string[]> => {
-			try {
-				const a1 = await provider.request?.({ method: 'eth_accounts' });
-				if (Array.isArray(a1) && a1.length > 0) return a1;
-			} catch {}
-			try {
-				const a2 = await provider.request?.({ method: 'eth_requestAccounts' });
-				if (Array.isArray(a2) && a2.length > 0) return a2;
-			} catch (err: any) {
-				if (err && (err.code === 4001 || err.code === '4001')) throw new Error('Connection request was rejected');
-			}
-			try {
-				await provider.request?.({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
-				const a3 = await provider.request?.({ method: 'eth_accounts' });
-				if (Array.isArray(a3) && a3.length > 0) return a3;
-			} catch {}
-			return [];
-		};
-		let accounts: string[] = [];
-		for (let i = 0; i < 3 && accounts.length === 0; i++) {
-			provider = getPhantomEvmProvider() || provider;
-			accounts = await getAccountsOnce();
-			if (accounts.length === 0) await delay(300);
-		}
-		const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
-		if (!addr) throw new Error('No account returned by Phantom');
-		return { owner: addr, principal: addr, connected: true };
-	}
-
-	private async connectPhantomDeepLink(): Promise<WalletAccount> {
 		try {
-			const g: any = (typeof window !== 'undefined' ? window : {}) as any;
-			const href = String(g?.location?.href || '');
-			const deepLink = `https://phantom.app/ul/browse/${encodeURIComponent(href)}`;
-			try { g.dispatchEvent(new CustomEvent('icpay-sdk-wallet-deeplink', { detail: { wallet: 'phantom', url: deepLink } })); } catch {}
-			try { g.location.href = deepLink; } catch { try { g.open(deepLink, '_self', 'noopener,noreferrer'); } catch {} }
-			throw new Error('Opening Phantom… If nothing happens, install Phantom and try again.');
-		} catch (e: any) {
-			throw new Error(e?.message || 'Phantom connection failed');
+			const resp = await provider.connect();
+			// publicKey may be in provider.publicKey; resp may also include it
+			const pk = String(resp?.publicKey || provider.publicKey || '');
+			if (!pk) throw new Error('No account returned by Phantom');
+			return { owner: pk, principal: pk, connected: true };
+		} catch (err: any) {
+			if (err && (err.code === 4001 || err.code === '4001')) throw new Error('Connection request was rejected');
+			throw new Error(err?.message || 'Phantom connection failed');
 		}
 	}
 
 	async disconnect(): Promise<void> {
 		try {
-			const provider = getPhantomEvmProvider();
+			const provider = getPhantomSolanaProvider();
 			if (!provider) return;
-			try {
-				await provider.request?.({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
-			} catch {}
-			try { provider.removeAllListeners?.('accountsChanged'); } catch {}
-			try { provider.removeAllListeners?.('chainChanged'); } catch {}
+			try { await provider.disconnect?.(); } catch {}
+			try { provider.removeAllListeners?.('accountChanged'); } catch {}
+			try { provider.removeAllListeners?.('connect'); } catch {}
 			try { provider.removeAllListeners?.('disconnect'); } catch {}
 		} catch {}
 	}
 
 	async getPrincipal(): Promise<string | null> {
 		try {
-			const provider = getPhantomEvmProvider();
+			const provider = getPhantomSolanaProvider();
 			if (!provider) return null;
-			const accounts = await provider.request({ method: 'eth_accounts' });
-			const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
-			return addr || null;
+			const pk = provider?.publicKey ? String(provider.publicKey) : null;
+			return pk;
 		} catch {
 			return null;
 		}

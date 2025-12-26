@@ -379,7 +379,8 @@ export class ICPayDonationThermometer extends LitElement {
         try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: walletId } })); } catch {}
         const normalized = normalizeConnectedWallet(this.pnp, result);
         const evmProvider = (this.pnp as any)?.getEvmProvider?.();
-        this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }), ...(evmProvider ? { evmProvider } : {}) } as any;
+        const solanaProvider = (this.pnp as any)?.getSolanaProvider?.();
+        this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }), ...(evmProvider ? { evmProvider } : {}), ...(solanaProvider ? { solanaProvider } : {}) } as any;
         this.sdk = null;
         // After any successful wallet connect (including Oisy), open token-balance picker
         this.showWalletModal = false;
