@@ -76,6 +76,7 @@ import { RainbowAdapter } from './internal/RainbowAdapter.js';
 import { RabbyAdapter } from './internal/RabbyAdapter.js';
 import { PhantomAdapter } from './internal/PhantomAdapter.js';
 import { OkxAdapter } from './internal/OkxAdapter.js';
+import { BackpackAdapter } from './internal/BackpackAdapter.js';
 import { getIcon } from './img/icons.js';
 
 
@@ -103,6 +104,7 @@ export class WalletSelect {
     // WalletConnect is disabled by default; enable via config.adapters.walletconnect.enabled = true and provide projectId
     baseAdapters.walletconnect = { id: 'walletconnect', label: 'WalletConnect', icon: null, enabled: false, adapter: WalletConnectAdapter };
     baseAdapters.phantom = { id: 'phantom', label: 'Phantom', icon: null, enabled: true, adapter: PhantomAdapter };
+    baseAdapters.backpack = { id: 'backpack', label: 'Backpack', icon: null, enabled: true, adapter: BackpackAdapter };
     // Temporarily disable Rainbow due to provider interoperability issues
     baseAdapters.rainbow = { id: 'rainbow', label: 'Rainbow', icon: null, enabled: false, adapter: RainbowAdapter };
     baseAdapters.rabby = { id: 'rabby', label: 'Rabby', icon: null, enabled: true, adapter: RabbyAdapter };
@@ -170,10 +172,12 @@ export class WalletSelect {
       oisy: 'ic', nfid: 'ic', ii: 'ic', plug: 'ic',
       metamask: 'evm', walletconnect: 'evm', coinbase: 'evm',
       brave: 'evm', rainbow: 'evm', rabby: 'evm', okx: 'evm',
-      phantom: 'sol',
+      phantom: 'sol', backpack: 'sol',
     };
-    return Object.values(this._adapters)
-      .filter((a) => {
+    // Build list with original index to allow stable sort after prioritization
+    const entries = Object.values(this._adapters)
+      .map((a, idx) => ({ a, idx }))
+      .filter(({ a }) => {
         if (a.enabled === false) return false;
         // Additional synchronous availability gate for WalletConnect: require projectId
         if (a.id === 'walletconnect') {
@@ -184,21 +188,37 @@ export class WalletSelect {
         }
         // Hide Rabby on mobile (not supported)
         if (a.id === 'rabby' && this.isMobileBrowser()) return false;
+        // Respect allowedTypes if provided
+        if (Array.isArray(allowedTypes) && allowedTypes.length > 0) {
+          const t = idToType[a.id];
+          if (!t || !allowedTypes.includes(t)) return false;
+        }
         return true;
-      })
-      .filter((a) => {
-        if (!allowedTypes || allowedTypes.length === 0) return true;
-        const t = idToType[a.id];
-        return !!t && allowedTypes.includes(t);
-      })
-      .map((a) => ({
-        id: a.id,
-        label: a.label,
-        icon: this.resolveIcon(a.id, a.icon),
-        enabled: a.enabled,
-        adapter: a.adapter,
-        config: (this._config.adapters && (this._config.adapters as any)[a.id]?.config) || {}
-      }));
+      });
+    // Determine desired type order: if user supplied chainTypes, respect that order; otherwise prefer 'sol' first by default then evm, then ic
+    const defaultOrder: Array<'sol' | 'evm' | 'ic'> = ['sol', 'evm', 'ic'];
+    const typeOrder: Array<'ic' | 'evm' | 'sol'> = (allowedTypes && allowedTypes.length > 0)
+      ? (allowedTypes as Array<'ic' | 'evm' | 'sol'>)
+      : (defaultOrder as Array<'ic' | 'evm' | 'sol'>);
+    const priority: Record<string, number> = {};
+    typeOrder.forEach((t, i) => { priority[t] = i; });
+    // Stable sort: first by type priority (sol first), then by original declaration order
+    entries.sort((lhs, rhs) => {
+      const lt = idToType[lhs.a.id];
+      const rt = idToType[rhs.a.id];
+      const pL = lt in priority ? priority[lt] : Number.MAX_SAFE_INTEGER;
+      const pR = rt in priority ? priority[rt] : Number.MAX_SAFE_INTEGER;
+      if (pL !== pR) return pL - pR;
+      return lhs.idx - rhs.idx;
+    });
+    return entries.map(({ a }) => ({
+      id: a.id,
+      label: a.label,
+      icon: this.resolveIcon(a.id, a.icon),
+      enabled: a.enabled,
+      adapter: a.adapter,
+      config: (this._config.adapters && (this._config.adapters as any)[a.id]?.config) || {}
+    }));
   }
 
   private resolveIcon(id: string, fallback: string | null | undefined): string | null {
@@ -228,6 +248,10 @@ export class WalletSelect {
     } catch {}
     try {
       const w: any = (typeof window !== 'undefined' ? window : {}) as any;
+      // Prefer Backpack/xNFT providers when available
+      if (w?.backpack?.solana) return w.backpack.solana;
+      if (w?.xnft?.solana) return w.xnft.solana;
+      if (w?.solana && (w.solana.isBackpack === true || w?.solana?.provider?.isBackpack === true)) return w.solana;
       if (w?.phantom?.solana) return w.phantom.solana;
       return w?.solana || null;
     } catch {

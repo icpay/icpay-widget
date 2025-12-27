@@ -54,6 +54,8 @@ export function createSdk(config: CommonConfig): WidgetSdk {
   if (config.connectedWallet) sdkConfig.connectedWallet = config.connectedWallet;
   // Pass selected EVM provider from widget to SDK so signatures use the chosen wallet
   if ((config as any).evmProvider) (sdkConfig as any).evmProvider = (config as any).evmProvider;
+  // Pass selected Solana provider from widget to SDK so signatures use the chosen wallet
+  if ((config as any).solanaProvider) (sdkConfig as any).solanaProvider = (config as any).solanaProvider;
   // Propagate kill switch to SDK (defaults to true inside SDK)
   if (config.onrampDisabled !== undefined) (sdkConfig as any).onrampDisabled = config.onrampDisabled;
 

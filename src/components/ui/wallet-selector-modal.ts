@@ -108,23 +108,20 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
           <div class="wallet-list">
             ${(() => {
               const items: TemplateResult[] = [];
-              let dividerInserted = false;
-              let lastWasEvm: boolean | null = null;
+              let lastGroup: 'sol' | 'evm' | 'ic' | null = null;
               normalizedWallets.forEach((w) => {
                 const id = (w.id || '').toLowerCase();
                 const displayName = getWalletFriendlyName(w.id, w.label);
                 const isEvm = isEvmWalletId(id);
-                // Insert a divider when transitioning from EVM wallets to non-EVM wallets (once)
-                if (lastWasEvm === null) {
-                  lastWasEvm = isEvm;
-                } else if (!dividerInserted && lastWasEvm === true && isEvm === false) {
+                const type: 'sol' | 'evm' | 'ic' = (id === 'phantom' || id === 'backpack') ? 'sol' : (isEvm ? 'evm' : 'ic');
+                // Insert a divider whenever transitioning between wallet groups (sol -> evm -> ic)
+                if (lastGroup !== null && type !== lastGroup) {
                   items.push(html`<div class="divider"></div>`);
-                  dividerInserted = true;
                 }
                 const chainLabel =
                   (id === 'oisy' || id === 'plug' || id === 'nfid' || id === 'ii')
                     ? 'Internet Computer'
-                    : (id === 'phantom'
+                    : (id === 'phantom' || id === 'backpack'
                       ? 'Solana'
                       : (isEvm ? 'Ethereum-compatible' : ''));
                 items.push(html`
@@ -140,7 +137,7 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
                     </div>
                   </div>
                 `);
-                lastWasEvm = isEvm;
+                lastGroup = type;
               });
               return items;
             })()}

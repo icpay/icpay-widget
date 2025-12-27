@@ -16,6 +16,7 @@ import walletconnectIcon from './walletconnect.js'; // Disabled
 import braveIcon from './brave.js';
 import phantomIcon from './phantom.js';
 import rabbyIcon from './rabby.js';
+import backpackIcon from './backpack.js';
 
 const ICONS: Record<string, string> = {
   ii: iiIcon,
@@ -28,6 +29,7 @@ const ICONS: Record<string, string> = {
   rainbow: rainbowIcon,
   brave: braveIcon,
   phantom: phantomIcon,
+  backpack: backpackIcon,
   rabby: rabbyIcon,
   ledger: ledgerIcon,
   okx: okxIcon,
