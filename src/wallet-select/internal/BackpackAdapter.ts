@@ -21,13 +21,85 @@ function isMobileBrowser(): boolean {
 function getBackpackSolanaProvider(): any | null {
 	try {
 		const anyWin: any = (typeof window !== 'undefined' ? window : {}) as any;
+		const u8FromBase64 = (b64: string): Uint8Array => {
+			try {
+				const Buf = (globalThis as any).Buffer;
+				if (Buf) return new Uint8Array(Buf.from(b64, 'base64'));
+			} catch {}
+			const bin = (globalThis as any)?.atob ? (globalThis as any).atob(b64) : '';
+			const arr = new Uint8Array(bin.length);
+			for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+			return arr;
+		};
 		// Prefer dedicated Backpack provider if present
-		if (anyWin.backpack?.solana) return anyWin.backpack.solana;
+		if (anyWin.backpack?.solana) {
+			const base = anyWin.backpack.solana;
+			// Wrap to standardize behavior and hint SDK to use base58 "message" path (same as Phantom branch)
+			const shim: any = {
+				// Identity flags for compatibility/debug
+				isBackpack: true,
+				get publicKey() { return base.publicKey; },
+				get isConnected() { return base.isConnected; },
+				connect: (...args: any[]) => (base.connect ? base.connect(...args) : Promise.resolve()),
+				disconnect: (...args: any[]) => (base.disconnect ? base.disconnect(...args) : Promise.resolve()),
+				on: (...args: any[]) => (base.on ? base.on(...args) : undefined),
+				off: (...args: any[]) => (base.off ? base.off(...args) : undefined),
+				removeAllListeners: (...args: any[]) => (base.removeAllListeners ? base.removeAllListeners(...args) : undefined),
+				// Normalize request interface expected by SDK
+				request: async (args: { method: string; params?: any }) => {
+					// Intercept Solana signing to normalize to the working path for Backpack
+					if (args && args.method === 'signAndSendTransaction' && typeof base.signAndSendTransaction === 'function') {
+						const p = args.params || {};
+						if (p && (p.transaction != null)) {
+							const bytes = typeof p.transaction === 'string' ? u8FromBase64(p.transaction) : p.transaction;
+							// Minimal serialize()-capable object expected by Backpack
+							const fakeTx: any = { serialize: () => bytes };
+							return await base.signAndSendTransaction(fakeTx);
+						}
+						// If no transaction provided, fall back to provider behavior
+						if (typeof base.request === 'function') return base.request(args);
+						throw new Error('Unsupported method');
+					}
+					// Non-sign methods: forward to native request if available
+					if (typeof base.request === 'function') return base.request(args);
+					throw new Error('Unsupported method');
+				}
+			};
+			return shim;
+		}
 		// xNFT context (Backpack in-app)
 		if (anyWin.xnft?.solana) return anyWin.xnft.solana;
 		// Some environments expose a generic window.solana object with an isBackpack flag
 		const sol = anyWin.solana;
-		if (sol && (sol.isBackpack === true || sol?.provider?.isBackpack === true)) return sol;
+		if (sol && (sol.isBackpack === true || sol?.provider?.isBackpack === true)) {
+			// Wrap generic window.solana similarly
+			const base = sol;
+			const shim: any = {
+				isBackpack: true,
+				get publicKey() { return base.publicKey; },
+				get isConnected() { return base.isConnected; },
+				connect: (...args: any[]) => (base.connect ? base.connect(...args) : Promise.resolve()),
+				disconnect: (...args: any[]) => (base.disconnect ? base.disconnect(...args) : Promise.resolve()),
+				on: (...args: any[]) => (base.on ? base.on(...args) : undefined),
+				off: (...args: any[]) => (base.off ? base.off(...args) : undefined),
+				removeAllListeners: (...args: any[]) => (base.removeAllListeners ? base.removeAllListeners(...args) : undefined),
+				request: async (args: { method: string; params?: any }) => {
+					if (args && args.method === 'signAndSendTransaction' && typeof base.signAndSendTransaction === 'function') {
+						const p = args.params || {};
+						if (p && (p.transaction != null)) {
+							const bytes = typeof p.transaction === 'string' ? u8FromBase64(p.transaction) : p.transaction;
+							const fakeTx: any = { serialize: () => bytes };
+							return await base.signAndSendTransaction(fakeTx);
+						}
+						if (typeof base.request === 'function') return base.request(args);
+						throw new Error('Unsupported method');
+					}
+					if (typeof base.request === 'function') return base.request(args);
+					throw new Error('Unsupported method');
+				}
+			};
+			return shim;
+		}
 		// Fallback: accept window.solana on mobile (flags can be flaky in in-app browsers)
 		if (isMobileBrowser() && sol && typeof sol.connect === 'function') return sol;
 		return null;
