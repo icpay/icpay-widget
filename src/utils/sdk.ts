@@ -114,6 +114,7 @@ export function createSdk(config: CommonConfig): WidgetSdk {
         usdAmount,
         metadata: mergedMeta,
         description,
+        recipientAddress: (config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
       };
       if (typeof tokenShortcode === 'string' && tokenShortcode.trim().length > 0) {
         payload.tokenShortcode = tokenShortcode.toLowerCase();
@@ -142,7 +143,14 @@ export function createSdk(config: CommonConfig): WidgetSdk {
         ledgerCanisterId,
         description,
       });
-      return (client as any).createPaymentUsd({ usdAmount, ledgerCanisterId, metadata: mergedMeta, onrampPayment: true, description });
+      return (client as any).createPaymentUsd({
+        usdAmount,
+        ledgerCanisterId,
+        metadata: mergedMeta,
+        onrampPayment: true,
+        description,
+        recipientAddress: (config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+      });
     }
 
 

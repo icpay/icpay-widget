@@ -458,7 +458,8 @@ export class ICPayArticlePaywall extends LitElement {
               icpay_network: 'evm',
               icpay_ledger_id: sel?.ledgerId,
               icpay_context: 'article:x402'
-                }
+                },
+                recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
               });
               return;
             } catch { /* fallback to normal flow */ }
@@ -470,7 +471,8 @@ export class ICPayArticlePaywall extends LitElement {
               ...(this.config as any)?.metadata,
           icpay_network: 'evm',
           icpay_ledger_id: sel?.ledgerId
-            }
+            },
+            recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
           });
         } catch {}
       });
@@ -492,7 +494,8 @@ export class ICPayArticlePaywall extends LitElement {
             ...(this.config as any)?.metadata,
             icpay_network: 'ic',
             icpay_ledger_id: sel?.ledgerId
-          }
+          },
+          recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
         });
       } catch {}
     }

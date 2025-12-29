@@ -37,6 +37,8 @@ export type CommonConfig = {
   icHost?: string;
   // If provided, SDK will use this EVM provider for all EVM requests/signatures
   evmProvider?: any;
+  // Optional: EVM recipient address for relay; always forwarded to SDK requests (defaults to 0x0)
+  recipientAddress?: string;
   // Optional: human-readable description passed to payment_intent.description
   // If not provided, defaults to a generic label on submit.
   description?: string;

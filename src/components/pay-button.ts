@@ -343,6 +343,7 @@ export class ICPayPayButton extends LitElement {
           });
           if (tryX402) {
             try {
+              debugLog(this.config?.debug || false, 'Using recipientAddress (x402)', { recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000' });
               const metadata = {
                 ...(this.config as any)?.metadata,
                 icpay_network: 'evm',
@@ -350,7 +351,12 @@ export class ICPayPayButton extends LitElement {
                 icpay_context: 'pay-button:x402'
               };
               debugLog(this.config?.debug || false, 'Attempting X402 flow (EVM selection)', { amountUsd, tokenShortcode: sel?.tokenShortcode, x402Accepts: sel?.x402Accepts });
-              await (sdk.client as any).createPaymentX402Usd({ usdAmount: amountUsd, tokenShortcode: (sel as any)?.tokenShortcode, metadata });
+              await (sdk.client as any).createPaymentX402Usd({
+                usdAmount: amountUsd,
+                tokenShortcode: (sel as any)?.tokenShortcode,
+                metadata,
+                recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+              });
               return;
             } catch (x402Err: any) {
               debugLog(this.config?.debug || false, 'X402 payment failed (EVM selection), falling back', {
@@ -369,6 +375,7 @@ export class ICPayPayButton extends LitElement {
             amountUsd,
             tokenShortcode: (sel as any)?.tokenShortcode,
           });
+          debugLog(this.config?.debug || false, 'Using recipientAddress (normal)', { recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000' });
           await (sdk.client as any).createPaymentUsd({
             usdAmount: amountUsd,
             tokenShortcode: (sel as any)?.tokenShortcode,
@@ -376,7 +383,8 @@ export class ICPayPayButton extends LitElement {
               ...(this.config as any)?.metadata,
               icpay_network: 'evm',
               icpay_ledger_id: sel?.ledgerId
-            }
+            },
+            recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
           });
         } catch {}
       });
@@ -408,7 +416,8 @@ export class ICPayPayButton extends LitElement {
             ...(this.config as any)?.metadata,
             icpay_network: 'ic',
             icpay_ledger_id: (sel as any)?.ledgerId
-          }
+          },
+          recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
         });
       } catch {}
     }
