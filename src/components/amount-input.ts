@@ -277,7 +277,8 @@ export class ICPayAmountInput extends LitElement {
                   icpay_network: 'evm',
                   icpay_ledger_id: sel?.ledgerId,
                   icpay_context: 'amount-input:x402'
-                }
+                },
+                recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
               });
               this.showBalanceModal = false;
               return;
@@ -292,7 +293,8 @@ export class ICPayAmountInput extends LitElement {
               ...(this.config as any)?.metadata,
               icpay_network: 'evm',
               icpay_ledger_id: sel?.ledgerId
-            }
+            },
+            recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
           });
         } catch {}
         this.showBalanceModal = false;
@@ -314,7 +316,8 @@ export class ICPayAmountInput extends LitElement {
             ...(this.config as any)?.metadata,
             icpay_network: 'ic',
             icpay_ledger_id: sel?.ledgerId
-          }
+          },
+          recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
         });
       } catch {}
     }

@@ -405,7 +405,8 @@ export class ICPayCoffeeShop extends LitElement {
               icpay_ledger_id: sel?.ledgerId,
               icpay_context: 'coffee:x402',
                   item: this.selectedItem?.name
-                }
+                },
+                recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
               });
               this.showBalanceModal = false;
               return;
@@ -419,7 +420,8 @@ export class ICPayCoffeeShop extends LitElement {
           icpay_network: 'evm',
           icpay_ledger_id: sel?.ledgerId,
               item: this.selectedItem?.name
-            }
+            },
+            recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
           });
         } catch {}
         this.showBalanceModal = false;
@@ -442,7 +444,8 @@ export class ICPayCoffeeShop extends LitElement {
           icpay_network: 'ic',
           icpay_ledger_id: sel?.ledgerId,
             item: this.selectedItem?.name
-          }
+          },
+          recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
         });
       } catch {}
     }
