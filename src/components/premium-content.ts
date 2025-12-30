@@ -482,7 +482,28 @@ export class ICPayPremiumContent extends LitElement {
     this.showBalanceModal = false;
     this.showWalletModal = false;
     const action = this.pendingAction; this.pendingAction = null;
-    if (action === 'pay') setTimeout(() => this.onPay(), 0);
+    if (action === 'pay') {
+      // IC/SOL flow: create payment directly using selected tokenShortcode (mirror other widgets)
+      try {
+        const sel = (this.walletBalances || []).find((b: any) => (b as any)?.tokenShortcode === shortcode);
+        const sdk = createSdk(this.config);
+        const amountUsd = Number(this.config?.priceUsd ?? 0);
+        const chainName = String((sel as any)?.chainName || (sel as any)?.ledgerName || '').toLowerCase();
+        const isSol = chainName.includes('sol');
+        const dest = (this.config as any)?.recipientAddresses || {};
+        const chosen = isSol ? (dest.sol || dest.ic) : (dest.ic);
+        (sdk.client as any).createPaymentUsd({
+          usdAmount: amountUsd,
+          tokenShortcode: (sel as any)?.tokenShortcode,
+          metadata: {
+            ...(this.config as any)?.metadata,
+            icpay_network: 'ic',
+            icpay_ledger_id: (sel as any)?.ledgerId
+          },
+          recipientAddress: chosen || '0x0000000000000000000000000000000000000000',
+        }).catch(() => {});
+      } catch {}
+    }
   };
 
   render() {
