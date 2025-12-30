@@ -443,7 +443,7 @@ export class ICPayDonationThermometer extends LitElement {
                   icpay_ledger_id: sel?.ledgerId,
                   icpay_context: 'donation:x402'
                 },
-                recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+                recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
               });
               this.showBalanceModal = false;
               return;
@@ -457,7 +457,7 @@ export class ICPayDonationThermometer extends LitElement {
               icpay_network: 'evm',
               icpay_ledger_id: sel?.ledgerId
             },
-            recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+            recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
           });
         } catch {}
         this.showBalanceModal = false;
@@ -472,6 +472,10 @@ export class ICPayDonationThermometer extends LitElement {
         const sel = (this.walletBalances || []).find((b: any) => (b as any)?.tokenShortcode === shortcode);
         const sdk = createSdk(this.config);
         const amountUsd = Number(this.selectedAmount || 0);
+        const chainName = String((sel as any)?.ledgerName || (sel as any)?.chainName || '').toLowerCase();
+        const isSol = chainName.includes('sol');
+        const dest = (this.config as any)?.recipientAddresses || {};
+        const chosen = isSol ? (dest.sol || dest.ic) : (dest.ic);
         await (sdk.client as any).createPaymentUsd({
           usdAmount: amountUsd,
           tokenShortcode: (sel as any)?.tokenShortcode,
@@ -480,7 +484,7 @@ export class ICPayDonationThermometer extends LitElement {
             icpay_network: 'ic',
             icpay_ledger_id: sel?.ledgerId
           },
-          recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+          recipientAddress: chosen || '0x0000000000000000000000000000000000000000',
         });
       } catch {}
     }

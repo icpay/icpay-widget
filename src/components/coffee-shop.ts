@@ -180,7 +180,16 @@ export class ICPayCoffeeShop extends LitElement {
             if (!WalletSelect) { const module = await import('../wallet-select'); WalletSelect = module.WalletSelect; }
             const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
             const _cfg: any = wantsOisyTab ? applyOisyNewTabConfig({ ...(this.config?.plugNPlay || {}) }) : ({ ...(this.config?.plugNPlay || {}) });
-            if ((this.config as any)?.chainTypes) _cfg.chainTypes = (this.config as any).chainTypes;
+            const _dest = (this.config as any)?.recipientAddresses;
+            if (_dest && (_dest.ic || _dest.evm || _dest.sol)) {
+              const allowed: Array<'ic'|'evm'|'sol'> = [];
+              if (_dest.ic) allowed.push('ic');
+              if (_dest.evm) allowed.push('evm');
+              if (_dest.sol) allowed.push('sol');
+              if (allowed.length) _cfg.chainTypes = allowed as any;
+            } else if ((this.config as any)?.chainTypes) {
+              _cfg.chainTypes = (this.config as any).chainTypes;
+            }
             try {
               if (typeof window !== 'undefined') {
                 const { resolveDerivationOrigin } = await import('../utils/origin');
@@ -406,7 +415,7 @@ export class ICPayCoffeeShop extends LitElement {
               icpay_context: 'coffee:x402',
                   item: this.selectedItem?.name
                 },
-                recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+                recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
               });
               this.showBalanceModal = false;
               return;
@@ -421,7 +430,7 @@ export class ICPayCoffeeShop extends LitElement {
           icpay_ledger_id: sel?.ledgerId,
               item: this.selectedItem?.name
             },
-            recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+            recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
           });
         } catch {}
         this.showBalanceModal = false;
@@ -436,6 +445,10 @@ export class ICPayCoffeeShop extends LitElement {
         const sel = (this.walletBalances || []).find((b: any) => (b as any)?.tokenShortcode === shortcode);
         const sdk = createSdk(this.config);
         const amountUsd = Number(this.selectedItem?.priceUsd || 0);
+        const chainName = String((sel as any)?.ledgerName || (sel as any)?.chainName || '').toLowerCase();
+        const isSol = chainName.includes('sol');
+        const dest = (this.config as any)?.recipientAddresses || {};
+        const chosen = isSol ? (dest.sol || dest.ic) : (dest.ic);
         await (sdk.client as any).createPaymentUsd({
           usdAmount: amountUsd,
           tokenShortcode: (sel as any)?.tokenShortcode,
@@ -445,7 +458,7 @@ export class ICPayCoffeeShop extends LitElement {
           icpay_ledger_id: sel?.ledgerId,
             item: this.selectedItem?.name
           },
-          recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+          recipientAddress: chosen || '0x0000000000000000000000000000000000000000',
         });
       } catch {}
     }

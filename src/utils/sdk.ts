@@ -114,7 +114,7 @@ export function createSdk(config: CommonConfig): WidgetSdk {
         usdAmount,
         metadata: mergedMeta,
         description,
-        recipientAddress: (config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+        recipientAddresses: (config as any).recipientAddresses,
       };
       if (typeof tokenShortcode === 'string' && tokenShortcode.trim().length > 0) {
         payload.tokenShortcode = tokenShortcode.toLowerCase();
@@ -149,7 +149,7 @@ export function createSdk(config: CommonConfig): WidgetSdk {
         metadata: mergedMeta,
         onrampPayment: true,
         description,
-        recipientAddress: (config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+        recipientAddresses: (config as any).recipientAddresses,
       });
     }
 

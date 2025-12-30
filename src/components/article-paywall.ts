@@ -459,7 +459,7 @@ export class ICPayArticlePaywall extends LitElement {
               icpay_ledger_id: sel?.ledgerId,
               icpay_context: 'article:x402'
                 },
-                recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+                recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
               });
               return;
             } catch { /* fallback to normal flow */ }
@@ -472,7 +472,7 @@ export class ICPayArticlePaywall extends LitElement {
           icpay_network: 'evm',
           icpay_ledger_id: sel?.ledgerId
             },
-            recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+            recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
           });
         } catch {}
       });
@@ -487,6 +487,10 @@ export class ICPayArticlePaywall extends LitElement {
         const sel = (this.walletBalances || []).find((b: any) => (b as any)?.tokenShortcode === shortcode);
         const sdk = createSdk(this.config);
         const amountUsd = Number(this.config?.priceUsd ?? 0);
+        const chainName = String((sel as any)?.ledgerName || (sel as any)?.chainName || '').toLowerCase();
+        const isSol = chainName.includes('sol');
+        const dest = (this.config as any)?.recipientAddresses || {};
+        const chosen = isSol ? (dest.sol || dest.ic) : (dest.ic);
         await (sdk.client as any).createPaymentUsd({
           usdAmount: amountUsd,
           tokenShortcode: (sel as any)?.tokenShortcode,
@@ -495,7 +499,7 @@ export class ICPayArticlePaywall extends LitElement {
             icpay_network: 'ic',
             icpay_ledger_id: sel?.ledgerId
           },
-          recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+          recipientAddress: chosen || '0x0000000000000000000000000000000000000000',
         });
       } catch {}
     }

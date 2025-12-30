@@ -174,7 +174,16 @@ export class ICPayAmountInput extends LitElement {
       }
       const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
       const _rawCfg: any = { ...(this.config?.plugNPlay || {}) };
-      if ((this.config as any)?.chainTypes) _rawCfg.chainTypes = (this.config as any).chainTypes;
+      const _dest = (this.config as any)?.recipientAddresses;
+      if (_dest && (_dest.ic || _dest.evm || _dest.sol)) {
+        const allowed: Array<'ic'|'evm'|'sol'> = [];
+        if (_dest.ic) allowed.push('ic');
+        if (_dest.evm) allowed.push('evm');
+        if (_dest.sol) allowed.push('sol');
+        if (allowed.length) _rawCfg.chainTypes = allowed as any;
+      } else if ((this.config as any)?.chainTypes) {
+        _rawCfg.chainTypes = (this.config as any).chainTypes;
+      }
       const _cfg: any = wantsOisyTab ? applyOisyNewTabConfig(_rawCfg) : _rawCfg;
       try {
         if (typeof window !== 'undefined') {
@@ -278,7 +287,7 @@ export class ICPayAmountInput extends LitElement {
                   icpay_ledger_id: sel?.ledgerId,
                   icpay_context: 'amount-input:x402'
                 },
-                recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+                recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
               });
               this.showBalanceModal = false;
               return;
@@ -294,7 +303,7 @@ export class ICPayAmountInput extends LitElement {
               icpay_network: 'evm',
               icpay_ledger_id: sel?.ledgerId
             },
-            recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+            recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
           });
         } catch {}
         this.showBalanceModal = false;
@@ -309,6 +318,10 @@ export class ICPayAmountInput extends LitElement {
         const sel = (this.walletBalances || []).find((b: any) => (b as any)?.tokenShortcode === shortcode);
         const sdk = createSdk(this.config);
         const amountUsd = Number(this.amountUsd || 0);
+        const chainName = String((sel as any)?.ledgerName || (sel as any)?.chainName || '').toLowerCase();
+        const isSol = chainName.includes('sol');
+        const dest = (this.config as any)?.recipientAddresses || {};
+        const chosen = isSol ? (dest.sol || dest.ic) : (dest.ic);
         await (sdk.client as any).createPaymentUsd({
           usdAmount: amountUsd,
           tokenShortcode: (sel as any)?.tokenShortcode,
@@ -317,7 +330,7 @@ export class ICPayAmountInput extends LitElement {
             icpay_network: 'ic',
             icpay_ledger_id: sel?.ledgerId
           },
-          recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+          recipientAddress: chosen || '0x0000000000000000000000000000000000000000',
         });
       } catch {}
     }
