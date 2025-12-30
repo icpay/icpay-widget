@@ -89,6 +89,7 @@ export class ICPayArticlePaywall extends LitElement {
   @state() private walletConnected = false;
   @state() private pendingAction: 'unlock' | null = null;
   @state() private showWalletModal = false;
+  @state() private walletModalStep: 'connect' | 'balances' = 'connect';
   @state() private oisyReadyToPay: boolean = false;
   @state() private lastWalletId: string | null = null;
   private pnp: any | null = null;
@@ -393,9 +394,10 @@ export class ICPayArticlePaywall extends LitElement {
         const evmProvider = (this.pnp as any)?.getEvmProvider?.();
         this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }), ...(evmProvider ? { evmProvider } : {}) } as any;
         this.sdk = null;
-        // After any successful wallet connect (including Oisy), open token-balance picker
-        this.showWalletModal = false;
-        // After any successful wallet connect, open token-balance picker
+        // After any successful wallet connect (including Oisy), open token-balance picker inside wallet modal
+        this.walletModalStep = 'balances';
+        this.showBalanceModal = false;
+        this.showWalletModal = true;
         this.fetchAndShowBalances();
       }).catch((error: any) => {
         this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
@@ -416,7 +418,9 @@ export class ICPayArticlePaywall extends LitElement {
     try {
       this.balancesLoading = true;
       this.balancesError = null;
-      this.showBalanceModal = true;
+      // Integrated into wallet modal
+      this.walletModalStep = 'balances';
+      this.showBalanceModal = false;
       const sdk = createSdk(this.config);
       const { balances } = await getWalletBalanceEntries({
         sdk,
@@ -551,6 +555,12 @@ export class ICPayArticlePaywall extends LitElement {
             visible: !!(this.showWalletModal && this.pnp),
             wallets,
             isConnecting: false,
+          step: this.walletModalStep,
+          balances: this.walletModalStep === 'balances' ? this.walletBalances : [],
+          balancesLoading: this.walletModalStep === 'balances' ? this.balancesLoading : false,
+          balancesError: this.walletModalStep === 'balances' ? this.balancesError : null,
+          onSelectBalance: (s: string) => this.onSelectBalanceSymbol(s),
+          onBack: () => { this.walletModalStep = 'connect'; },
             onSelect: (walletId: string) => this.connectWithWallet(walletId),
             onClose: () => { this.showWalletModal = false; this.oisyReadyToPay = false; try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-cancelled', { detail: { reason: 'user_cancelled' } })); } catch {} },
             onCreditCard: ((this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true)) ? () => this.startOnramp() : undefined,
