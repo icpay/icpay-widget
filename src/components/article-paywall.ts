@@ -242,9 +242,12 @@ export class ICPayArticlePaywall extends LitElement {
     }
     if (changed.has('config') && this.pendingAction && this.config?.actorProvider) {
       const action = this.pendingAction;
-      this.pendingAction = null;
       try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: 'external' } })); } catch {}
-      setTimeout(() => { if (action === 'unlock') this.unlock(); }, 0);
+      // Do NOT auto-continue if we're already in balances step; wait for user to pick a token
+      if (this.walletModalStep !== 'balances' && !this.oisyReadyToPay) {
+        this.pendingAction = null;
+        setTimeout(() => { if (action === 'unlock') this.unlock(); }, 0);
+      }
     }
   }
 

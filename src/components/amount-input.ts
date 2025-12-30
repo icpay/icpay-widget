@@ -114,9 +114,12 @@ export class ICPayAmountInput extends LitElement {
       // If we were waiting on wallet connect, resume action
       if (this.pendingAction && this.config?.actorProvider) {
         const action = this.pendingAction;
-        this.pendingAction = null;
         try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: 'external' } })); } catch {}
-        setTimeout(() => { if (action === 'pay') this.pay(); }, 0);
+        // Do NOT auto-continue if we're already in balances step; wait for user to pick a token
+        if (this.walletModalStep !== 'balances') {
+          this.pendingAction = null;
+          setTimeout(() => { if (action === 'pay') this.pay(); }, 0);
+        }
       }
     }
   }
