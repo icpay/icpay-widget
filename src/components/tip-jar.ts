@@ -78,6 +78,7 @@ export class ICPayTipJar extends LitElement {
   @state() private walletConnected = false;
   @state() private pendingAction: 'tip' | null = null;
   @state() private showWalletModal = false;
+  @state() private walletModalStep: 'connect' | 'balances' = 'connect';
   @state() private oisyReadyToPay: boolean = false;
   @state() private lastWalletId: string | null = null;
   private pnp: any | null = null;
@@ -380,8 +381,10 @@ export class ICPayTipJar extends LitElement {
         const solanaProvider = (this.pnp as any)?.getSolanaProvider?.();
         this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }), ...(evmProvider ? { evmProvider } : {}), ...(solanaProvider ? { solanaProvider } : {}) } as any;
         this.sdk = null;
-        // After any successful wallet connect (including Oisy), open token-balance picker
-        this.showWalletModal = false;
+        // After any successful wallet connect (including Oisy), open token-balance picker inside wallet modal
+        this.walletModalStep = 'balances';
+        this.showBalanceModal = false;
+        this.showWalletModal = true;
         this.fetchAndShowBalances();
       }).catch((error: any) => {
         this.errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
@@ -401,7 +404,9 @@ export class ICPayTipJar extends LitElement {
     try {
       this.balancesLoading = true;
       this.balancesError = null;
-      this.showBalanceModal = true;
+      // Integrated into wallet modal
+      this.walletModalStep = 'balances';
+      this.showBalanceModal = false;
       const sdk = createSdk(this.config);
       const { balances } = await getWalletBalanceEntries({
         sdk,
@@ -423,6 +428,9 @@ export class ICPayTipJar extends LitElement {
   private onSelectBalanceSymbol = async (shortcode: string) => {
     const sel = (this.walletBalances || []).find((b: any) => (b as any)?.tokenShortcode === shortcode);
     if (sel?.ledgerSymbol) this.selectedSymbol = sel.ledgerSymbol;
+    // Close wallet modal before starting progress to reveal progress bar
+    this.showBalanceModal = false;
+    this.showWalletModal = false;
     if (isEvmWalletId(this.lastWalletId)) {
       const sel = (this.walletBalances || []).find((b: any) => (b as any)?.tokenShortcode === shortcode);
       const targetChain = sel?.chainId;
@@ -462,7 +470,6 @@ export class ICPayTipJar extends LitElement {
       });
       return;
     }
-    this.showBalanceModal = false;
     const action = this.pendingAction; this.pendingAction = null;
     if (action === 'tip') {
       // IC flow: send using tokenShortcode same as EVM
@@ -537,6 +544,12 @@ export class ICPayTipJar extends LitElement {
             visible: !!(this.showWalletModal && this.pnp),
             wallets,
             isConnecting: false,
+          step: this.walletModalStep,
+          balances: this.walletModalStep === 'balances' ? this.walletBalances as any : [],
+          balancesLoading: this.walletModalStep === 'balances' ? this.balancesLoading : false,
+          balancesError: this.walletModalStep === 'balances' ? this.balancesError : null,
+          onSelectBalance: (s: string) => this.onSelectBalanceSymbol(s),
+          onBack: () => { this.walletModalStep = 'connect'; },
             onSwitchAccount: () => this.onSwitchAccount(null),
             onSelect: (walletId: string) => this.connectWithWallet(walletId),
             onClose: () => { this.showWalletModal = false; this.oisyReadyToPay = false; try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-cancelled', { detail: { reason: 'user_cancelled' } })); } catch {} },
