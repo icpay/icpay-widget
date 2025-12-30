@@ -151,10 +151,13 @@ export class ICPayTipJar extends LitElement {
   protected updated(changed: Map<string, unknown>): void {
     if (changed.has('config') && this.pendingAction && this.config?.actorProvider) {
       const action = this.pendingAction;
-      this.pendingAction = null;
       try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: 'external' } })); } catch {}
-      // Resume the original action after external wallet connected
-      setTimeout(() => { if (action === 'tip') this.tip(); }, 0);
+      // Do NOT auto-continue if we're already in balances step; wait for user to pick a token
+      if (this.walletModalStep !== 'balances' && !this.oisyReadyToPay) {
+        this.pendingAction = null;
+        // Resume the original action after external wallet connected
+        setTimeout(() => { if (action === 'tip') this.tip(); }, 0);
+      }
     }
   }
 
