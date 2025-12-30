@@ -37,6 +37,13 @@ export type CommonConfig = {
   icHost?: string;
   // If provided, SDK will use this EVM provider for all EVM requests/signatures
   evmProvider?: any;
+  // Optional: per-chain recipient addresses for relay. Keys: evm/ic/sol.
+  // If provided, widget filters wallets to those chain types and forwards the matching address to the SDK.
+  recipientAddresses?: {
+    evm?: string;
+    ic?: string;
+    sol?: string;
+  };
   // Optional: EVM recipient address for relay; always forwarded to SDK requests (defaults to 0x0)
   recipientAddress?: string;
   // Optional: human-readable description passed to payment_intent.description
@@ -49,7 +56,7 @@ export type CommonConfig = {
   chainShortcodes?: string[];   // e.g., ['base','ic']
   tokenShortcodes?: string[];  // e.g., ['icp','pay']
   // Optional wallet selection filter: which chain types to show wallets for
-  chainTypes?: Array<'ic' | 'evm'>;
+  chainTypes?: Array<'ic' | 'evm' | 'sol'>;
   // Optional metadata to include on created payment intents
   metadata?: Record<string, any>;
   // Optional derivation origin override used by wallet connectors like Internet Identity

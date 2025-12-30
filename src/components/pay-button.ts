@@ -162,7 +162,16 @@ export class ICPayPayButton extends LitElement {
       const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
       const _rawCfg: any = { ...(this.config?.plugNPlay || {}) };
       // Pass chainTypes to wallet selector to filter wallets
-      if ((this.config as any)?.chainTypes) _rawCfg.chainTypes = (this.config as any).chainTypes;
+      const _dest = (this.config as any)?.recipientAddresses;
+      if (_dest && (_dest.ic || _dest.evm || _dest.sol)) {
+        const allowed: Array<'ic'|'evm'|'sol'> = [];
+        if (_dest.ic) allowed.push('ic');
+        if (_dest.evm) allowed.push('evm');
+        if (_dest.sol) allowed.push('sol');
+        if (allowed.length) _rawCfg.chainTypes = allowed as any;
+      } else if ((this.config as any)?.chainTypes) {
+        _rawCfg.chainTypes = (this.config as any).chainTypes;
+      }
       const _cfg: any = wantsOisyTab ? applyOisyNewTabConfig(_rawCfg) : _rawCfg;
       try {
         if (typeof window !== 'undefined') {
@@ -223,7 +232,16 @@ export class ICPayPayButton extends LitElement {
             try {
               if (!WalletSelect) { const module = await import('../wallet-select'); WalletSelect = module.WalletSelect; }
             const raw: any = { ...(this.config?.plugNPlay || {}) };
-            if ((this.config as any)?.chainTypes) raw.chainTypes = (this.config as any).chainTypes;
+            const _dest2 = (this.config as any)?.recipientAddresses;
+            if (_dest2 && (_dest2.ic || _dest2.evm || _dest2.sol)) {
+              const allowed2: Array<'ic'|'evm'|'sol'> = [];
+              if (_dest2.ic) allowed2.push('ic');
+              if (_dest2.evm) allowed2.push('evm');
+              if (_dest2.sol) allowed2.push('sol');
+              if (allowed2.length) raw.chainTypes = allowed2 as any;
+            } else if ((this.config as any)?.chainTypes) {
+              raw.chainTypes = (this.config as any).chainTypes;
+            }
               const cfg: any = applyOisyNewTabConfig(raw);
               try {
                 if (typeof window !== 'undefined') {
@@ -343,7 +361,8 @@ export class ICPayPayButton extends LitElement {
           });
           if (tryX402) {
             try {
-              debugLog(this.config?.debug || false, 'Using recipientAddress (x402)', { recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000' });
+              const evmDest = (((this.config as any)?.recipientAddresses)?.evm) || '0x0000000000000000000000000000000000000000';
+              debugLog(this.config?.debug || false, 'Using recipientAddress (x402)', { recipientAddress: evmDest });
               const metadata = {
                 ...(this.config as any)?.metadata,
                 icpay_network: 'evm',
@@ -355,7 +374,7 @@ export class ICPayPayButton extends LitElement {
                 usdAmount: amountUsd,
                 tokenShortcode: (sel as any)?.tokenShortcode,
                 metadata,
-                recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+                recipientAddress: evmDest,
               });
               return;
             } catch (x402Err: any) {
@@ -375,7 +394,8 @@ export class ICPayPayButton extends LitElement {
             amountUsd,
             tokenShortcode: (sel as any)?.tokenShortcode,
           });
-          debugLog(this.config?.debug || false, 'Using recipientAddress (normal)', { recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000' });
+          const evmDest2 = (((this.config as any)?.recipientAddresses)?.evm) || '0x0000000000000000000000000000000000000000';
+          debugLog(this.config?.debug || false, 'Using recipientAddress (normal)', { recipientAddress: evmDest2 });
           await (sdk.client as any).createPaymentUsd({
             usdAmount: amountUsd,
             tokenShortcode: (sel as any)?.tokenShortcode,
@@ -384,7 +404,7 @@ export class ICPayPayButton extends LitElement {
               icpay_network: 'evm',
               icpay_ledger_id: sel?.ledgerId
             },
-            recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+            recipientAddress: evmDest2,
           });
         } catch {}
       });
@@ -409,6 +429,10 @@ export class ICPayPayButton extends LitElement {
             tokenShortcode: (sel as any)?.tokenShortcode,
           } : null,
         });
+        const chainName = String((sel as any)?.chainName || '').toLowerCase();
+        const isSol = chainName.includes('sol');
+        const dest = (this.config as any)?.recipientAddresses || {};
+        const chosen = isSol ? (dest.sol || dest.ic || (this.config as any)?.recipientAddress) : (dest.ic || (this.config as any)?.recipientAddress);
         await (sdk.client as any).createPaymentUsd({
           usdAmount: amountUsd,
           tokenShortcode: (sel as any)?.tokenShortcode,
@@ -417,7 +441,7 @@ export class ICPayPayButton extends LitElement {
             icpay_network: 'ic',
             icpay_ledger_id: (sel as any)?.ledgerId
           },
-          recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+          recipientAddress: chosen || '0x0000000000000000000000000000000000000000',
         });
       } catch {}
     }

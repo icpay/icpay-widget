@@ -450,7 +450,7 @@ export class ICPayPremiumContent extends LitElement {
               icpay_ledger_id: sel?.ledgerId,
               icpay_context: 'premium:x402'
                 },
-                recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+                recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
               });
               return;
             } catch { /* fallback */ }
@@ -463,7 +463,7 @@ export class ICPayPremiumContent extends LitElement {
           icpay_network: 'evm',
           icpay_ledger_id: sel?.ledgerId
             },
-            recipientAddress: (this.config as any)?.recipientAddress || '0x0000000000000000000000000000000000000000',
+            recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
           });
         } catch {}
       });
