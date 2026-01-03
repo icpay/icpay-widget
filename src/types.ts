@@ -37,6 +37,8 @@ export type CommonConfig = {
   icHost?: string;
   // If provided, SDK will use this EVM provider for all EVM requests/signatures
   evmProvider?: any;
+  // Optional: platform-retained extra cost in smallest unit; forwarded to intent metadata
+  externalCostAmount?: string | number;
   // Optional: per-chain recipient addresses for relay. Keys: evm/ic/sol.
   // If provided, widget filters wallets to those chain types and forwards the matching address to the SDK.
   recipientAddresses?: {

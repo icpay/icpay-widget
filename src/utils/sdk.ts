@@ -103,6 +103,10 @@ export function createSdk(config: CommonConfig): WidgetSdk {
     async function sendUsd(usdAmount: number, tokenShortcode?: string, metadata?: Record<string, any>, ledgerCanisterId?: string) {
       // Merge global config.metadata with call-specific metadata
       const mergedMeta = { ...(config as any).metadata, ...(metadata || {}) } as Record<string, any>;
+      // If externalCostAmount is provided at config level and not already present in metadata, add it
+      if ((config as any).externalCostAmount != null && mergedMeta.externalCostAmount == null) {
+        mergedMeta.externalCostAmount = (config as any).externalCostAmount;
+      }
       // Description passed through to intent (components decide X402 vs wallet flow before calling us)
       const fallbackDesc = `Pay ${usdAmount} with crypto`;
       const description =
@@ -115,6 +119,7 @@ export function createSdk(config: CommonConfig): WidgetSdk {
         metadata: mergedMeta,
         description,
         recipientAddresses: (config as any).recipientAddresses,
+        recipientAddress: (config as any).recipientAddress,
       };
       if (typeof tokenShortcode === 'string' && tokenShortcode.trim().length > 0) {
         payload.tokenShortcode = tokenShortcode.toLowerCase();
@@ -150,6 +155,7 @@ export function createSdk(config: CommonConfig): WidgetSdk {
         onrampPayment: true,
         description,
         recipientAddresses: (config as any).recipientAddresses,
+        recipientAddress: (config as any).recipientAddress,
       });
     }
 
