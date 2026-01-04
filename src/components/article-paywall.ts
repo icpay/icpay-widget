@@ -489,7 +489,7 @@ export class ICPayArticlePaywall extends LitElement {
     this.showWalletModal = false;
     const action = this.pendingAction; this.pendingAction = null;
     if (action === 'unlock') {
-      // IC flow: send using tokenShortcode same as EVM
+      // IC/SOL flow: prefer x402 for Solana tokens when available
       try {
         const sel = (this.walletBalances || []).find((b: any) => (b as any)?.tokenShortcode === shortcode);
         const sdk = createSdk(this.config);
@@ -498,6 +498,25 @@ export class ICPayArticlePaywall extends LitElement {
         const isSol = chainName.includes('sol');
         const dest = (this.config as any)?.recipientAddresses || {};
         const chosen = isSol ? (dest.sol || dest.ic) : (dest.ic);
+        if (isSol && (sel as any)?.x402Accepts) {
+          try {
+            await (sdk.client as any).createPaymentX402Usd({
+              usdAmount: amountUsd,
+              tokenShortcode: (sel as any)?.tokenShortcode,
+              metadata: {
+                ...(this.config as any)?.metadata,
+                icpay_network: 'sol',
+                icpay_ledger_id: sel?.ledgerId,
+                icpay_context: 'article:x402'
+              },
+              recipientAddress: chosen || '',
+            });
+            return;
+          } catch {
+            // No fallback to normal flow for Solana x402
+            return;
+          }
+        }
         await (sdk.client as any).createPaymentUsd({
           usdAmount: amountUsd,
           tokenShortcode: (sel as any)?.tokenShortcode,
