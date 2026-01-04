@@ -433,6 +433,28 @@ export class ICPayPayButton extends LitElement {
         const isSol = chainName.includes('sol');
         const dest = (this.config as any)?.recipientAddresses || {};
         const chosen = isSol ? (dest.sol || dest.ic || (this.config as any)?.recipientAddress) : (dest.ic || (this.config as any)?.recipientAddress);
+        // If Solana token supports x402, start x402 flow (request 402 + auto-settle by SDK)
+        if (isSol && sel?.x402Accepts) {
+          try {
+            const metadata = {
+              ...(this.config as any)?.metadata,
+              icpay_network: 'sol',
+              icpay_ledger_id: (sel as any)?.ledgerId,
+              icpay_context: 'pay-button:x402'
+            };
+            await (sdk.client as any).createPaymentX402Usd({
+              usdAmount: amountUsd,
+              tokenShortcode: (sel as any)?.tokenShortcode,
+              metadata,
+              recipientAddress: chosen || '',
+            });
+            return;
+          } catch (x402Err: any) {
+            debugLog(this.config?.debug || false, 'X402 payment failed (SOL selection), falling back', {
+              message: x402Err?.message, code: x402Err?.code, data: x402Err?.details || x402Err?.data
+            });
+          }
+        }
         await (sdk.client as any).createPaymentUsd({
           usdAmount: amountUsd,
           tokenShortcode: (sel as any)?.tokenShortcode,
