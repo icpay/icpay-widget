@@ -348,7 +348,10 @@ export class ICPayAmountInput extends LitElement {
               recipientAddress: (chosen || ''),
             });
             return;
-          } catch {}
+          } catch {
+            // Do not fallback to normal flow for Solana x402
+            return;
+          }
         }
         await (sdk.client as any).createPaymentUsd({
           usdAmount: amountUsd,
