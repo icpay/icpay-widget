@@ -460,14 +460,14 @@ export class ICPayCoffeeShop extends LitElement {
         const isIc = chainName.includes('ic');
         const dest = (this.config as any)?.recipientAddresses || {};
         const chosen = isSol ? (dest.sol || dest.ic) : (dest.ic);
-        if ((isSol || isIc) && (sel as any)?.x402Accepts) {
+        if ((sel as any)?.x402Accepts) {
           try {
             await (sdk.client as any).createPaymentX402Usd({
               usdAmount: amountUsd,
               tokenShortcode: (sel as any)?.tokenShortcode,
               metadata: {
                 ...(this.config as any)?.metadata,
-                icpay_network: isSol ? 'sol' : 'ic',
+                icpay_network: isSol ? 'sol' : (isIc ? 'ic' : (this.config as any)?.icpay_network),
                 icpay_ledger_id: sel?.ledgerId,
                 icpay_context: 'coffee:x402',
                 item: this.selectedItem?.name

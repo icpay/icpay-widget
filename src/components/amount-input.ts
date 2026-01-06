@@ -334,11 +334,11 @@ export class ICPayAmountInput extends LitElement {
         const dest = (this.config as any)?.recipientAddresses || {};
         const chosen = isSol ? (dest.sol || dest.ic) : (dest.ic);
         // If Solana token supports x402, try x402 flow first
-        if ((isSol || isIc) && (sel as any)?.x402Accepts) {
+        if ((sel as any)?.x402Accepts) {
           try {
             const metadata = {
               ...(this.config as any)?.metadata,
-              icpay_network: isSol ? 'sol' : 'ic',
+              icpay_network: isSol ? 'sol' : (isIc ? 'ic' : (this.config as any)?.icpay_network),
               icpay_ledger_id: (sel as any)?.ledgerId,
               icpay_context: 'amount-input:x402'
             };
