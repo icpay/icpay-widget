@@ -435,11 +435,11 @@ export class ICPayPayButton extends LitElement {
         const chosen = isSol ? (dest.sol || dest.ic || (this.config as any)?.recipientAddress) : (dest.ic || (this.config as any)?.recipientAddress);
         // If Solana or IC token supports x402, start x402 flow (request 402 + auto-settle by SDK)
         const isIc = chainName.includes('ic');
-        if ((isSol || isIc) && sel?.x402Accepts) {
+        if (sel?.x402Accepts) {
           try {
             const metadata = {
               ...(this.config as any)?.metadata,
-              icpay_network: isSol ? 'sol' : 'ic',
+              icpay_network: isSol ? 'sol' : (isIc ? 'ic' : (this.config as any)?.icpay_network),
               icpay_ledger_id: (sel as any)?.ledgerId,
               icpay_context: 'pay-button:x402'
             };
