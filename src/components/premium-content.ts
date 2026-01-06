@@ -492,14 +492,15 @@ export class ICPayPremiumContent extends LitElement {
         const isSol = chainName.includes('sol');
         const dest = (this.config as any)?.recipientAddresses || {};
         const chosen = isSol ? (dest.sol || dest.ic) : (dest.ic);
-        if (isSol && (sel as any)?.x402Accepts) {
+        const isIc = chainName.includes('ic');
+        if ((isSol || isIc) && (sel as any)?.x402Accepts) {
           try {
             await (sdk.client as any).createPaymentX402Usd({
               usdAmount: amountUsd,
               tokenShortcode: (sel as any)?.tokenShortcode,
               metadata: {
                 ...(this.config as any)?.metadata,
-                icpay_network: 'sol',
+                icpay_network: isSol ? 'sol' : 'ic',
                 icpay_ledger_id: (sel as any)?.ledgerId,
                 icpay_context: 'premium:x402'
               },
