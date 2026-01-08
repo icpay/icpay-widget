@@ -8,7 +8,7 @@ import { createSdk } from '../utils/sdk';
 import type { WidgetSdk } from '../utils/sdk';
 import './ui/progress-bar';
 import { renderWalletSelectorModal } from './ui/wallet-selector-modal';
-import { renderTransakOnrampModal, TransakOnrampOptions } from './ui/transak-onramp-modal';
+import { renderOnrampModal } from './ui/onramp-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
 import { getWalletBalanceEntries, isEvmWalletId, ensureEvmChain } from '../utils/balances';
 import { renderWalletBalanceModal } from './ui/wallet-balance-modal';
@@ -83,7 +83,7 @@ export class ICPayTipJar extends LitElement {
   @state() private lastWalletId: string | null = null;
   private pnp: any | null = null;
   @state() private showOnrampModal = false;
-  @state() private onrampSessionId: string | null = null;
+  @state() private onrampUrl: string | null = null;
   @state() private onrampPaymentIntentId: string | null = null;
   @state() private onrampErrorMessage: string | null = null;
   private transakMessageHandlerBound: any | null = null;
@@ -323,23 +323,23 @@ export class ICPayTipJar extends LitElement {
     try {
       const sdk = createSdk(this.config);
       const symbol = this.selectedSymbol || 'ICP';
-      const resp = await (sdk as any).startOnrampUsd(this.selectedAmount, symbol, { context: 'tip:onramp', onrampProvider: (this as any)?.selectedOnrampProvider || 'transak' });
-      const sessionId = resp?.metadata?.icpay_onramp?.sessionId || resp?.metadata?.icpay_onramp?.session_id || resp?.metadata?.onramp?.sessionId || resp?.metadata?.onramp?.session_id || null;
+      const resp = await (sdk as any).startOnrampUsd(this.selectedAmount, symbol, { context: 'tip:onramp', onrampProvider: (this as any)?.selectedOnrampProvider || 'coinbase' });
+      const url = resp?.metadata?.onramp?.url || resp?.onramp?.url || resp?.metadata?.icpay_onramp?.url || null;
       const paymentIntentId = resp?.metadata?.icpay_payment_intent_id || resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
       const errorMessage = resp?.metadata?.icpay_onramp?.errorMessage || resp?.metadata?.onramp?.errorMessage || null;
       this.onrampPaymentIntentId = paymentIntentId;
-      if (sessionId) {
-        this.onrampSessionId = sessionId;
+      if (url) {
+        (this as any).onrampUrl = url;
         this.onrampErrorMessage = null;
         this.showOnrampModal = true;
-        this.attachTransakMessageListener();
+        this.startOnrampPolling();
       } else {
-        this.onrampSessionId = null;
+        (this as any).onrampUrl = null;
         this.onrampErrorMessage = errorMessage || 'Failed to obtain onramp sessionId';
         this.showOnrampModal = true;
       }
     } catch (e) {
-      this.onrampSessionId = null;
+      (this as any).onrampUrl = null;
       this.onrampErrorMessage = (e as any)?.message || 'Failed to obtain onramp sessionId';
       this.showOnrampModal = true;
     }
@@ -596,17 +596,16 @@ export class ICPayTipJar extends LitElement {
           onClose: () => { this.showBalanceModal = false; },
         })}
 
-        ${this.showOnrampModal ? renderTransakOnrampModal({
+        ${renderOnrampModal({
           visible: this.showOnrampModal,
-          sessionId: this.onrampSessionId,
-          errorMessage: this.onrampErrorMessage,
-          apiKey: this.config?.onramp?.apiKey,
-          environment: (this.config?.onramp?.environment || 'STAGING') as any,
+          url: (this as any).onrampUrl || undefined,
+          errorMessage: this.onrampErrorMessage || undefined,
           width: this.config?.onramp?.width,
           height: this.config?.onramp?.height,
           onClose: () => { this.showOnrampModal = false; },
-          onBack: () => { this.showOnrampModal = false; this.showWalletModal = true; }
-        } as TransakOnrampOptions) : null}
+          onBack: () => { this.showOnrampModal = false; this.showWalletModal = true; },
+          title: 'Pay with credit card'
+        })}
       </div>
     `;
   }

@@ -3,7 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { baseStyles } from '../styles';
 import { handleWidgetError, getErrorMessage, shouldShowErrorToUser, getErrorAction, getErrorSeverity, ErrorSeverity } from '../error-handling';
 import type { PayButtonConfig } from '../types';
-import { renderTransakOnrampModal, TransakOnrampOptions } from './ui/transak-onramp-modal';
+import { renderOnrampModal } from './ui/onramp-modal';
 import { renderOnrampProviderPicker } from './ui/onramp-provider-picker';
 import { createSdk } from '../utils/sdk';
 import type { WidgetSdk } from '../utils/sdk';
@@ -52,7 +52,7 @@ export class ICPayPayButton extends LitElement {
   @state() private showWalletModal = false;
   @state() private walletModalStep: 'connect' | 'balances' = 'connect';
   @state() private showOnrampModal = false;
-  @state() private onrampSessionId: string | null = null;
+  @state() private onrampUrl: string | null = null;
   @state() private onrampPaymentIntentId: string | null = null;
   @state() private onrampErrorMessage: string | null = null;
   @state() private showProviderPicker: boolean = false;
@@ -67,7 +67,6 @@ export class ICPayPayButton extends LitElement {
   @state() private balancesError: string | null = null;
   @state() private walletBalances: WalletBalanceEntry[] = [];
   private onrampPollTimer: number | null = null;
-  private transakMessageHandlerBound: any | null = null;
   private pnp: any | null = null;
   private oisyConnectRetriedNewTab: boolean = false;
   private sdk: WidgetSdk | null = null;
@@ -523,11 +522,11 @@ export class ICPayPayButton extends LitElement {
     const list = Array.isArray(this.config?.onramp?.providers)
       ? (this.config.onramp!.providers!.filter(p => p && (p.enabled !== false)))
       : [];
-    const providers = list.length ? list : [{ slug: 'transak', name: 'Transak', enabled: true }];
+    const providers = list.length ? list : [{ slug: 'coinbase', name: 'Coinbase', enabled: true }];
     if (providers.length > 1) {
       this.showProviderPicker = true;
     } else {
-      this.selectedOnrampProvider = providers[0]?.slug || 'transak';
+      this.selectedOnrampProvider = providers[0]?.slug || 'coinbase';
       // Kick off onramp intent creation through SDK and open provider modal with returned sessionId
       setTimeout(() => this.createOnrampIntent(), 0);
     }
@@ -541,25 +540,26 @@ export class ICPayPayButton extends LitElement {
       const symbol = this.selectedSymbol || 'ICP';
       const resp = await sdk.startOnrampUsd(amountUsd, symbol, {
         context: 'pay-button:onramp',
-        onrampProvider: this.selectedOnrampProvider || 'transak',
+        onrampProvider: this.selectedOnrampProvider || 'coinbase',
       });
-      const sessionId = resp?.metadata?.icpay_onramp?.sessionId || resp?.metadata?.icpay_onramp?.session_id || resp?.metadata?.onramp?.sessionId || resp?.metadata?.onramp?.session_id || null;
+      const url = resp?.metadata?.onramp?.url || resp?.onramp?.url || resp?.metadata?.icpay_onramp?.url || null;
       const errorMessage = resp?.metadata?.icpay_onramp?.errorMessage || resp?.metadata?.onramp?.errorMessage || null;
       this.onrampErrorMessage = errorMessage || null;
       const paymentIntentId = resp?.metadata?.icpay_payment_intent_id || resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
       this.onrampPaymentIntentId = paymentIntentId;
-      if (sessionId) {
-        this.onrampSessionId = sessionId;
+      if (url) {
+        this.onrampUrl = url;
         this.showOnrampModal = true;
-        this.attachTransakMessageListener();
+        // Begin polling payment intent status while user completes onramp
+        this.startOnrampPolling(undefined);
       } else {
         // Open modal in friendly error state (sessionId missing)
-        this.onrampSessionId = null;
+        this.onrampUrl = null;
         this.showOnrampModal = true;
       }
     } catch (e) {
       // Also show friendly error modal on any error
-      this.onrampSessionId = null;
+      this.onrampUrl = null;
       this.onrampErrorMessage = (e as any)?.message || null;
       this.showOnrampModal = true;
       handleWidgetError(e, {
@@ -575,43 +575,6 @@ export class ICPayPayButton extends LitElement {
     }
   }
 
-  private attachTransakMessageListener() {
-    if (this.transakMessageHandlerBound) return;
-    this.transakMessageHandlerBound = (event: MessageEvent) => this.onTransakMessage(event);
-    try { window.addEventListener('message', this.transakMessageHandlerBound as any); } catch {}
-  }
-
-  private detachTransakMessageListener() {
-    if (this.transakMessageHandlerBound) {
-      try { window.removeEventListener('message', this.transakMessageHandlerBound as any); } catch {}
-      this.transakMessageHandlerBound = null;
-    }
-  }
-
-  private onTransakMessage(event: MessageEvent) {
-    const data: any = event?.data;
-    const eventId: string | undefined = data?.event_id || data?.eventId || data?.id;
-    if (!eventId || typeof eventId !== 'string') return;
-
-    // Only react to Transak order success
-    if (eventId === 'TRANSAK_ORDER_SUCCESSFUL') {
-      // Prevent multiple pollers if provider emits duplicates
-      this.detachTransakMessageListener();
-      if (this.onrampPollingActive) return;
-      const orderId = (data?.data?.id) || (data?.id) || (data?.webhookData?.id) || null;
-      // Complete steps up to verify and set confirm to loading by emitting method success events the progress bar understands
-      try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-success', { detail: { name: 'getLedgerBalance' } })); } catch {}
-      try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-success', { detail: { name: 'sendFundsToLedger' } })); } catch {}
-      try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-success', { detail: { name: 'notifyLedgerTransaction' } })); } catch {}
-
-      // Close Transak modal upon success, continue with our own progress
-      this.showOnrampModal = false;
-
-      // Start polling our API for intent status
-      this.startOnrampPolling(orderId || undefined);
-    }
-  }
-
   private startOnrampPolling(orderId?: string) {
     // Clear any previous polling
     if (this.onrampPollTimer) { try { clearInterval(this.onrampPollTimer); } catch {}; this.onrampPollTimer = null; }
@@ -622,7 +585,6 @@ export class ICPayPayButton extends LitElement {
 
     const sdk = this.getSdk();
     const handleComplete = () => {
-      this.detachTransakMessageListener();
       if (this.onrampNotifyController) { try { this.onrampNotifyController.stop(); } catch {} }
       this.onrampNotifyController = null;
       this.onrampPollingActive = false;
@@ -756,25 +718,22 @@ export class ICPayPayButton extends LitElement {
           onSelect: (s: string) => this.onSelectBalanceSymbol(s),
           onClose: () => { this.showBalanceModal = false; },
         })}
-        ${this.showOnrampModal ? renderTransakOnrampModal({
+        ${renderOnrampModal({
           visible: this.showOnrampModal,
-          sessionId: this.onrampSessionId,
-          errorMessage: this.onrampErrorMessage,
-          apiKey: this.config?.onramp?.apiKey,
-          apiUrl: this.config?.apiUrl,
-          paymentIntentId: this.onrampPaymentIntentId,
-          environment: (this.config?.onramp?.environment || 'STAGING') as any,
+          url: this.onrampUrl || undefined,
+          errorMessage: this.onrampErrorMessage || undefined,
           width: this.config?.onramp?.width,
           height: this.config?.onramp?.height,
           onClose: () => { this.showOnrampModal = false; },
-          onBack: () => { this.showOnrampModal = false; this.showWalletModal = true; }
-        } as TransakOnrampOptions) : null}
+          onBack: () => { this.showOnrampModal = false; this.showWalletModal = true; },
+          title: 'Pay with credit card'
+        })}
         ${renderOnrampProviderPicker({
           visible: this.showProviderPicker,
           providers: (() => {
             const list = Array.isArray(this.config?.onramp?.providers) ? (this.config!.onramp!.providers!.filter(p => p && (p.enabled !== false))) : [];
-            const src = list.length ? list : [{ slug: 'transak', name: 'Transak', enabled: true }];
-            return src.map(p => ({ slug: p.slug, name: p.name || (p.slug === 'transak' ? 'Transak' : p.slug), logoUrl: (p as any).logoUrl || null }));
+            const src = list.length ? list : [{ slug: 'coinbase', name: 'Coinbase', enabled: true }];
+            return src.map(p => ({ slug: p.slug, name: p.name || (p.slug === 'coinbase' ? 'Coinbase' : p.slug), logoUrl: (p as any).logoUrl || null }));
           })(),
           onSelect: (slug: string) => {
             this.selectedOnrampProvider = slug;

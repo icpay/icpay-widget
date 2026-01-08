@@ -106,6 +106,18 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
             <h1 class="title">Connect</h1>
           </div>
           <div class="wallet-list">
+            ${opts.showCreditCard && opts.onCreditCard ? html`
+              <div class="wallet-item" style="border:1px solid #3b82f6;background:rgba(59,130,246,0.12)" @click=${() => opts.onCreditCard && opts.onCreditCard()}>
+                <div class="wallet-icon">
+                  💳
+                </div>
+                <div class="wallet-info">
+                  <div class="wallet-name">${opts.creditCardLabel || 'Pay with credit card'}</div>
+                  ${opts.creditCardTooltip ? html`<div class="wallet-status">${opts.creditCardTooltip}</div>` : null}
+                </div>
+              </div>
+              <div class="divider"></div>
+            ` : null}
             ${(() => {
               const items: TemplateResult[] = [];
               let lastGroup: 'sol' | 'evm' | 'ic' | null = null;
