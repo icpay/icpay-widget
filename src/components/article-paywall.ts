@@ -170,8 +170,7 @@ export class ICPayArticlePaywall extends LitElement {
   private async createOnrampIntent() {
     try {
       const sdk = createSdk(this.config);
-      const symbol = this.selectedSymbol || 'ICP';
-      const resp = await (sdk as any).startOnrampUsd(this.config.priceUsd, symbol, { context: 'article:onramp', onrampProvider: 'coinbase' });
+      const resp = await (sdk as any).startOnrampUsd(this.config.priceUsd, undefined, { context: 'article:onramp', onrampPayment: true, onrampProvider: 'coinbase' });
       const url = resp?.metadata?.onramp?.url || resp?.onramp?.url || resp?.metadata?.icpay_onramp?.url || null;
       const paymentIntentId = resp?.metadata?.icpay_payment_intent_id || resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
       const errorMessage = resp?.metadata?.icpay_onramp?.errorMessage || resp?.metadata?.onramp?.errorMessage || null;

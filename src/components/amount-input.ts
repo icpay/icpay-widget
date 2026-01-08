@@ -405,9 +405,8 @@ export class ICPayAmountInput extends LitElement {
   private async createOnrampIntent() {
     try {
       const sdk = createSdk(this.config);
-      const symbol = this.selectedSymbol || 'ICP';
       const amountUsd = Number(this.amountUsd);
-      const resp = await (sdk as any).startOnrampUsd(amountUsd, symbol, { context: 'amount-input:onramp', onrampProvider: (this as any)?.selectedOnrampProvider || 'coinbase' });
+      const resp = await (sdk as any).startOnrampUsd(amountUsd, undefined, { context: 'amount-input:onramp', onrampPayment: true, onrampProvider: (this as any)?.selectedOnrampProvider || 'coinbase' });
       const url = resp?.metadata?.onramp?.url || resp?.onramp?.url || resp?.metadata?.icpay_onramp?.url || null;
       const paymentIntentId = resp?.metadata?.icpay_payment_intent_id || resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
       const errorMessage = resp?.metadata?.icpay_onramp?.errorMessage || resp?.metadata?.onramp?.errorMessage || null;

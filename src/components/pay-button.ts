@@ -537,9 +537,9 @@ export class ICPayPayButton extends LitElement {
       const amountUsd = Number(this.config?.amountUsd ?? 0);
       const sdk = this.getSdk();
       if (!this.selectedSymbol) this.selectedSymbol = 'ICP';
-      const symbol = this.selectedSymbol || 'ICP';
-      const resp = await sdk.startOnrampUsd(amountUsd, symbol, {
+      const resp = await sdk.startOnrampUsd(amountUsd, undefined as any, {
         context: 'pay-button:onramp',
+        onrampPayment: true,
         onrampProvider: this.selectedOnrampProvider || 'coinbase',
       });
       const url = resp?.metadata?.onramp?.url || resp?.onramp?.url || resp?.metadata?.icpay_onramp?.url || null;
