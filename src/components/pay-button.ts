@@ -4,6 +4,7 @@ import { baseStyles } from '../styles';
 import { handleWidgetError, getErrorMessage, shouldShowErrorToUser, getErrorAction, getErrorSeverity, ErrorSeverity } from '../error-handling';
 import type { PayButtonConfig } from '../types';
 import { renderTransakOnrampModal, TransakOnrampOptions } from './ui/transak-onramp-modal';
+import { renderOnrampProviderPicker } from './ui/onramp-provider-picker';
 import { createSdk } from '../utils/sdk';
 import type { WidgetSdk } from '../utils/sdk';
 import './ui/progress-bar';
@@ -54,6 +55,8 @@ export class ICPayPayButton extends LitElement {
   @state() private onrampSessionId: string | null = null;
   @state() private onrampPaymentIntentId: string | null = null;
   @state() private onrampErrorMessage: string | null = null;
+  @state() private showProviderPicker: boolean = false;
+  @state() private selectedOnrampProvider: string | null = null;
   @state() private oisyReadyToPay: boolean = false;
   @state() private oisySignerPreopened: boolean = false;
   @state() private skipDisconnectOnce: boolean = false;
@@ -516,8 +519,18 @@ export class ICPayPayButton extends LitElement {
     // Signal to progress bar that onramp flow is starting
     try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'createPaymentUsd', type: 'onramp' } })); } catch {}
     this.showWalletModal = false;
-    // Kick off onramp intent creation through SDK and open Transak with returned sessionId
-    setTimeout(() => this.createOnrampIntent(), 0);
+    // Determine available providers from config
+    const list = Array.isArray(this.config?.onramp?.providers)
+      ? (this.config.onramp!.providers!.filter(p => p && (p.enabled !== false)))
+      : [];
+    const providers = list.length ? list : [{ slug: 'transak', name: 'Transak', enabled: true }];
+    if (providers.length > 1) {
+      this.showProviderPicker = true;
+    } else {
+      this.selectedOnrampProvider = providers[0]?.slug || 'transak';
+      // Kick off onramp intent creation through SDK and open provider modal with returned sessionId
+      setTimeout(() => this.createOnrampIntent(), 0);
+    }
   }
 
   private async createOnrampIntent() {
@@ -526,7 +539,10 @@ export class ICPayPayButton extends LitElement {
       const sdk = this.getSdk();
       if (!this.selectedSymbol) this.selectedSymbol = 'ICP';
       const symbol = this.selectedSymbol || 'ICP';
-      const resp = await sdk.startOnrampUsd(amountUsd, symbol, { context: 'pay-button:onramp' });
+      const resp = await sdk.startOnrampUsd(amountUsd, symbol, {
+        context: 'pay-button:onramp',
+        onrampProvider: this.selectedOnrampProvider || 'transak',
+      });
       const sessionId = resp?.metadata?.icpay_onramp?.sessionId || resp?.metadata?.icpay_onramp?.session_id || resp?.metadata?.onramp?.sessionId || resp?.metadata?.onramp?.session_id || null;
       const errorMessage = resp?.metadata?.icpay_onramp?.errorMessage || resp?.metadata?.onramp?.errorMessage || null;
       this.onrampErrorMessage = errorMessage || null;
@@ -753,6 +769,21 @@ export class ICPayPayButton extends LitElement {
           onClose: () => { this.showOnrampModal = false; },
           onBack: () => { this.showOnrampModal = false; this.showWalletModal = true; }
         } as TransakOnrampOptions) : null}
+        ${renderOnrampProviderPicker({
+          visible: this.showProviderPicker,
+          providers: (() => {
+            const list = Array.isArray(this.config?.onramp?.providers) ? (this.config!.onramp!.providers!.filter(p => p && (p.enabled !== false))) : [];
+            const src = list.length ? list : [{ slug: 'transak', name: 'Transak', enabled: true }];
+            return src.map(p => ({ slug: p.slug, name: p.name || (p.slug === 'transak' ? 'Transak' : p.slug), logoUrl: (p as any).logoUrl || null }));
+          })(),
+          onSelect: (slug: string) => {
+            this.selectedOnrampProvider = slug;
+            this.showProviderPicker = false;
+            setTimeout(() => this.createOnrampIntent(), 0);
+          },
+          onClose: () => { this.showProviderPicker = false; },
+          title: 'Choose onramp provider'
+        })}
       </div>
     `;
   }
