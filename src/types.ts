@@ -137,6 +137,14 @@ export type OnrampConfig = {
   creditCardLabel?: string;
   // Enable/disable onramp (Transak) option in wallet selector (default: enabled)
   enabled?: boolean;
+  // Optional list of onramp providers (if omitted, fallback to transak if enabled)
+  providers?: Array<{
+    slug: string; // 'transak' | 'coinbase' | others
+    name?: string;
+    enabled?: boolean;
+    logoUrl?: string;
+    default?: boolean;
+  }>;
 };
 
 

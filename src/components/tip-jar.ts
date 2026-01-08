@@ -323,7 +323,7 @@ export class ICPayTipJar extends LitElement {
     try {
       const sdk = createSdk(this.config);
       const symbol = this.selectedSymbol || 'ICP';
-      const resp = await (sdk as any).startOnrampUsd(this.selectedAmount, symbol, { context: 'tip:onramp' });
+      const resp = await (sdk as any).startOnrampUsd(this.selectedAmount, symbol, { context: 'tip:onramp', onrampProvider: (this as any)?.selectedOnrampProvider || 'transak' });
       const sessionId = resp?.metadata?.icpay_onramp?.sessionId || resp?.metadata?.icpay_onramp?.session_id || resp?.metadata?.onramp?.sessionId || resp?.metadata?.onramp?.session_id || null;
       const paymentIntentId = resp?.metadata?.icpay_payment_intent_id || resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
       const errorMessage = resp?.metadata?.icpay_onramp?.errorMessage || resp?.metadata?.onramp?.errorMessage || null;
