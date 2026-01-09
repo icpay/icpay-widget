@@ -743,6 +743,7 @@ export class ICPayProgressBar extends LitElement {
   @state() private currentWalletType: string | null = null;
   @state() private showWalletSelector = false;
   @state() private isTransitioning = false;
+  @state() private isOnrampFlow = false;
 
   @property({ type: Object }) theme?: { primaryColor?: string; secondaryColor?: string };
 
@@ -786,6 +787,8 @@ export class ICPayProgressBar extends LitElement {
     window.addEventListener('icpay-sdk-transaction-completed', this.onTransactionCompleted as EventListener);
     window.addEventListener('icpay-sdk-transaction-failed', this.onTransactionFailed as EventListener);
     window.addEventListener('icpay-sdk-transaction-mismatched', this.onTransactionMismatched as EventListener);
+    // Onramp-specific cue when URL opened in new tab
+    window.addEventListener('icpay-onramp-opened', this.onOnrampOpened as EventListener);
 
     // Additional SDK events
     window.addEventListener('icpay-sdk-error', this.onSDKError as EventListener);
@@ -817,6 +820,7 @@ export class ICPayProgressBar extends LitElement {
     window.removeEventListener('icpay-sdk-transaction-completed', this.onTransactionCompleted as EventListener);
     window.removeEventListener('icpay-sdk-transaction-failed', this.onTransactionFailed as EventListener);
     window.removeEventListener('icpay-sdk-transaction-mismatched', this.onTransactionMismatched as EventListener);
+    window.removeEventListener('icpay-onramp-opened', this.onOnrampOpened as EventListener);
 
     // Additional SDK events
     window.removeEventListener('icpay-sdk-error', this.onSDKError as EventListener);
@@ -861,17 +865,19 @@ export class ICPayProgressBar extends LitElement {
       // Reset all steps to pending
       this.currentSteps = this.currentSteps.map(step => ({ ...step, status: 'pending' as StepStatus }));
 
-      // Step 0: Wallet connect loading (rename if onramp)
+      // Step 0: Wallet connect loading (rename/setup if onramp)
       if (methodType === 'onramp') {
-        // Update wallet step copy for onramp flow
-        const idx = this.getStepIndexByKey('wallet');
-        if (idx >= 0) {
-          this.currentSteps[idx] = {
-            ...this.currentSteps[idx],
-            label: 'Transak Started',
-            tooltip: 'Awaiting Transak information',
-          } as any;
-        }
+        this.isOnrampFlow = true;
+        // Remap step labels/tooltips for onramp flow
+        const map: Record<string, { label: string; tooltip: string }> = {
+          wallet: { label: 'Payment initiated', tooltip: 'Please pay in the new tab' },
+          await: { label: 'Onramp process started', tooltip: 'Verifying funds with provider' },
+          transfer: { label: 'Funds received', tooltip: 'Payment in progress' },
+          verify: { label: 'Payment completed', tooltip: 'Finalizing your payment' },
+        };
+        this.currentSteps = this.currentSteps.map(s => (map[s.key]
+          ? { ...s, label: map[s.key].label, tooltip: map[s.key].tooltip }
+          : s));
       }
       this.setLoadingByKey('wallet');
 
@@ -1009,8 +1015,12 @@ export class ICPayProgressBar extends LitElement {
 
     debugLog(this.debug, 'ICPay Progress: Transaction created event received:', e.detail);
 
-    // Await -> completed on intent created; start transfer loading
+    // For onramp, do not auto-advance to transfer on intent creation
     if (!this.failed && !this.completed) {
+      if (this.isOnrampFlow) {
+        // Keep first step loading until onramp tab is opened, then move to 'await'
+        return;
+      }
       this.completeByKey('wallet');
       this.completeByKey('await');
       this.setLoadingByKey('transfer');
@@ -1029,9 +1039,26 @@ export class ICPayProgressBar extends LitElement {
 
     debugLog(this.debug, 'ICPay Progress: Transaction updated event received:', e.detail);
 
-    // When pending turns to confirmed, we will complete progression in onTransactionCompleted
-    if (!this.failed && !this.completed && status === 'pending') {
-      // Keep current step loading
+    if (!this.failed && !this.completed) {
+      if (this.isOnrampFlow) {
+        // Map intent statuses to onramp steps
+        // requires_payment -> keep 'await' loading
+        // pending/processing -> complete 'await', set 'transfer' loading
+        // completed handled in onTransactionCompleted
+        if (status === 'requires_payment') {
+          this.completeByKey('wallet');
+          this.setLoadingByKey('await');
+        } else if (status === 'pending' || status === 'processing') {
+          this.completeByKey('wallet');
+          this.completeByKey('await');
+          this.setLoadingByKey('transfer');
+        }
+      } else {
+        // When pending turns to confirmed, keep current step loading
+        if (status === 'pending') {
+          // no-op for non-onramp standard flow
+        }
+      }
     }
 
     // Dispatch transaction updated event for external listeners
@@ -1060,6 +1087,7 @@ export class ICPayProgressBar extends LitElement {
     this.completed = true;
     this.showSuccess = true;
     this.showConfetti = true;
+    this.isOnrampFlow = false;
 
     // Dispatch completion event
     this.dispatchEvent(new CustomEvent('icpay-progress-completed', {
@@ -1100,6 +1128,7 @@ export class ICPayProgressBar extends LitElement {
     this.updateStepStatus(this.activeIndex, 'error', errorMessage);
     this.stopAutomaticProgression();
     this.open = true;
+    this.isOnrampFlow = false;
 
     // Dispatch transaction failed event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-failed', {
@@ -1124,6 +1153,7 @@ export class ICPayProgressBar extends LitElement {
     this.updateStepStatus(this.activeIndex, 'error', this.errorMessage);
     this.stopAutomaticProgression();
     this.open = true;
+    this.isOnrampFlow = false;
 
     // Dispatch failed event with mismatch context
     this.dispatchEvent(new CustomEvent('icpay-progress-failed', {
@@ -1150,6 +1180,7 @@ export class ICPayProgressBar extends LitElement {
       this.updateStepStatus(this.activeIndex, 'error', errorMessage);
       this.stopAutomaticProgression();
       this.open = true;
+      this.isOnrampFlow = false;
 
       // Dispatch method error event for external listeners
       this.dispatchEvent(new CustomEvent('icpay-progress-error', {
@@ -1172,6 +1203,7 @@ export class ICPayProgressBar extends LitElement {
     this.updateStepStatus(this.activeIndex, 'error', errorMessage);
     this.stopAutomaticProgression();
     this.open = true;
+    this.isOnrampFlow = false;
 
     // Dispatch SDK error event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-sdk-error', {
@@ -1198,6 +1230,14 @@ export class ICPayProgressBar extends LitElement {
       bubbles: true
     }));
     this.currentWalletType = walletType;
+  };
+
+  // Onramp-specific: user opened the pay URL in a new tab/window
+  private onOnrampOpened = (_e: any) => {
+    if (!this.isOnrampFlow || this.failed || this.completed) return;
+    // Move from step 1 to step 2
+    this.completeByKey('wallet');
+    this.setLoadingByKey('await');
   };
 
   private onWalletDisconnected = (e: any) => {
