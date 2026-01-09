@@ -992,6 +992,10 @@ export class ICPayProgressBar extends LitElement {
 
     // Map SDK method successes to step completions (mid-flow methods)
     if (!this.failed && !this.completed) {
+      // Onramp flow: do not map internal wallet steps (no wallet transfer happens here)
+      if (this.isOnrampFlow) {
+        return;
+      }
       if (methodName === 'getLedgerBalance') {
         this.completeByKey('wallet');
         this.setLoadingByKey('await');
