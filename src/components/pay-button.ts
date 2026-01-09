@@ -549,7 +549,12 @@ export class ICPayPayButton extends LitElement {
       this.onrampPaymentIntentId = paymentIntentId;
       if (url) {
         this.onrampUrl = url;
-        this.showOnrampModal = true;
+        // Open Coinbase Onramp in a new tab/window (CSP-safe)
+        try {
+          window.open(url, 'icpay_onramp', 'noopener,noreferrer');
+          // Inform progress component to advance to step 2 (onramp started)
+          try { window.dispatchEvent(new CustomEvent('icpay-onramp-opened', { detail: { url } })); } catch {}
+        } catch {}
         // Begin polling payment intent status while user completes onramp
         this.startOnrampPolling(undefined);
       } else {
