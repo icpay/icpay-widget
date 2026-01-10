@@ -1040,6 +1040,7 @@ export class ICPayProgressBar extends LitElement {
   private onTransactionUpdated = (e: any) => {
     const status = e?.detail?.status || 'pending';
     const transactionId = e?.detail?.transactionId || e?.detail?.id;
+    const intentMeta = (e?.detail?.metadata || e?.detail?.intent?.metadata || {}) as any;
 
     debugLog(this.debug, 'ICPay Progress: Transaction updated event received:', e.detail);
 
@@ -1049,10 +1050,15 @@ export class ICPayProgressBar extends LitElement {
         // requires_payment -> keep 'await' loading
         // pending/processing -> complete 'await', set 'transfer' loading
         // completed handled in onTransactionCompleted
-        if (status === 'requires_payment') {
+        // Also advance to 'transfer' when backend confirms onramp order completed via metadata
+        const onrampCompleteMeta =
+          intentMeta?.onramp_order_completed === true ||
+          intentMeta?.icpay_onramp?.status === 'completed' ||
+          intentMeta?.onrampCompleted === true;
+        if (status === 'requires_payment' && !onrampCompleteMeta) {
           this.completeByKey('wallet');
           this.setLoadingByKey('await');
-        } else if (status === 'pending' || status === 'processing') {
+        } else if (status === 'pending' || status === 'processing' || onrampCompleteMeta) {
           this.completeByKey('wallet');
           this.completeByKey('await');
           this.setLoadingByKey('transfer');
