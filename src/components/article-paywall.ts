@@ -178,7 +178,10 @@ export class ICPayArticlePaywall extends LitElement {
       if (url) {
         this.onrampUrl = url;
         this.onrampErrorMessage = null;
-        this.showOnrampModal = true;
+        try {
+          window.open(url, 'icpay_onramp', 'noopener,noreferrer');
+          try { window.dispatchEvent(new CustomEvent('icpay-onramp-opened', { detail: { url } })); } catch {}
+        } catch {}
         this.startOnrampPolling();
       } else {
         this.onrampUrl = null;

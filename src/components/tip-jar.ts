@@ -330,7 +330,10 @@ export class ICPayTipJar extends LitElement {
       if (url) {
         (this as any).onrampUrl = url;
         this.onrampErrorMessage = null;
-        this.showOnrampModal = true;
+        try {
+          window.open(url, 'icpay_onramp', 'noopener,noreferrer');
+          try { window.dispatchEvent(new CustomEvent('icpay-onramp-opened', { detail: { url } })); } catch {}
+        } catch {}
         this.startOnrampPolling();
       } else {
         (this as any).onrampUrl = null;
