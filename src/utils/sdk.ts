@@ -154,8 +154,10 @@ export function createSdk(config: CommonConfig): WidgetSdk {
         metadata: mergedMeta,
         onrampPayment: true,
         description,
+        // On onramp flows, do NOT send single recipientAddress (chain not chosen by user).
+        // Always send the multi-map so backend can pick based on provider/chain.
         recipientAddresses: (config as any).recipientAddresses,
-        recipientAddress: (config as any).recipientAddress,
+        recipientAddress: '',
       });
     }
 
