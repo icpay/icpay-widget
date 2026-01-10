@@ -479,7 +479,8 @@ export class ICPayPayButton extends LitElement {
     const walletsRaw = this.pnp.getEnabledWallets() || [];
     const wallets = buildWalletEntries(walletsRaw);
     const onrampEnabled = (this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true);
-    const minOnramp = 5;
+    // Coinbase sandbox minimum is $2 (use lower default until dynamic provider min is wired)
+    const minOnramp = 2;
     const amountUsd = Number(this.config?.amountUsd ?? 0);
     const showTooltip = onrampEnabled && amountUsd > 0 && amountUsd < minOnramp;
     const diff = Math.max(0, minOnramp - amountUsd);
