@@ -625,11 +625,11 @@ export class ICPayPremiumContent extends LitElement {
             onSelect: (walletId: string) => this.connectWithWallet(walletId),
             onClose: () => { this.showWalletModal = false; this.oisyReadyToPay = false; try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-cancelled', { detail: { reason: 'user_cancelled' } })); } catch {} },
             onDismiss: () => { this.showWalletModal = false; this.oisyReadyToPay = false; }, // Close without triggering cancellation events
-            onCreditCard: ((this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true)) ? () => this.startOnramp() : undefined,
+            onCreditCard: ((this.config?.onramp?.enabled === true) && (this.config?.onrampDisabled !== true)) ? () => this.startOnramp() : undefined,
             creditCardLabel: this.config?.onramp?.creditCardLabel || 'Pay with credit card',
-            showCreditCard: (this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true),
+            showCreditCard: (this.config?.onramp?.enabled === true) && (this.config?.onrampDisabled !== true),
             creditCardTooltip: (() => {
-              const min = 5; const amt = Number(this.config?.priceUsd || 0); if (amt > 0 && amt < min && ((this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true))) { const d = (min - amt).toFixed(2); return `Note: Minimum card amount is $${min}. You will pay about $${d} more.`; } return null;
+              const min = 5; const amt = Number(this.config?.priceUsd || 0); if (amt > 0 && amt < min && ((this.config?.onramp?.enabled === true) && (this.config?.onrampDisabled !== true))) { const d = (min - amt).toFixed(2); return `Note: Minimum card amount is $${min}. You will pay about $${d} more.`; } return null;
             })(),
             oisyReadyToPay: this.oisyReadyToPay,
             onOisyPay: () => { this.showWalletModal = false; this.oisyReadyToPay = false; this.onPay(); }
