@@ -136,7 +136,7 @@ export type OnrampConfig = {
   autoOpen?: boolean;
   // Optional label override for the wallet modal CTA
   creditCardLabel?: string;
-  // Enable/disable onramp (Transak) option in wallet selector (default: enabled)
+  // Enable/disable onramp (credit card) option in wallet selector (default: disabled)
   enabled?: boolean;
   // Optional list of onramp providers (if omitted, fallback to transak if enabled)
   providers?: Array<{
