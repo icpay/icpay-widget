@@ -326,9 +326,22 @@ export class ICPayDonationThermometer extends LitElement {
     try {
       const sdk = createSdk(this.config);
       const resp = await (sdk as any).startOnrampUsd(this.selectedAmount, undefined, { context: 'donation:onramp', onrampPayment: true, onrampProvider: 'coinbase' });
-      const url = resp?.metadata?.onramp?.url || resp?.onramp?.url || resp?.metadata?.icpay_onramp?.url || null;
+      const url =
+        resp?.metadata?.onramp?.url ||
+        resp?.onramp?.url ||
+        resp?.metadata?.icpay_onramp?.url ||
+        resp?.paymentIntent?.metadata?.icpay?.onrampUrl ||
+        resp?.metadata?.icpay?.onrampUrl ||
+        null;
       const paymentIntentId = resp?.metadata?.icpay_payment_intent_id || resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
-      const errorMessage = resp?.metadata?.icpay_onramp?.errorMessage || resp?.metadata?.onramp?.errorMessage || null;
+      const errorMessage =
+        resp?.metadata?.icpay_onramp?.errorMessage ||
+        resp?.metadata?.onramp?.errorMessage ||
+        resp?.paymentIntent?.metadata?.icpay?.onrampError ||
+        resp?.paymentIntent?.metadata?.icpay?.errorMessage ||
+        resp?.metadata?.icpay?.onrampError ||
+        resp?.metadata?.icpay?.errorMessage ||
+        null;
       this.onrampPaymentIntentId = paymentIntentId;
       if (url) {
         this.onrampUrl = url;
@@ -495,9 +508,12 @@ export class ICPayDonationThermometer extends LitElement {
               tokenShortcode: (sel as any)?.tokenShortcode,
               metadata: {
                 ...(this.config as any)?.metadata,
+              icpay: {
+                ...(((this.config as any)?.metadata || {})?.icpay || {}),
                 icpay_network: 'sol',
                 icpay_ledger_id: sel?.ledgerId,
                 icpay_context: 'donation:x402'
+              }
               },
               recipientAddress: chosen || '',
             });
@@ -512,8 +528,11 @@ export class ICPayDonationThermometer extends LitElement {
           tokenShortcode: (sel as any)?.tokenShortcode,
           metadata: {
             ...(this.config as any)?.metadata,
+          icpay: {
+            ...(((this.config as any)?.metadata || {})?.icpay || {}),
             icpay_network: 'ic',
             icpay_ledger_id: sel?.ledgerId
+          }
           },
           recipientAddress: chosen || '0x0000000000000000000000000000000000000000',
         });

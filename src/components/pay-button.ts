@@ -367,9 +367,12 @@ export class ICPayPayButton extends LitElement {
               debugLog(this.config?.debug || false, 'Using recipientAddress (x402)', { recipientAddress: evmDest });
               const metadata = {
                 ...(this.config as any)?.metadata,
-                icpay_network: 'evm',
-                icpay_ledger_id: sel?.ledgerId,
-                icpay_context: 'pay-button:x402'
+                icpay: {
+                  ...(((this.config as any)?.metadata || {})?.icpay || {}),
+                  icpay_network: 'evm',
+                  icpay_ledger_id: sel?.ledgerId,
+                  icpay_context: 'pay-button:x402'
+                }
               };
               debugLog(this.config?.debug || false, 'Attempting X402 flow (EVM selection)', { amountUsd, tokenShortcode: sel?.tokenShortcode, x402Accepts: sel?.x402Accepts });
               await (sdk.client as any).createPaymentX402Usd({
@@ -403,8 +406,11 @@ export class ICPayPayButton extends LitElement {
             tokenShortcode: (sel as any)?.tokenShortcode,
             metadata: {
               ...(this.config as any)?.metadata,
-              icpay_network: 'evm',
-              icpay_ledger_id: sel?.ledgerId
+              icpay: {
+                ...(((this.config as any)?.metadata || {})?.icpay || {}),
+                icpay_network: 'evm',
+                icpay_ledger_id: sel?.ledgerId
+              }
             },
             recipientAddress: evmDest2,
           });
@@ -441,9 +447,12 @@ export class ICPayPayButton extends LitElement {
           try {
             const metadata = {
               ...(this.config as any)?.metadata,
-              icpay_network: isSol ? 'sol' : (isIc ? 'ic' : (this.config as any)?.icpay_network),
-              icpay_ledger_id: (sel as any)?.ledgerId,
-              icpay_context: 'pay-button:x402'
+              icpay: {
+                ...(((this.config as any)?.metadata || {})?.icpay || {}),
+                icpay_network: isSol ? 'sol' : (isIc ? 'ic' : (this.config as any)?.icpay_network),
+                icpay_ledger_id: (sel as any)?.ledgerId,
+                icpay_context: 'pay-button:x402'
+              }
             };
             await (sdk.client as any).createPaymentX402Usd({
               usdAmount: amountUsd,
@@ -465,8 +474,11 @@ export class ICPayPayButton extends LitElement {
           tokenShortcode: (sel as any)?.tokenShortcode,
           metadata: {
             ...(this.config as any)?.metadata,
-            icpay_network: 'ic',
-            icpay_ledger_id: (sel as any)?.ledgerId
+            icpay: {
+              ...(((this.config as any)?.metadata || {})?.icpay || {}),
+              icpay_network: 'ic',
+              icpay_ledger_id: (sel as any)?.ledgerId
+            }
           },
           recipientAddress: chosen || '0x0000000000000000000000000000000000000000',
         });
@@ -544,8 +556,21 @@ export class ICPayPayButton extends LitElement {
         onrampPayment: true,
         onrampProvider: this.selectedOnrampProvider || 'coinbase',
       });
-      const url = resp?.metadata?.onramp?.url || resp?.onramp?.url || resp?.metadata?.icpay_onramp?.url || null;
-      const errorMessage = resp?.metadata?.icpay_onramp?.errorMessage || resp?.metadata?.onramp?.errorMessage || null;
+      const url =
+        resp?.metadata?.onramp?.url ||
+        resp?.onramp?.url ||
+        resp?.metadata?.icpay_onramp?.url ||
+        resp?.paymentIntent?.metadata?.icpay?.onrampUrl ||
+        resp?.metadata?.icpay?.onrampUrl ||
+        null;
+      const errorMessage =
+        resp?.metadata?.icpay_onramp?.errorMessage ||
+        resp?.metadata?.onramp?.errorMessage ||
+        resp?.paymentIntent?.metadata?.icpay?.onrampError ||
+        resp?.paymentIntent?.metadata?.icpay?.errorMessage ||
+        resp?.metadata?.icpay?.onrampError ||
+        resp?.metadata?.icpay?.errorMessage ||
+        null;
       this.onrampErrorMessage = errorMessage || null;
       const paymentIntentId = resp?.metadata?.icpay_payment_intent_id || resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
       this.onrampPaymentIntentId = paymentIntentId;

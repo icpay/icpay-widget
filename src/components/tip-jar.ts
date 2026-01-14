@@ -323,9 +323,22 @@ export class ICPayTipJar extends LitElement {
     try {
       const sdk = createSdk(this.config);
       const resp = await (sdk as any).startOnrampUsd(this.selectedAmount, undefined, { context: 'tip:onramp', onrampPayment: true, onrampProvider: (this as any)?.selectedOnrampProvider || 'coinbase' });
-      const url = resp?.metadata?.onramp?.url || resp?.onramp?.url || resp?.metadata?.icpay_onramp?.url || null;
+      const url =
+        resp?.metadata?.onramp?.url ||
+        resp?.onramp?.url ||
+        resp?.metadata?.icpay_onramp?.url ||
+        resp?.paymentIntent?.metadata?.icpay?.onrampUrl ||
+        resp?.metadata?.icpay?.onrampUrl ||
+        null;
       const paymentIntentId = resp?.metadata?.icpay_payment_intent_id || resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
-      const errorMessage = resp?.metadata?.icpay_onramp?.errorMessage || resp?.metadata?.onramp?.errorMessage || null;
+      const errorMessage =
+        resp?.metadata?.icpay_onramp?.errorMessage ||
+        resp?.metadata?.onramp?.errorMessage ||
+        resp?.paymentIntent?.metadata?.icpay?.onrampError ||
+        resp?.paymentIntent?.metadata?.icpay?.errorMessage ||
+        resp?.metadata?.icpay?.onrampError ||
+        resp?.metadata?.icpay?.errorMessage ||
+        null;
       this.onrampPaymentIntentId = paymentIntentId;
       if (url) {
         (this as any).onrampUrl = url;
@@ -448,12 +461,15 @@ export class ICPayTipJar extends LitElement {
               await (sdk.client as any).createPaymentX402Usd({
                 usdAmount: amountUsd,
                 tokenShortcode: (sel as any)?.tokenShortcode,
-                metadata: {
-                  ...(this.config as any)?.metadata,
+              metadata: {
+                ...(this.config as any)?.metadata,
+                icpay: {
+                  ...(((this.config as any)?.metadata || {})?.icpay || {}),
                   icpay_network: 'evm',
                   icpay_ledger_id: sel?.ledgerId,
                   icpay_context: 'tip:x402'
-                },
+                }
+              },
                 recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
               });
               this.showBalanceModal = false;
@@ -465,8 +481,11 @@ export class ICPayTipJar extends LitElement {
             tokenShortcode: (sel as any)?.tokenShortcode,
             metadata: {
               ...(this.config as any)?.metadata,
+            icpay: {
+              ...(((this.config as any)?.metadata || {})?.icpay || {}),
               icpay_network: 'evm',
               icpay_ledger_id: sel?.ledgerId
+            }
             },
             recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
           });
@@ -494,9 +513,12 @@ export class ICPayTipJar extends LitElement {
               tokenShortcode: (sel as any)?.tokenShortcode,
               metadata: {
                 ...(this.config as any)?.metadata,
-                icpay_network: isSol ? 'sol' : (isIc ? 'ic' : (this.config as any)?.icpay_network),
-                icpay_ledger_id: sel?.ledgerId,
-                icpay_context: 'tip:x402'
+                icpay: {
+                  ...(((this.config as any)?.metadata || {})?.icpay || {}),
+                  icpay_network: isSol ? 'sol' : (isIc ? 'ic' : (this.config as any)?.icpay_network),
+                  icpay_ledger_id: sel?.ledgerId,
+                  icpay_context: 'tip:x402'
+                }
               },
               recipientAddress: chosen || '',
             });
@@ -511,8 +533,11 @@ export class ICPayTipJar extends LitElement {
           tokenShortcode: (sel as any)?.tokenShortcode,
           metadata: {
             ...(this.config as any)?.metadata,
-            icpay_network: 'ic',
-            icpay_ledger_id: sel?.ledgerId
+            icpay: {
+              ...(((this.config as any)?.metadata || {})?.icpay || {}),
+              icpay_network: 'ic',
+              icpay_ledger_id: sel?.ledgerId
+            }
           },
           recipientAddress: chosen || '0x0000000000000000000000000000000000000000',
         });

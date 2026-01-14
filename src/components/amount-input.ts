@@ -338,9 +338,12 @@ export class ICPayAmountInput extends LitElement {
           try {
             const metadata = {
               ...(this.config as any)?.metadata,
+            icpay: {
+              ...(((this.config as any)?.metadata || {})?.icpay || {}),
               icpay_network: isSol ? 'sol' : (isIc ? 'ic' : (this.config as any)?.icpay_network),
               icpay_ledger_id: (sel as any)?.ledgerId,
               icpay_context: 'amount-input:x402'
+            }
             };
             await (sdk.client as any).createPaymentX402Usd({
               usdAmount: amountUsd,
@@ -359,8 +362,11 @@ export class ICPayAmountInput extends LitElement {
           tokenShortcode: (sel as any)?.tokenShortcode,
           metadata: {
             ...(this.config as any)?.metadata,
+          icpay: {
+            ...(((this.config as any)?.metadata || {})?.icpay || {}),
             icpay_network: 'ic',
             icpay_ledger_id: sel?.ledgerId
+          }
           },
           recipientAddress: chosen || '0x0000000000000000000000000000000000000000',
         });
@@ -407,7 +413,13 @@ export class ICPayAmountInput extends LitElement {
       const sdk = createSdk(this.config);
       const amountUsd = Number(this.amountUsd);
       const resp = await (sdk as any).startOnrampUsd(amountUsd, undefined, { context: 'amount-input:onramp', onrampPayment: true, onrampProvider: (this as any)?.selectedOnrampProvider || 'coinbase' });
-      const url = resp?.metadata?.onramp?.url || resp?.onramp?.url || resp?.metadata?.icpay_onramp?.url || null;
+      const url =
+        resp?.metadata?.onramp?.url ||
+        resp?.onramp?.url ||
+        resp?.metadata?.icpay_onramp?.url ||
+        resp?.paymentIntent?.metadata?.icpay?.onrampUrl ||
+        resp?.metadata?.icpay?.onrampUrl ||
+        null;
       const paymentIntentId = resp?.metadata?.icpay_payment_intent_id || resp?.metadata?.paymentIntentId || resp?.paymentIntentId || null;
       const errorMessage = resp?.metadata?.icpay_onramp?.errorMessage || resp?.metadata?.onramp?.errorMessage || null;
       this.onrampPaymentIntentId = paymentIntentId;
