@@ -3,54 +3,137 @@ import type { ThemeConfig } from './types';
 
 export const baseStyles = css`
   :host {
-    --icpay-primary: #f9fafb;
-    --icpay-secondary: #e5e7eb;
-    --icpay-accent: #9ca3af;
-    --icpay-text: #f9fafb;
-    --icpay-muted: #9ca3af;
-    --icpay-surface: #1f2937;
-    --icpay-surface-alt: #374151;
-    --icpay-border: #4b5563;
+    /* Light mode defaults (from COLOR_PALETTE.md) */
+    --icpay-background: #ffffff;
+    --icpay-foreground: #171717;
+    --icpay-muted-foreground: #6b7280;
+    --icpay-accent-foreground: #ffffff;
+    --icpay-primary: #3b82f6;
+    --icpay-destructive: #ef4444;
+    --icpay-primary-foreground: #ffffff;
+    --icpay-secondary: #f3f4f6;
+    --icpay-secondary-foreground: #171717;
+    --icpay-accent: #f9fafb;
+    --icpay-muted: #f9fafb;
+    --icpay-border: #e5e7eb;
+    --icpay-input: #e5e7eb;
+    --icpay-ring: #3b82f6;
+    --icpay-destructive-foreground: #ffffff;
+    
+    /* Status colors */
+    --icpay-success-bg: rgba(16, 185, 129, 0.1);
+    --icpay-success-text: #059669;
+    --icpay-success-border: rgba(16, 185, 129, 0.3);
+    --icpay-warning-bg: rgba(245, 158, 11, 0.1);
+    --icpay-warning-text: #d97706;
+    --icpay-warning-border: rgba(245, 158, 11, 0.3);
+    --icpay-error-bg: rgba(239, 68, 68, 0.1);
+    --icpay-error-text: #dc2626;
+    --icpay-error-border: rgba(239, 68, 68, 0.3);
+    --icpay-processing-bg: rgba(59, 130, 246, 0.1);
+    --icpay-processing-text: #2563eb;
+    --icpay-processing-border: rgba(59, 130, 246, 0.3);
+    
+    /* Legacy compatibility variables */
+    --icpay-text: var(--icpay-foreground);
+    --icpay-surface: transparent;
+    --icpay-surface-alt: var(--icpay-secondary);
     --icpay-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    
     display: block;
     font-family: var(--icpay-font);
+    color: var(--icpay-foreground);
+    background: transparent;
+  }
+
+  :host([data-theme="dark"]) {
+    /* Dark mode (from COLOR_PALETTE.md) */
+    --icpay-background: hsl(222.2 84% 4.9%);
+    --icpay-foreground: hsl(210 40% 98%);
+    --icpay-muted-foreground: hsl(215 20.2% 65.1%);
+    --icpay-accent-foreground: hsl(210 40% 98%);
+    --icpay-primary: hsl(210 40% 98%);
+    --icpay-destructive: hsl(0 62.8% 30.6%);
+    --icpay-primary-foreground: hsl(222.2 47.4% 11.2%);
+    --icpay-secondary: hsl(217.2 32.6% 17.5%);
+    --icpay-secondary-foreground: hsl(210 40% 98%);
+    --icpay-accent: hsl(217.2 32.6% 17.5%);
+    --icpay-muted: hsl(217.2 32.6% 17.5%);
+    --icpay-border: hsl(217.2 32.6% 30%);
+    --icpay-input: hsl(217.2 32.6% 17.5%);
+    --icpay-ring: hsl(210 40% 98%);
+    --icpay-destructive-foreground: hsl(210 40% 98%);
+    
+    /* Status colors for dark mode */
+    --icpay-success-bg: rgba(16, 185, 129, 0.1);
+    --icpay-success-text: #34d399;
+    --icpay-success-border: rgba(16, 185, 129, 0.3);
+    --icpay-warning-bg: rgba(245, 158, 11, 0.1);
+    --icpay-warning-text: #fbbf24;
+    --icpay-warning-border: rgba(245, 158, 11, 0.3);
+    --icpay-error-bg: rgba(239, 68, 68, 0.1);
+    --icpay-error-text: #f87171;
+    --icpay-error-border: rgba(239, 68, 68, 0.3);
+    --icpay-processing-bg: rgba(59, 130, 246, 0.1);
+    --icpay-processing-text: #60a5fa;
+    --icpay-processing-border: rgba(59, 130, 246, 0.3);
+    
+    --icpay-text: var(--icpay-foreground);
+    --icpay-surface-alt: var(--icpay-secondary);
   }
 
   .icpay-card {
-    background: var(--icpay-surface);
-    border: 1px solid var(--icpay-border);
+    background: none;
+    border: none;
     border-radius: 16px;
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.35);
+    box-shadow: none;
   }
 
   .icpay-section {
     padding: 20px;
   }
 
+  .icpay-powered-by {
+    margin-top: 12px;
+    text-align: center;
+    font-size: 10px;
+    color: var(--icpay-muted-foreground);
+    opacity: 0.6;
+  }
+
+  .icpay-powered-by a {
+    color: var(--icpay-muted-foreground);
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .icpay-powered-by a:hover {
+    opacity: 1;
+    text-decoration: underline;
+  }
+
   .pay-button {
     width: 100%;
-    background: linear-gradient(135deg, var(--icpay-primary) 0%, var(--icpay-secondary) 100%);
-    color: #111827;
-    border: 1px solid #d1d5db;
+    background: var(--icpay-foreground);
+    color: var(--icpay-background);
+    border: 1px solid var(--icpay-border);
     border-radius: 16px;
     padding: 16px;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    box-shadow: none;
   }
 
   .pay-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-    background: linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%);
+    background: color-mix(in srgb, var(--icpay-foreground) 90%, transparent);
   }
 
   .pay-button.processing {
-    background: #6b7280;
-    color: #f9fafb;
-    border-color: #6b7280;
+    background: var(--icpay-muted-foreground);
+    color: var(--icpay-background);
+    border-color: var(--icpay-muted-foreground);
     cursor: not-allowed;
     animation: pulse 2s infinite;
   }
@@ -63,48 +146,63 @@ export const baseStyles = css`
 
 
 export function applyThemeVars(host: HTMLElement, theme?: ThemeConfig | null): void {
-  if (!host || !theme) return;
-  const primary = theme.primaryColor || undefined;
-  const secondary = theme.secondaryColor || undefined;
+  if (!host) return;
+  
+  // Determine mode: use theme.mode, or check document, or default to 'light'
+  let mode: 'light' | 'dark' = 'light';
+  if (theme?.mode) {
+    mode = theme.mode;
+  } else if (typeof document !== 'undefined') {
+    const docTheme = document.documentElement.getAttribute('data-icpay-theme') || 
+                    document.documentElement.getAttribute('data-theme');
+    if (docTheme === 'light' || docTheme === 'dark') {
+      mode = docTheme;
+    }
+  }
+  
+  if (!theme) {
+    // If no theme config provided, just set the mode attribute
+    if (host instanceof HTMLElement) {
+      host.setAttribute('data-theme', mode);
+    }
+    if (typeof document !== 'undefined' && document.documentElement) {
+      document.documentElement.setAttribute('data-icpay-theme', mode);
+      document.documentElement.style.setProperty('--icpay-theme-mode', mode);
+    }
+    return;
+  }
+  
+  // Set data-theme attribute for CSS variable inheritance
+  if (host instanceof HTMLElement) {
+    host.setAttribute('data-theme', mode);
+  }
+  
+  // Also set on document element so modals can detect theme
+  if (typeof document !== 'undefined' && document.documentElement) {
+    // Store theme mode on document for modal detection
+    document.documentElement.setAttribute('data-icpay-theme', mode);
+    // Also set CSS variables on document root for modals to inherit
+    const root = document.documentElement;
+    root.style.setProperty('--icpay-theme-mode', mode);
+  }
+  
   const set = (k: string, v?: string) => { if (v) host.style.setProperty(k, v); };
-  set('--icpay-primary', primary);
-  set('--icpay-secondary', secondary);
-
-  const parseHex = (hex?: string) => {
-    if (!hex) return null;
-    const h = hex.replace('#', '');
-    const full = h.length === 3 ? h.split('').map(c=>c+c).join('') : h;
-    const bigint = parseInt(full, 16);
-    const r = (bigint >> 16) & 255;
-    const g = (bigint >> 8) & 255;
-    const b = bigint & 255;
-    return { r, g, b };
-  };
-  const luminance = (hex?: string) => {
-    const rgb = parseHex(hex);
-    if (!rgb) return 0;
-    const toLin = (c: number) => {
-      const s = c / 255;
-      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-    };
-    return 0.2126 * toLin(rgb.r) + 0.7152 * toLin(rgb.g) + 0.0722 * toLin(rgb.b);
-  };
-
-  const basis = primary || secondary;
-  const isLight = luminance(basis) > 0.6;
-  const surface = theme.surfaceColor || (isLight ? '#f3f4f6' : '#1f2937');
-  const surfaceAlt = theme.surfaceAltColor || (isLight ? '#e5e7eb' : '#374151');
-  const border = theme.borderColor || (isLight ? '#d1d5db' : '#4b5563');
-  const text = theme.textColor || (isLight ? '#111827' : '#f9fafb');
-  const accent = theme.accentColor || secondary || primary || (isLight ? '#6b7280' : '#9ca3af');
-  const muted = theme.mutedTextColor || (isLight ? '#6b7280' : '#9ca3af');
-
-  set('--icpay-accent', accent);
-  set('--icpay-text', text);
-  set('--icpay-muted', muted);
-  set('--icpay-surface', surface);
-  set('--icpay-surface-alt', surfaceAlt);
-  set('--icpay-border', border);
+  
+  // Apply custom colors if provided
+  if (theme.primaryColor) set('--icpay-primary', theme.primaryColor);
+  if (theme.secondaryColor) set('--icpay-secondary', theme.secondaryColor);
+  if (theme.accentColor) set('--icpay-accent', theme.accentColor);
+  if (theme.textColor) set('--icpay-foreground', theme.textColor);
+  if (theme.mutedTextColor) set('--icpay-muted-foreground', theme.mutedTextColor);
+  if (theme.surfaceColor) set('--icpay-background', theme.surfaceColor);
+  if (theme.surfaceAltColor) set('--icpay-secondary', theme.surfaceAltColor);
+  if (theme.borderColor) set('--icpay-border', theme.borderColor);
+  if (theme.fontFamily) set('--icpay-font', theme.fontFamily);
+  
+  // Legacy compatibility
+  if (theme.textColor) set('--icpay-text', theme.textColor);
+  if (theme.mutedTextColor) set('--icpay-muted', theme.mutedTextColor);
+  if (theme.surfaceAltColor) set('--icpay-surface-alt', theme.surfaceAltColor);
 }
 
 

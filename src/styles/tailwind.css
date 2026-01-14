@@ -58,7 +58,7 @@
 
 /* Custom button styles */
 .btn-primary {
-  @apply bg-[#0066FF] text-white hover:bg-[#0052cc] transition-colors;
+  @apply bg-[#FFFFFF] text-white hover:bg-[#0052cc] transition-colors;
 }
 
 .btn-outline {

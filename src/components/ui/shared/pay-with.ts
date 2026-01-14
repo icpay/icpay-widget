@@ -21,13 +21,50 @@ const byUsdDesc = (a: WalletBalanceEntry, b: WalletBalanceEntry) => toUsd(b) - t
 
 export function renderPayWithStyles(): TemplateResult {
   return html`<style>
-    .modal { background-color:#1a1a1a; border-radius:24px; width:100%; max-width:420px; padding:24px; color:#fff; display:flex; flex-direction:column; border:1px solid #333; height:460px; }
-    .header { display:flex; align-items:center; margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid #333; flex-shrink:0; }
-    .back-button { background:none; border:none; color:#fff; font-size:24px; cursor:pointer; padding:0; margin-right:16px; }
+    /* Theme-aware color variables - Light mode defaults */
+    .modal {
+      --icpay-background: #ffffff;
+      --icpay-foreground: #171717;
+      --icpay-muted-foreground: #6b7280;
+      --icpay-primary: #3b82f6;
+      --icpay-primary-foreground: #ffffff;
+      --icpay-secondary: #f3f4f6;
+      --icpay-secondary-foreground: #171717;
+      --icpay-accent: #f9fafb;
+      --icpay-border: #e5e7eb;
+      --icpay-error-text: #dc2626;
+    }
+    /* Dark mode */
+    [data-theme="dark"] .modal,
+    [data-icpay-theme="dark"] .modal,
+    :root[data-theme="dark"] .modal,
+    :root[data-icpay-theme="dark"] .modal,
+    html[data-theme="dark"] .modal,
+    html[data-icpay-theme="dark"] .modal,
+    .modal[data-theme="dark"] {
+      --icpay-background: hsl(222.2 84% 4.9%);
+      --icpay-foreground: hsl(210 40% 98%);
+      --icpay-muted-foreground: hsl(215 20.2% 65.1%);
+      --icpay-primary: hsl(210 40% 98%);
+      --icpay-primary-foreground: hsl(222.2 47.4% 11.2%);
+      --icpay-secondary: hsl(217.2 32.6% 17.5%);
+      --icpay-secondary-foreground: hsl(210 40% 98%);
+      --icpay-accent: hsl(217.2 32.6% 17.5%);
+      --icpay-border: hsl(217.2 32.6% 30%);
+      --icpay-error-text: #f87171;
+    }
+    .modal { background-color:var(--icpay-background); border-radius:24px; width:100%; max-width:420px; padding:24px; color:var(--icpay-foreground); display:flex; flex-direction:column; border:1px solid var(--icpay-border); height:460px; margin:auto; transition:transform 0.3s ease; position:relative; z-index:1; }
+    @media (max-width: 768px) {
+      .modal { max-width:100%; width:100%; height:70vh; max-height:70vh; border-radius:24px 24px 0 0; margin:0; transform:translateY(100%); overflow:hidden; display:flex; flex-direction:column; }
+      .currency-list { overflow-y:auto; flex:1; min-height:0; }
+      .wallet-list { overflow-y:auto; flex:1; min-height:0; }
+    }
+    .header { display:flex; align-items:center; margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid var(--icpay-border); flex-shrink:0; }
+    .back-button { background:none; border:none; color:var(--icpay-foreground); font-size:24px; cursor:pointer; padding:0; margin-right:16px; }
     .title { font-size:20px; font-weight:600; flex:1; text-align:center; margin-right:40px; }
     .currency-list { display:flex; flex-direction:column; gap:0; overflow-y:auto; flex:1; margin-bottom:0; }
     .currency-item { display:flex; align-items:center; padding:16px 12px; cursor:pointer; transition:background-color 0.2s; border-radius:12px; }
-    .currency-item:hover { background-color:#2a2a2a; }
+    .currency-item:hover { background-color:var(--icpay-accent); }
     .currency-item[disabled] { opacity:0.6; cursor:not-allowed; }
     .currency-icon { width:48px; height:48px; border-radius:50%; margin-right:16px; display:flex; align-items:center; justify-content:center; font-size:28px; flex-shrink:0; overflow:hidden; }
     .eth-icon { background:linear-gradient(135deg,#627eea 0%, #8a9bff 100%); }
@@ -35,15 +72,15 @@ export function renderPayWithStyles(): TemplateResult {
     .usdt-icon { background:linear-gradient(135deg,#26a17b 0%, #50af95 100%); }
     .currency-info { flex:1; }
     .currency-name { font-size:16px; font-weight:500; margin-bottom:4px; }
-    .currency-network { font-size:14px; color:#888; }
+    .currency-network { font-size:14px; color:var(--icpay-muted-foreground); }
     .currency-balance { text-align:right; }
     .balance-amount { font-size:16px; font-weight:500; margin-bottom:4px; }
-    .balance-available { font-size:14px; color:#888; }
-    .footer { display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:16px; border-top:1px solid #333; flex-shrink:0; }
-    .need-wallet { font-size:14px; color:#888; }
-    .get-started { font-size:14px; color:#0066ff; background:none; border:none; cursor:pointer; font-weight:500; }
+    .balance-available { font-size:14px; color:var(--icpay-muted-foreground); }
+    .footer { display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:16px; border-top:1px solid var(--icpay-border); flex-shrink:0; }
+    .need-wallet { font-size:14px; color:var(--icpay-muted-foreground); }
+    .get-started { font-size:14px; color:var(--icpay-primary); background:none; border:none; cursor:pointer; font-weight:500; }
     .get-started:hover { text-decoration:underline; }
-    .muted { color:#9ca3af; }
+    .muted { color:var(--icpay-muted-foreground); }
   </style>`;
 }
 
@@ -57,7 +94,7 @@ export function renderPayWithContent(opts: PayWithOptions): TemplateResult {
     ${opts.isLoading ? html`
       <div class="muted">Loading your balances…</div>
     ` : (opts.error ? html`
-      <div style="color:#fca5a5">${opts.error}</div>
+      <div style="color:var(--icpay-error-text)">${opts.error}</div>
     ` : html`
       <div class="currency-list">
         ${(() => {

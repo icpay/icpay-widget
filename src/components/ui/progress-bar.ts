@@ -58,27 +58,56 @@ export class ICPayProgressBar extends LitElement {
     :host {
       display: block;
       font-family: var(--icpay-font, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-      color: var(--icpay-text-primary, #ffffff);
+      color: var(--icpay-foreground);
+      background: var(--icpay-background);
 
-      /* Theme variables for better composability */
-      --icpay-bg-primary: #1f2937;
-      --icpay-bg-secondary: rgba(255, 255, 255, 0.05);
-      --icpay-bg-secondary-hover: rgba(255, 255, 255, 0.08);
-      --icpay-bg-success: rgba(16, 185, 129, 0.1);
-      --icpay-bg-error: rgba(239, 68, 68, 0.1);
+      /* Theme-aware color variables - Light mode defaults */
+      --icpay-background: #ffffff;
+      --icpay-foreground: #171717;
+      --icpay-muted-foreground: #6b7280;
+      --icpay-accent-foreground: #ffffff;
+      --icpay-primary: #3b82f6;
+      --icpay-destructive: #ef4444;
+      --icpay-primary-foreground: #ffffff;
+      --icpay-secondary: #f3f4f6;
+      --icpay-secondary-foreground: #171717;
+      --icpay-accent: #f9fafb;
+      --icpay-muted: #f9fafb;
+      --icpay-border: #e5e7eb;
+      --icpay-input: #e5e7eb;
+      --icpay-ring: #3b82f6;
+      --icpay-destructive-foreground: #ffffff;
+      
+      /* Status colors */
+      --icpay-success-bg: rgba(16, 185, 129, 0.1);
+      --icpay-success-text: #059669;
+      --icpay-success-border: rgba(16, 185, 129, 0.3);
+      --icpay-warning-bg: rgba(245, 158, 11, 0.1);
+      --icpay-warning-text: #d97706;
+      --icpay-warning-border: rgba(245, 158, 11, 0.3);
+      --icpay-error-bg: rgba(239, 68, 68, 0.1);
+      --icpay-error-text: #dc2626;
+      --icpay-error-border: rgba(239, 68, 68, 0.3);
+      --icpay-processing-bg: rgba(59, 130, 246, 0.1);
+      --icpay-processing-text: #2563eb;
+      --icpay-processing-border: rgba(59, 130, 246, 0.3);
 
-      --icpay-text-primary: #ffffff;
-      --icpay-text-secondary: #9ca3af;
-      --icpay-text-muted: #6b7280;
-
-      --icpay-border-primary: rgba(255, 255, 255, 0.1);
-      --icpay-border-secondary: rgba(255, 255, 255, 0.2);
-      --icpay-border-success: rgba(16, 185, 129, 0.3);
-      --icpay-border-error: rgba(239, 68, 68, 0.3);
-
-      --icpay-accent-primary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-      --icpay-accent-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      --icpay-accent-error: #ef4444;
+      /* Use new color palette variables */
+      --icpay-text-primary: var(--icpay-foreground);
+      --icpay-text-secondary: var(--icpay-muted-foreground);
+      --icpay-text-muted: var(--icpay-muted-foreground);
+      --icpay-bg-primary: var(--icpay-background);
+      --icpay-bg-secondary: var(--icpay-secondary);
+      --icpay-bg-secondary-hover: var(--icpay-accent);
+      --icpay-bg-success: var(--icpay-success-bg);
+      --icpay-bg-error: var(--icpay-error-bg);
+      --icpay-border-primary: var(--icpay-border);
+      --icpay-border-secondary: var(--icpay-border);
+      --icpay-border-success: var(--icpay-success-border);
+      --icpay-border-error: var(--icpay-error-border);
+      --icpay-accent-primary: var(--icpay-primary);
+      --icpay-accent-success: var(--icpay-success-text);
+      --icpay-accent-error: var(--icpay-error-text);
 
       --icpay-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
       --icpay-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -97,21 +126,65 @@ export class ICPayProgressBar extends LitElement {
       --icpay-spacing-xl: 24px;
     }
 
+    :host([data-theme="dark"]) {
+      /* Dark mode (from COLOR_PALETTE.md) */
+      --icpay-background: hsl(222.2 84% 4.9%);
+      --icpay-foreground: hsl(210 40% 98%);
+      --icpay-muted-foreground: hsl(215 20.2% 65.1%);
+      --icpay-accent-foreground: hsl(210 40% 98%);
+      --icpay-primary: hsl(210 40% 98%);
+      --icpay-destructive: hsl(0 62.8% 30.6%);
+      --icpay-primary-foreground: hsl(222.2 47.4% 11.2%);
+      --icpay-secondary: hsl(217.2 32.6% 17.5%);
+      --icpay-secondary-foreground: hsl(210 40% 98%);
+      --icpay-accent: hsl(217.2 32.6% 17.5%);
+      --icpay-muted: hsl(217.2 32.6% 17.5%);
+      --icpay-border: hsl(217.2 32.6% 30%);
+      --icpay-input: hsl(217.2 32.6% 17.5%);
+      --icpay-ring: hsl(210 40% 98%);
+      --icpay-destructive-foreground: hsl(210 40% 98%);
+      
+      /* Status colors for dark mode */
+      --icpay-success-bg: rgba(16, 185, 129, 0.1);
+      --icpay-success-text: #34d399;
+      --icpay-success-border: rgba(16, 185, 129, 0.3);
+      --icpay-warning-bg: rgba(245, 158, 11, 0.1);
+      --icpay-warning-text: #fbbf24;
+      --icpay-warning-border: rgba(245, 158, 11, 0.3);
+      --icpay-error-bg: rgba(239, 68, 68, 0.1);
+      --icpay-error-text: #f87171;
+      --icpay-error-border: rgba(239, 68, 68, 0.3);
+      --icpay-processing-bg: rgba(59, 130, 246, 0.1);
+      --icpay-processing-text: #60a5fa;
+      --icpay-processing-border: rgba(59, 130, 246, 0.3);
+    }
+
     .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
       background: rgba(0, 0, 0, 0.5);
       backdrop-filter: blur(8px);
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 1000;
+      z-index: 99999 !important;
       opacity: 0;
       visibility: hidden;
       transition: opacity 0.3s ease, visibility 0.3s ease;
+      /* Ensure modal breaks out of any parent constraints */
+      transform: none !important;
+      will-change: opacity, visibility;
+      isolation: isolate;
+    }
+
+    @media (max-width: 768px) {
+      .modal-overlay {
+        align-items: flex-end;
+        justify-content: stretch;
+      }
     }
 
     .modal-content {
@@ -146,8 +219,8 @@ export class ICPayProgressBar extends LitElement {
     .wallet-option {
       width: 100%;
       padding: 12px 16px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: var(--icpay-secondary);
+      border: 1px solid var(--icpay-border);
       border-radius: 8px;
       display: flex;
       align-items: center;
@@ -158,15 +231,15 @@ export class ICPayProgressBar extends LitElement {
     }
 
     .wallet-option:hover {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.2);
+      background: var(--icpay-accent);
+      border-color: var(--icpay-border);
     }
 
     .wallet-icon {
       width: 48px;
       height: 48px;
       border-radius: 12px;
-      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      background: var(--icpay-primary);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -181,7 +254,7 @@ export class ICPayProgressBar extends LitElement {
     }
 
     .wallet-icon-placeholder {
-      color: #ffffff;
+      color: var(--icpay-primary-foreground);
       font-size: 12px;
       font-weight: bold;
     }
@@ -189,7 +262,7 @@ export class ICPayProgressBar extends LitElement {
     .wallet-label {
       font-weight: 500;
       font-size: 14px;
-      color: #ffffff;
+      color: var(--icpay-foreground);
     }
 
     .modal-overlay.active {
@@ -198,8 +271,8 @@ export class ICPayProgressBar extends LitElement {
     }
 
     .modal-container {
-      background: #1a1a1a;
-      border: 1px solid #333;
+      background: var(--icpay-background);
+      border: 1px solid var(--icpay-border);
       border-radius: 24px;
       padding: 24px;
       max-width: 420px;
@@ -211,6 +284,30 @@ export class ICPayProgressBar extends LitElement {
       position: relative;
       display: flex;
       flex-direction: column;
+      margin: auto;
+    }
+
+    @media (max-width: 768px) {
+      .modal-container {
+        max-width: 100%;
+        width: 100%;
+        height: 70vh;
+        max-height: 70vh;
+        border-radius: 24px 24px 0 0;
+        margin: 0;
+        transform: translateY(100%);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .modal-overlay.active .modal-container {
+        transform: translateY(0);
+      }
+      .progress-steps {
+        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
+      }
     }
 
     .modal-overlay.active .modal-container {
@@ -244,14 +341,14 @@ export class ICPayProgressBar extends LitElement {
       align-items:center;
       margin-bottom: 20px;
       padding-bottom: 20px;
-      border-bottom: 1px solid #333;
+      border-bottom: 1px solid var(--icpay-border);
       flex-shrink: 0;
     }
     .progress-title {
       font-size: 20px;
       font-weight: 600;
       margin: 0;
-      color: #ffffff;
+      color: var(--icpay-foreground);
       flex: 1;
       text-align: center;
       margin-right: 40px;
@@ -269,7 +366,7 @@ export class ICPayProgressBar extends LitElement {
     .step {
       width: 100%;
       padding: 16px;
-      background: #252525;
+      background: var(--icpay-secondary);
       border: none;
       border-radius: 12px;
       display: flex;
@@ -280,17 +377,17 @@ export class ICPayProgressBar extends LitElement {
       box-sizing: border-box;
     }
     .step.active {
-      background: #2a2a2a;
+      background: var(--icpay-accent);
     }
     .step.completed {
       opacity: 1;
-      background: #252525;
+      background: var(--icpay-secondary);
     }
 
     .step.error {
       opacity: 1;
-      background: rgba(239, 68, 68, 0.1);
-      border-color: rgba(239, 68, 68, 0.3);
+      background: var(--icpay-error-bg);
+      border: 1px solid var(--icpay-error-border);
     }
     .step-icon {
       width: 40px;
@@ -323,24 +420,24 @@ export class ICPayProgressBar extends LitElement {
     .step-title {
       font-weight: 500;
       font-size: 16px;
-      color: #ffffff;
+      color: var(--icpay-foreground);
       transition: color 0.3s ease;
       margin: 0;
     }
     .step-description {
       font-size: 14px;
-      color: #888;
+      color: var(--icpay-muted-foreground);
       margin: 0;
     }
 
     .step-error-message {
       font-size: 11px;
-      color: #fca5a5;
+      color: var(--icpay-error-text);
       margin-top: 4px;
       padding: 4px 8px;
-      background: rgba(239, 68, 68, 0.1);
+      background: var(--icpay-error-bg);
       border-radius: 4px;
-      border-left: 3px solid #ef4444;
+      border-left: 3px solid var(--icpay-error-text);
     }
     /* Spinner exactly like in design: wrapper + ::before ring */
     .spinner {
@@ -355,8 +452,8 @@ export class ICPayProgressBar extends LitElement {
       position: absolute;
       width: 100%;
       height: 100%;
-      border: 3px solid #333;
-      border-top: 3px solid #0066ff;
+      border: 3px solid var(--icpay-border);
+      border-top: 3px solid var(--icpay-primary);
       border-radius: 50%;
       animation: spin 1s linear infinite;
       box-sizing: border-box;
@@ -370,12 +467,12 @@ export class ICPayProgressBar extends LitElement {
       left: 0;
       width: 100%;
       height: 100%;
-      background-color: #10b981;
+      background-color: var(--icpay-success-text);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #ffffff;
+      color: var(--icpay-background);
       font-size: 24px;
       font-weight: bold;
       box-sizing: border-box;
@@ -386,11 +483,11 @@ export class ICPayProgressBar extends LitElement {
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      background-color: #f87171; /* pastel red */
+      background-color: var(--icpay-error-text);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #ffffff;
+      color: var(--icpay-background);
       font-size: 20px;
       font-weight: bold;
       box-sizing: border-box;
@@ -410,16 +507,16 @@ export class ICPayProgressBar extends LitElement {
       content: '';
       position: absolute;
       inset: 0;
-      border: 3px solid #333;
+      border: 3px solid var(--icpay-border);
       border-radius: 50%;
-      background: #252525;
+      background: var(--icpay-secondary);
       box-sizing: border-box;
     }
     .complete-icon svg {
       position: relative;
       width: 20px;
       height: 20px;
-      stroke: #ffffff;
+      stroke: var(--icpay-foreground);
       display: block;
     }
 
@@ -436,7 +533,7 @@ export class ICPayProgressBar extends LitElement {
       width: 64px;
       height: 64px;
       margin: 0 auto var(--icpay-spacing-lg);
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      background: var(--icpay-error-text);
       border-radius: var(--icpay-radius-xl);
       display: flex;
       align-items: center;
@@ -446,7 +543,7 @@ export class ICPayProgressBar extends LitElement {
     .error-icon-large svg {
       width: 32px;
       height: 32px;
-      stroke: var(--icpay-text-primary);
+      stroke: var(--icpay-background);
       stroke-width: 2;
     }
 
@@ -464,8 +561,8 @@ export class ICPayProgressBar extends LitElement {
     }
 
     .error-details {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
+      background: var(--icpay-error-bg);
+      border: 1px solid var(--icpay-error-border);
       border-radius: var(--icpay-radius-md);
       padding: var(--icpay-spacing-lg);
       margin-bottom: var(--icpay-spacing-xl);
@@ -506,7 +603,7 @@ export class ICPayProgressBar extends LitElement {
     }
 
     .payment-summary {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--icpay-secondary);
       border-radius: var(--icpay-radius-md);
       padding: var(--icpay-spacing-lg);
       margin-bottom: var(--icpay-spacing-lg);
@@ -520,8 +617,8 @@ export class ICPayProgressBar extends LitElement {
     }
 
     .error-notification {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid #f59e0b;
+      background: var(--icpay-warning-bg);
+      border: 1px solid var(--icpay-warning-border);
       border-radius: var(--icpay-radius-md);
       padding: var(--icpay-spacing-lg);
       margin-bottom: var(--icpay-spacing-xl);
@@ -541,7 +638,7 @@ export class ICPayProgressBar extends LitElement {
     .error-icon-small {
       width: 20px;
       height: 20px;
-      color: #f59e0b;
+      color: var(--icpay-warning-text);
       flex-shrink: 0;
     }
 
@@ -553,15 +650,15 @@ export class ICPayProgressBar extends LitElement {
     .error-text {
       font-size: 14px;
       font-weight: 500;
-      color: #f59e0b;
+      color: var(--icpay-warning-text);
     }
 
     .add-funds-btn {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: var(--icpay-secondary);
+      border: 1px solid var(--icpay-border);
       border-radius: var(--icpay-radius-sm);
       padding: 8px 16px;
-      color: var(--icpay-text-primary);
+      color: var(--icpay-foreground);
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
@@ -570,8 +667,8 @@ export class ICPayProgressBar extends LitElement {
     }
 
     .add-funds-btn:hover {
-      background: rgba(255, 255, 255, 0.15);
-      border-color: rgba(255, 255, 255, 0.3);
+      background: var(--icpay-accent);
+      border-color: var(--icpay-border);
     }
 
     .error-message {
@@ -609,7 +706,7 @@ export class ICPayProgressBar extends LitElement {
     .error-content p {
       margin: 0;
       font-size: 12px;
-      color: #fca5a5;
+      color: var(--icpay-error-text);
       line-height: 1.4;
     }
 
@@ -624,7 +721,7 @@ export class ICPayProgressBar extends LitElement {
       width: 64px;
       height: 64px;
       margin: 0 auto var(--icpay-spacing-lg);
-      background: var(--icpay-accent-success);
+      background: var(--icpay-success-text);
       border-radius: var(--icpay-radius-xl);
       display: flex;
       align-items: center;
@@ -633,17 +730,17 @@ export class ICPayProgressBar extends LitElement {
     .success-icon svg {
       width: 32px;
       height: 32px;
-      stroke: var(--icpay-text-primary);
+      stroke: var(--icpay-background);
       stroke-width: 2;
     }
     .success-title {
       font-size: 20px;
       font-weight: 600;
       margin-bottom: var(--icpay-spacing-sm);
-      color: var(--icpay-text-primary);
+      color: var(--icpay-foreground);
     }
     .success-message {
-      color: var(--icpay-text-secondary);
+      color: var(--icpay-muted-foreground);
       margin-bottom: 20px;
       font-size: 14px;
     }
@@ -665,23 +762,23 @@ export class ICPayProgressBar extends LitElement {
       gap: var(--icpay-spacing-sm);
     }
     .btn-primary {
-      background: var(--icpay-accent-primary);
-      color: var(--icpay-text-primary);
+      background: var(--icpay-primary);
+      color: var(--icpay-primary-foreground);
       border: none;
     }
     .btn-primary:hover {
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      opacity: 0.9;
     }
     .btn-secondary {
       background: transparent;
-      color: var(--icpay-text-secondary);
-      border: 1px solid var(--icpay-border-primary);
+      color: var(--icpay-muted-foreground);
+      border: 1px solid var(--icpay-border);
     }
     .btn-secondary:hover {
-      background: var(--icpay-bg-secondary);
-      border-color: var(--icpay-border-secondary);
-      color: var(--icpay-text-primary);
+      background: var(--icpay-secondary);
+      border-color: var(--icpay-border);
+      color: var(--icpay-foreground);
     }
 
     .confetti {
@@ -698,7 +795,7 @@ export class ICPayProgressBar extends LitElement {
       position: absolute;
       width: 8px;
       height: 8px;
-      background: #0066FF;
+      background: var(--icpay-primary);
       animation: confetti-fall 3s linear forwards;
     }
 
@@ -749,7 +846,20 @@ export class ICPayProgressBar extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
-    try { applyThemeVars(this, this.theme as any); } catch {}
+    try { 
+      applyThemeVars(this, this.theme as any);
+      // Also check document theme if theme prop is not provided
+      if (!this.theme && typeof document !== 'undefined') {
+        const docTheme = document.documentElement.getAttribute('data-icpay-theme') || 
+                        document.documentElement.getAttribute('data-theme');
+        if (docTheme === 'light' || docTheme === 'dark') {
+          this.setAttribute('data-theme', docTheme);
+        } else {
+          // Default to light mode if no theme is set
+          this.setAttribute('data-theme', 'light');
+        }
+      }
+    } catch {}
     this.currentSteps = [...this.steps];
 
     // Initialize dynamic values from properties
@@ -769,7 +879,20 @@ export class ICPayProgressBar extends LitElement {
 
   protected updated(changed: Map<string, unknown>): void {
     if (changed.has('theme')) {
-      try { applyThemeVars(this, this.theme as any); } catch {}
+      try { 
+        applyThemeVars(this, this.theme as any);
+        // Also check document theme if theme prop is not provided
+        if (!this.theme && typeof document !== 'undefined') {
+          const docTheme = document.documentElement.getAttribute('data-icpay-theme') || 
+                          document.documentElement.getAttribute('data-theme');
+          if (docTheme === 'light' || docTheme === 'dark') {
+            this.setAttribute('data-theme', docTheme);
+          } else {
+            // Default to light mode if no theme is set
+            this.setAttribute('data-theme', 'light');
+          }
+        }
+      } catch {}
     }
   }
 
@@ -1739,15 +1862,46 @@ export class ICPayProgressBar extends LitElement {
 
   private onWalletCancelled = (e: any) => {
     try {
+      // Check if any step beyond wallet connection has started (indicating actual payment transaction started)
+      // If only wallet step is active, it means user cancelled before connecting, so close the modal
+      const walletIdx = this.getStepIndexByKey('wallet');
+      const awaitIdx = this.getStepIndexByKey('await');
+      const transferIdx = this.getStepIndexByKey('transfer');
+      const verifyIdx = this.getStepIndexByKey('verify');
+      
+      // Check if any step after wallet (await, transfer, or verify) has progressed beyond pending
+      const hasPaymentStarted = this.currentSteps && this.currentSteps.length > 0 && 
+        this.currentSteps.some((step, idx) => {
+          // Check if any step after wallet is loading or completed
+          if (walletIdx >= 0 && idx > walletIdx) {
+            return step.status === 'loading' || step.status === 'completed';
+          }
+          return false;
+        });
+      
+      // Also check if wallet step itself has completed (meaning wallet was connected)
+      const walletStep = walletIdx >= 0 ? this.currentSteps[walletIdx] : null;
+      const walletWasConnected = walletStep?.status === 'completed';
+      
+      // If no payment transaction has started AND wallet wasn't connected, close the modal
+      if (!hasPaymentStarted && !walletWasConnected) {
+        this.open = false;
+        // Reset to initial state
+        this.activeIndex = 0;
+        this.currentSteps = this.currentSteps.map(step => ({ ...step, status: 'pending' as StepStatus }));
+        this.requestUpdate();
+        return;
+      }
+      
+      // Payment transaction has started OR wallet was connected, so show error state
       // Ensure the progress modal is visible if it was initiated
       this.open = true;
       // Mark the wallet step as error with cancelled tooltip
-      const idx = this.getStepIndexByKey('wallet');
-      if (idx >= 0) {
-        this.activeIndex = idx;
+      if (walletIdx >= 0) {
+        this.activeIndex = walletIdx;
         // Update tooltip and status
-        this.currentSteps[idx] = {
-          ...this.currentSteps[idx],
+        this.currentSteps[walletIdx] = {
+          ...this.currentSteps[walletIdx],
           tooltip: 'Wallet connection cancelled',
           status: 'error'
         } as Step;

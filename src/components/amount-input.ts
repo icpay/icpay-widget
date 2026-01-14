@@ -41,9 +41,9 @@ export class ICPayAmountInput extends LitElement {
     select { background: var(--icpay-surface-alt); border: 1px solid var(--icpay-border); color: var(--icpay-text); border-radius: 8px; padding: 10px; font-weight: 600; }
     .pay-button { width: 100%; }
     .error-message { border: 1px solid; font-weight: 500; }
-    .error-message.info { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.3); color: #3b82f6; }
-    .error-message.warning { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: #f59e0b; }
-    .error-message.error { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #ef4444; }
+    .error-message.info { background: var(--icpay-processing-bg); border-color: var(--icpay-processing-border); color: var(--icpay-processing-text); }
+    .error-message.warning { background: var(--icpay-warning-bg); border-color: var(--icpay-warning-border); color: var(--icpay-warning-text); }
+    .error-message.error { background: var(--icpay-error-bg); border-color: var(--icpay-error-border); color: var(--icpay-error-text); }
     .hint { font-size: 12px; color: var(--icpay-muted); margin-top: 6px; }
 
     @media (max-width: 520px) {
@@ -561,6 +561,7 @@ export class ICPayAmountInput extends LitElement {
             onSwitchAccount: () => this.onSwitchAccount(null),
             onSelect: (walletId: string) => this.connectWithWallet(walletId),
             onClose: () => { this.showWalletModal = false; this.oisyReadyToPay = false; try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-cancelled', { detail: { reason: 'user_cancelled' } })); } catch {} },
+            onDismiss: () => { this.showWalletModal = false; this.oisyReadyToPay = false; }, // Close without triggering cancellation events
             onCreditCard: ((this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true)) ? () => this.startOnramp() : undefined,
             creditCardLabel: this.config?.onramp?.creditCardLabel || 'Pay with credit card',
             showCreditCard: (this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true),
@@ -591,6 +592,9 @@ export class ICPayAmountInput extends LitElement {
           onBack: () => { this.showOnrampModal = false; this.showWalletModal = true; },
           title: 'Pay with credit card'
         })}
+        <div class="icpay-powered-by">
+          <a href="https://icpay.org" target="_blank" rel="noopener noreferrer">Powered by icpay</a>
+        </div>
       </div>
     `;
   }

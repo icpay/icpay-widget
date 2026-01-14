@@ -35,7 +35,7 @@ export class ICPayArticlePaywall extends LitElement {
   static styles = [baseStyles, css`
     .container { background: var(--icpay-surface-alt); border: 1px solid var(--icpay-border); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
     .title { color: var(--icpay-text); font-weight: 700; margin-bottom: 8px; }
-    .preview { color: var(--icpay-muted); margin-bottom: 12px; line-height: 1.6; }
+    .preview { color: var(--icpay-muted-foreground); margin-bottom: 12px; line-height: 1.6; }
     .locked { filter: blur(3px); color: #6b7280; margin-bottom: 12px; }
     .unlocked { filter: blur(0); color: var(--icpay-text); }
     .crypto-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0 16px; }
@@ -48,21 +48,21 @@ export class ICPayArticlePaywall extends LitElement {
     }
 
     .error-message.info {
-      background: rgba(59, 130, 246, 0.1);
-      border-color: rgba(59, 130, 246, 0.3);
-      color: #3b82f6;
+      background: var(--icpay-processing-bg);
+      border-color: var(--icpay-processing-border);
+      color: var(--icpay-processing-text);
     }
 
     .error-message.warning {
-      background: rgba(245, 158, 11, 0.1);
-      border-color: rgba(245, 158, 11, 0.3);
-      color: #f59e0b;
+      background: var(--icpay-warning-bg);
+      border-color: var(--icpay-warning-border);
+      color: var(--icpay-warning-text);
     }
 
     .error-message.error {
-      background: rgba(239, 68, 68, 0.1);
-      border-color: rgba(239, 68, 68, 0.3);
-      color: #ef4444;
+      background: var(--icpay-error-bg);
+      border-color: var(--icpay-error-border);
+      color: var(--icpay-error-text);
     }
   `];
 
@@ -587,6 +587,7 @@ export class ICPayArticlePaywall extends LitElement {
           onBack: () => { this.walletModalStep = 'connect'; },
             onSelect: (walletId: string) => this.connectWithWallet(walletId),
             onClose: () => { this.showWalletModal = false; this.oisyReadyToPay = false; try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-cancelled', { detail: { reason: 'user_cancelled' } })); } catch {} },
+            onDismiss: () => { this.showWalletModal = false; this.oisyReadyToPay = false; }, // Close without triggering cancellation events
             onCreditCard: ((this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true)) ? () => this.startOnramp() : undefined,
             creditCardLabel: this.config?.onramp?.creditCardLabel || 'Pay with credit card',
             showCreditCard: (this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true),
@@ -617,6 +618,9 @@ export class ICPayArticlePaywall extends LitElement {
           onBack: () => { this.showOnrampModal = false; this.showWalletModal = true; },
           title: 'Pay with credit card'
         })}
+        <div class="icpay-powered-by">
+          <a href="https://icpay.org" target="_blank" rel="noopener noreferrer">Powered by icpay</a>
+        </div>
       </div>
     `;
   }

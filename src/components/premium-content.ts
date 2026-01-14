@@ -67,21 +67,21 @@ export class ICPayPremiumContent extends LitElement {
     }
 
     .error-message.info {
-      background: rgba(59, 130, 246, 0.1);
-      border-color: rgba(59, 130, 246, 0.3);
-      color: #3b82f6;
+      background: var(--icpay-processing-bg);
+      border-color: var(--icpay-processing-border);
+      color: var(--icpay-processing-text);
     }
 
     .error-message.warning {
-      background: rgba(245, 158, 11, 0.1);
-      border-color: rgba(245, 158, 11, 0.3);
-      color: #f59e0b;
+      background: var(--icpay-warning-bg);
+      border-color: var(--icpay-warning-border);
+      color: var(--icpay-warning-text);
     }
 
     .error-message.error {
-      background: rgba(239, 68, 68, 0.1);
-      border-color: rgba(239, 68, 68, 0.3);
-      color: #ef4444;
+      background: var(--icpay-error-bg);
+      border-color: var(--icpay-error-border);
+      color: var(--icpay-error-text);
     }
   `];
 
@@ -114,6 +114,8 @@ export class ICPayPremiumContent extends LitElement {
   @state() private balancesError: string | null = null;
   @state() private walletBalances: WalletBalanceEntry[] = [];
   private sdk: WidgetSdk | null = null;
+  private onTransactionCompleted: EventListener | null = null;
+  private onUnlock: EventListener | null = null;
   private async tryAutoConnectPNP() {
     try {
       if (!this.config || this.config?.useOwnWallet) return;
@@ -158,6 +160,39 @@ export class ICPayPremiumContent extends LitElement {
         this.requestUpdate();
       }) as EventListener);
     } catch {}
+    // Unlock content when transaction completes
+    this.onTransactionCompleted = (() => {
+      this.unlocked = true;
+      this.succeeded = true;
+      this.processing = false;
+      // Dispatch unlock event for external listeners
+      try { window.dispatchEvent(new CustomEvent('icpay-unlock', { detail: { amount: this.config?.priceUsd, currency: this.selectedSymbol || 'ICP' } })); } catch {}
+      this.requestUpdate();
+    }) as EventListener;
+    try {
+      window.addEventListener('icpay-sdk-transaction-completed', this.onTransactionCompleted);
+    } catch {}
+    // Also listen for unlock event (in case it's dispatched elsewhere)
+    this.onUnlock = (() => {
+      this.unlocked = true;
+      this.succeeded = true;
+      this.processing = false;
+      this.requestUpdate();
+    }) as EventListener;
+    try {
+      window.addEventListener('icpay-unlock', this.onUnlock);
+    } catch {}
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    try { window.removeEventListener('icpay-switch-account', this.onSwitchAccount as EventListener); } catch {}
+    if (this.onTransactionCompleted) {
+      try { window.removeEventListener('icpay-sdk-transaction-completed', this.onTransactionCompleted); } catch {}
+    }
+    if (this.onUnlock) {
+      try { window.removeEventListener('icpay-unlock', this.onUnlock); } catch {}
+    }
   }
 
   protected updated(changed: Map<string, unknown>): void {
@@ -589,6 +624,7 @@ export class ICPayPremiumContent extends LitElement {
             onSwitchAccount: () => this.onSwitchAccount(null),
             onSelect: (walletId: string) => this.connectWithWallet(walletId),
             onClose: () => { this.showWalletModal = false; this.oisyReadyToPay = false; try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-cancelled', { detail: { reason: 'user_cancelled' } })); } catch {} },
+            onDismiss: () => { this.showWalletModal = false; this.oisyReadyToPay = false; }, // Close without triggering cancellation events
             onCreditCard: ((this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true)) ? () => this.startOnramp() : undefined,
             creditCardLabel: this.config?.onramp?.creditCardLabel || 'Pay with credit card',
             showCreditCard: (this.config?.onramp?.enabled !== false) && (this.config?.onrampDisabled !== true),
@@ -619,6 +655,9 @@ export class ICPayPremiumContent extends LitElement {
           onBack: () => { this.showOnrampModal = false; this.showWalletModal = true; },
           title: 'Pay with credit card'
         })}
+        <div class="icpay-powered-by">
+          <a href="https://icpay.org" target="_blank" rel="noopener noreferrer">Powered by icpay</a>
+        </div>
       </div>
     `;
   }

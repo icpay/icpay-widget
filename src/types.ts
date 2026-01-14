@@ -1,4 +1,5 @@
 export type ThemeConfig = {
+  mode?: 'light' | 'dark'; // Light or dark mode (default: 'dark')
   primaryColor?: string;
   secondaryColor?: string;
   accentColor?: string;
