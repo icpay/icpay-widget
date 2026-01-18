@@ -3,16 +3,19 @@ import type { WalletBalanceEntry } from '../../utils/balances';
 import { renderPayWithStyles, renderPayWithContent } from './shared/pay-with';
 
 // Helper to detect current theme mode
-function getThemeMode(): 'light' | 'dark' {
-  if (typeof document === 'undefined') return 'dark';
+function getThemeMode(themeOverride?: 'light' | 'dark'): 'light' | 'dark' {
+  // If theme is explicitly provided, use it
+  if (themeOverride === 'light' || themeOverride === 'dark') return themeOverride;
+  
+  if (typeof document === 'undefined') return 'light';
   // Check for ICPay-specific theme attribute first
   const icpayTheme = document.documentElement.getAttribute('data-icpay-theme');
   if (icpayTheme === 'light' || icpayTheme === 'dark') return icpayTheme;
   // Fallback to generic data-theme
   const theme = document.documentElement.getAttribute('data-theme');
   if (theme === 'light' || theme === 'dark') return theme;
-  // Default to dark
-  return 'dark';
+  // Default to light
+  return 'light';
 }
 
 type Options = {
@@ -22,12 +25,13 @@ type Options = {
   balances: WalletBalanceEntry[];
   onSelect: (symbol: string) => void;
   onClose: () => void;
+  theme?: 'light' | 'dark'; // Theme mode from widget config
 };
 
 export function renderWalletBalanceModal(opts: Options): TemplateResult | null {
   if (!opts.visible) return null as any;
 
-  const themeMode = getThemeMode();
+  const themeMode = getThemeMode(opts.theme);
   return html`
     <div class="icpay-modal-overlay" data-theme="${themeMode}" style="position:fixed !important;inset:0 !important;display:flex;align-items:center;justify-content:center;background:rgba(0, 0, 0, 0.5);z-index:99999 !important;transform:none !important;">
       <style>

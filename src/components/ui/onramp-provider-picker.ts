@@ -1,16 +1,19 @@
 import { html, TemplateResult } from 'lit';
 
 // Helper to detect current theme mode
-function getThemeMode(): 'light' | 'dark' {
-  if (typeof document === 'undefined') return 'dark';
+function getThemeMode(themeOverride?: 'light' | 'dark'): 'light' | 'dark' {
+  // If theme is explicitly provided, use it
+  if (themeOverride === 'light' || themeOverride === 'dark') return themeOverride;
+  
+  if (typeof document === 'undefined') return 'light';
   // Check for ICPay-specific theme attribute first
   const icpayTheme = document.documentElement.getAttribute('data-icpay-theme');
   if (icpayTheme === 'light' || icpayTheme === 'dark') return icpayTheme;
   // Fallback to generic data-theme
   const theme = document.documentElement.getAttribute('data-theme');
   if (theme === 'light' || theme === 'dark') return theme;
-  // Default to dark
-  return 'dark';
+  // Default to light
+  return 'light';
 }
 
 export type OnrampProviderItem = {
@@ -25,10 +28,11 @@ export function renderOnrampProviderPicker(opts: {
 	onSelect: (slug: string) => void;
 	onClose: () => void;
 	title?: string;
+	theme?: 'light' | 'dark'; // Theme mode from widget config
 }): TemplateResult | null {
 	if (!opts.visible) return null as any;
 	const providers = opts.providers || [];
-	const themeMode = getThemeMode();
+	const themeMode = getThemeMode(opts.theme);
 	return html`
 		<style>
 			/* Theme-aware color variables - Light mode defaults */

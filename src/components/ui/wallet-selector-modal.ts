@@ -5,7 +5,10 @@ import { formatTokenAmountThirdwebStyle } from '../../utils/format';
 import { renderPayWithStyles, renderPayWithContent } from './shared/pay-with';
 
 // Helper to detect current theme mode
-function getThemeMode(): 'light' | 'dark' {
+function getThemeMode(themeOverride?: 'light' | 'dark'): 'light' | 'dark' {
+  // If theme is explicitly provided, use it
+  if (themeOverride === 'light' || themeOverride === 'dark') return themeOverride;
+  
   if (typeof document === 'undefined') return 'light';
   // Check for ICPay-specific theme attribute first
   const icpayTheme = document.documentElement.getAttribute('data-icpay-theme');
@@ -58,6 +61,7 @@ type Options = {
   balancesError?: string | null;
   onSelectBalance?: (symbol: string) => void;
   onBack?: () => void;
+  theme?: 'light' | 'dark'; // Theme mode from widget config
 };
 
 export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boolean; onOisyPay?: () => void }): TemplateResult | null {
@@ -79,7 +83,7 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
       icon: w.icon ?? null,
     };
   });
-  const themeMode = getThemeMode();
+  const themeMode = getThemeMode(opts.theme);
   const handleOverlayClick = (e: MouseEvent) => {
     // Only close if clicking directly on the overlay, not on the modal content
     if (e.target === e.currentTarget) {
@@ -140,7 +144,7 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
           --icpay-secondary: hsl(217.2 32.6% 17.5%);
           --icpay-secondary-foreground: hsl(210 40% 98%);
           --icpay-accent: hsl(217.2 32.6% 17.5%);
-          --icpay-border: hsl(217.2 32.6% 30%);
+          --icpay-border: hsla(217.2 32.6% 30% / 0.15);
           --icpay-success-bg: rgba(16, 185, 129, 0.1);
           --icpay-success-text: #34d399;
           --icpay-success-border: rgba(16, 185, 129, 0.3);
@@ -176,15 +180,41 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
         }
         .modal { background-color:var(--icpay-background); border-radius:24px; width:100%; max-width:420px; padding:24px; color:var(--icpay-foreground); display:flex; flex-direction:column; border:1px solid var(--icpay-border); height:460px; margin:auto; transition:transform 0.3s ease; }
         @media (max-width: 768px) {
-          .modal { max-width:100%; width:100%; height:70vh; max-height:70vh; border-radius:24px 24px 0 0; margin:0; transform:translateY(100%); overflow:hidden; display:flex; flex-direction:column; }
-          .icpay-modal-overlay.active .modal,
-          .icpay-modal-overlay:not([style*="display: none"]) .modal { transform:translateY(0); }
-          .wallet-list { overflow-y:auto; flex:1; min-height:0; }
+          .icpay-modal-overlay {
+            align-items: flex-end;
+            justify-content: stretch;
+            padding: 0;
+          }
+          .modal { 
+            max-width:100%; 
+            width:100%; 
+            height:auto;
+            max-height:50vh; 
+            border-radius:24px 24px 0 0; 
+            margin:0; 
+            padding:16px;
+            transform:translateY(100%); 
+            overflow:hidden; 
+            display:flex; 
+            flex-direction:column;
+            transition:transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+            align-self: flex-end;
+          }
+          .icpay-modal-overlay:not([style*="display: none"]) .modal { 
+            transform:translateY(0); 
+          }
+          .wallet-list { 
+            overflow-y:auto; 
+            flex:1; 
+            min-height:0; 
+            max-height:calc(50vh - 120px); /* Account for header, footer, and padding */
+          }
         }
-        .header { display:flex; align-items:center; margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid var(--icpay-border); flex-shrink:0; }
-        .back-button { background:none; border:none; color:var(--icpay-foreground); font-size:24px; cursor:pointer; padding:0; margin-right:16px; }
-        .title { font-size:20px; font-weight:600; flex:1; text-align:center; margin-right:40px; }
-        .wallet-list { display:flex; flex-direction:column; gap:0; overflow-y:auto; flex:1; padding-right:8px; scrollbar-gutter: stable; }
+        .header { display:flex; align-items:center; justify-content:center; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--icpay-border); flex-shrink:0; position:relative; }
+        .close-button { background:none; border:none; color:var(--icpay-foreground); font-size:20px; cursor:pointer; padding:4px; margin:0; line-height:1; opacity:0.7; transition:opacity 0.2s; position:absolute; right:0; }
+        .close-button:hover { opacity:1; }
+        .title { font-size:20px; font-weight:600; text-align:center; margin:0; }
+        .wallet-list { display:flex; flex-direction:column; gap:0; overflow-y:auto; flex:1; padding-right:8px; padding-top:4px; scrollbar-gutter: stable; }
         .wallet-item { display:flex; align-items:center; padding:16px 12px; cursor:pointer; transition:background-color 0.2s; border-radius:12px; }
         .wallet-item:hover { background-color:var(--icpay-accent); }
         .wallet-icon { width:48px; height:48px; border-radius:12px; margin-right:16px; display:flex; align-items:center; justify-content:center; font-size:24px; overflow:hidden; }
@@ -211,8 +241,8 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
           })}
         ` : html`
           <div class="header">
-            <button class="back-button" @click=${() => { try { onClose(); } catch {} }}>‹</button>
             <h1 class="title">Connect</h1>
+            <button class="close-button" @click=${() => { try { onClose(); } catch {} }} aria-label="Close">×</button>
           </div>
           <div class="wallet-list">
             ${opts.showCreditCard && opts.onCreditCard ? html`

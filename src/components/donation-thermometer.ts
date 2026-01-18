@@ -587,6 +587,7 @@ export class ICPayDonationThermometer extends LitElement {
         ${(() => {
           const walletsRaw = (this as any).pnp?.getEnabledWallets?.() || [];
           const wallets = (buildWalletEntries as any)(walletsRaw);
+          const themeMode = this.config?.theme ? (typeof this.config.theme === 'string' ? this.config.theme : (this.config.theme.mode || 'light')) : undefined;
           return renderWalletSelectorModal({
             visible: !!(this.showWalletModal && this.pnp),
             wallets,
@@ -608,29 +609,37 @@ export class ICPayDonationThermometer extends LitElement {
               const min = 5; const amt = Number(this.selectedAmount || this.config?.defaultAmountUsd || 0); if (amt > 0 && amt < min && ((this.config?.onramp?.enabled === true) && (this.config?.onrampDisabled !== true))) { const d = (min - amt).toFixed(2); return `Note: Minimum card amount is $${min}. You will pay about $${d} more.`; } return null;
             })(),
             oisyReadyToPay: this.oisyReadyToPay,
-            onOisyPay: () => { this.showWalletModal = false; this.oisyReadyToPay = false; this.donate(); }
+            onOisyPay: () => { this.showWalletModal = false; this.oisyReadyToPay = false; this.donate(); },
+            theme: themeMode
           });
         })()}
 
-        ${renderWalletBalanceModal({
-          visible: this.showBalanceModal,
-          isLoading: this.balancesLoading,
-          error: this.balancesError,
-          balances: this.walletBalances as any,
-          onSelect: (s: string) => this.onSelectBalanceSymbol(s),
-          onClose: () => { this.showBalanceModal = false; },
-        })}
+        ${(() => {
+          const themeMode = this.config?.theme ? (typeof this.config.theme === 'string' ? this.config.theme : (this.config.theme.mode || 'light')) : undefined;
+          return html`
+            ${renderWalletBalanceModal({
+              visible: this.showBalanceModal,
+              isLoading: this.balancesLoading,
+              error: this.balancesError,
+              balances: this.walletBalances as any,
+              onSelect: (s: string) => this.onSelectBalanceSymbol(s),
+              onClose: () => { this.showBalanceModal = false; },
+              theme: themeMode
+            })}
 
-        ${renderOnrampModal({
-          visible: this.showOnrampModal,
-          url: this.onrampUrl || undefined,
-          errorMessage: this.onrampErrorMessage || undefined,
-          width: this.config?.onramp?.width,
-          height: this.config?.onramp?.height,
-          onClose: () => { this.showOnrampModal = false; },
-          onBack: () => { this.showOnrampModal = false; this.showWalletModal = true; },
-          title: 'Pay with credit card'
-        })}
+            ${renderOnrampModal({
+              visible: this.showOnrampModal,
+              url: this.onrampUrl || undefined,
+              errorMessage: this.onrampErrorMessage || undefined,
+              width: this.config?.onramp?.width,
+              height: this.config?.onramp?.height,
+              onClose: () => { this.showOnrampModal = false; },
+              onBack: () => { this.showOnrampModal = false; this.showWalletModal = true; },
+              title: 'Pay with credit card',
+              theme: themeMode
+            })}
+          `;
+        })()}
         <div class="icpay-powered-by">
           <a href="https://icpay.org" target="_blank" rel="noopener noreferrer">Powered by icpay</a>
         </div>
