@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { baseStyles } from '../styles';
+import { baseStyles, applyThemeVars } from '../styles';
 import { handleWidgetError, getErrorMessage, shouldShowErrorToUser, getErrorAction, getErrorSeverity, ErrorSeverity } from '../error-handling';
 import type { PayButtonConfig } from '../types';
 import { renderOnrampModal } from './ui/onramp-modal';
@@ -85,6 +85,10 @@ export class ICPayPayButton extends LitElement {
     super.connectedCallback();
     if (!isBrowser) return;
     debugLog(this.config?.debug || false, 'Pay button connected', { config: this.config });
+    // Apply theme
+    if (this.config?.theme) {
+      applyThemeVars(this, this.config.theme);
+    }
     // No ledger preload; balances flow handles token availability
     // selectedSymbol will be set from balance selection flow
     try { window.addEventListener('icpay-switch-account', this.onSwitchAccount as EventListener); } catch {}
@@ -100,6 +104,10 @@ export class ICPayPayButton extends LitElement {
   }
 
   protected updated(changed: Map<string, unknown>): void {
+    // Apply theme when config changes
+    if (changed.has('config') && this.config?.theme) {
+      applyThemeVars(this, this.config.theme);
+    }
     if (changed.has('config') && this.pendingAction && this.config?.actorProvider) {
       const action = this.pendingAction as 'pay';
       // Always emit wallet-connected for progress bar
@@ -497,6 +505,7 @@ export class ICPayPayButton extends LitElement {
     const showTooltip = onrampEnabled && amountUsd > 0 && amountUsd < minOnramp;
     const diff = Math.max(0, minOnramp - amountUsd);
     const tooltip = showTooltip ? `Note: Minimum card amount is $${minOnramp}. You will pay about $${diff.toFixed(2)} more.` : null;
+    const themeMode = this.config?.theme ? (typeof this.config.theme === 'string' ? this.config.theme : (this.config.theme.mode || 'light')) : undefined;
     return renderWalletSelectorModal({
       visible: this.showWalletModal,
       wallets,
@@ -524,7 +533,8 @@ export class ICPayPayButton extends LitElement {
         this.skipDisconnectOnce = true;
         this.oisyReadyToPay = false;
         this.pay(); // Trigger pay within same user gesture
-      }
+      },
+      theme: themeMode
     });
   }
 
@@ -742,39 +752,47 @@ export class ICPayPayButton extends LitElement {
           </div>
         ` : ''}
         ${this.renderWalletModal()}
-        ${renderWalletBalanceModal({
-          visible: this.showBalanceModal,
-          isLoading: this.balancesLoading,
-          error: this.balancesError,
-          balances: this.walletBalances,
-          onSelect: (s: string) => this.onSelectBalanceSymbol(s),
-          onClose: () => { this.showBalanceModal = false; },
-        })}
-        ${renderOnrampModal({
-          visible: this.showOnrampModal,
-          url: this.onrampUrl || undefined,
-          errorMessage: this.onrampErrorMessage || undefined,
-          width: this.config?.onramp?.width,
-          height: this.config?.onramp?.height,
-          onClose: () => { this.showOnrampModal = false; },
-          onBack: () => { this.showOnrampModal = false; this.showWalletModal = true; },
-          title: 'Pay with credit card'
-        })}
-        ${renderOnrampProviderPicker({
-          visible: this.showProviderPicker,
-          providers: (() => {
-            const list = Array.isArray(this.config?.onramp?.providers) ? (this.config!.onramp!.providers!.filter(p => p && (p.enabled !== false))) : [];
-            const src = list.length ? list : [{ slug: 'coinbase', name: 'Coinbase', enabled: true }];
-            return src.map(p => ({ slug: p.slug, name: p.name || (p.slug === 'coinbase' ? 'Coinbase' : p.slug), logoUrl: (p as any).logoUrl || null }));
-          })(),
-          onSelect: (slug: string) => {
-            this.selectedOnrampProvider = slug;
-            this.showProviderPicker = false;
-            setTimeout(() => this.createOnrampIntent(), 0);
-          },
-          onClose: () => { this.showProviderPicker = false; },
-          title: 'Choose onramp provider'
-        })}
+        ${(() => {
+          const themeMode = this.config?.theme ? (typeof this.config.theme === 'string' ? this.config.theme : (this.config.theme.mode || 'light')) : undefined;
+          return html`
+            ${renderWalletBalanceModal({
+              visible: this.showBalanceModal,
+              isLoading: this.balancesLoading,
+              error: this.balancesError,
+              balances: this.walletBalances,
+              onSelect: (s: string) => this.onSelectBalanceSymbol(s),
+              onClose: () => { this.showBalanceModal = false; },
+              theme: themeMode
+            })}
+            ${renderOnrampModal({
+              visible: this.showOnrampModal,
+              url: this.onrampUrl || undefined,
+              errorMessage: this.onrampErrorMessage || undefined,
+              width: this.config?.onramp?.width,
+              height: this.config?.onramp?.height,
+              onClose: () => { this.showOnrampModal = false; },
+              onBack: () => { this.showOnrampModal = false; this.showWalletModal = true; },
+              title: 'Pay with credit card',
+              theme: themeMode
+            })}
+            ${renderOnrampProviderPicker({
+              visible: this.showProviderPicker,
+              providers: (() => {
+                const list = Array.isArray(this.config?.onramp?.providers) ? (this.config!.onramp!.providers!.filter(p => p && (p.enabled !== false))) : [];
+                const src = list.length ? list : [{ slug: 'coinbase', name: 'Coinbase', enabled: true }];
+                return src.map(p => ({ slug: p.slug, name: p.name || (p.slug === 'coinbase' ? 'Coinbase' : p.slug), logoUrl: (p as any).logoUrl || null }));
+              })(),
+              onSelect: (slug: string) => {
+                this.selectedOnrampProvider = slug;
+                this.showProviderPicker = false;
+                setTimeout(() => this.createOnrampIntent(), 0);
+              },
+              onClose: () => { this.showProviderPicker = false; },
+              title: 'Choose onramp provider',
+              theme: themeMode
+            })}
+          `;
+        })()}
         <div class="icpay-powered-by">
           <a href="https://icpay.org" target="_blank" rel="noopener noreferrer">Powered by icpay</a>
         </div>

@@ -842,23 +842,26 @@ export class ICPayProgressBar extends LitElement {
   @state() private isTransitioning = false;
   @state() private isOnrampFlow = false;
 
-  @property({ type: Object }) theme?: { primaryColor?: string; secondaryColor?: string };
+  @property({ type: Object }) theme?: 'light' | 'dark' | { mode?: 'light' | 'dark'; primaryColor?: string; secondaryColor?: string };
 
   connectedCallback(): void {
     super.connectedCallback();
     try { 
       applyThemeVars(this, this.theme as any);
-      // Also check document theme if theme prop is not provided
-      if (!this.theme && typeof document !== 'undefined') {
+      // Extract theme mode from theme prop
+      let themeMode: 'light' | 'dark' = 'light';
+      if (typeof this.theme === 'string') {
+        themeMode = this.theme;
+      } else if (this.theme && typeof this.theme === 'object' && this.theme.mode) {
+        themeMode = this.theme.mode;
+      } else if (typeof document !== 'undefined') {
         const docTheme = document.documentElement.getAttribute('data-icpay-theme') || 
                         document.documentElement.getAttribute('data-theme');
         if (docTheme === 'light' || docTheme === 'dark') {
-          this.setAttribute('data-theme', docTheme);
-        } else {
-          // Default to light mode if no theme is set
-          this.setAttribute('data-theme', 'light');
+          themeMode = docTheme;
         }
       }
+      this.setAttribute('data-theme', themeMode);
     } catch {}
     this.currentSteps = [...this.steps];
 
@@ -881,17 +884,20 @@ export class ICPayProgressBar extends LitElement {
     if (changed.has('theme')) {
       try { 
         applyThemeVars(this, this.theme as any);
-        // Also check document theme if theme prop is not provided
-        if (!this.theme && typeof document !== 'undefined') {
+        // Extract theme mode from theme prop
+        let themeMode: 'light' | 'dark' = 'light';
+        if (typeof this.theme === 'string') {
+          themeMode = this.theme;
+        } else if (this.theme && typeof this.theme === 'object' && this.theme.mode) {
+          themeMode = this.theme.mode;
+        } else if (typeof document !== 'undefined') {
           const docTheme = document.documentElement.getAttribute('data-icpay-theme') || 
                           document.documentElement.getAttribute('data-theme');
           if (docTheme === 'light' || docTheme === 'dark') {
-            this.setAttribute('data-theme', docTheme);
-          } else {
-            // Default to light mode if no theme is set
-            this.setAttribute('data-theme', 'light');
+            themeMode = docTheme;
           }
         }
+        this.setAttribute('data-theme', themeMode);
       } catch {}
     }
   }

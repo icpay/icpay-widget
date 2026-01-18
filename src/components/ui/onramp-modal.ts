@@ -1,16 +1,19 @@
 import { html, TemplateResult } from 'lit';
 
 // Helper to detect current theme mode
-function getThemeMode(): 'light' | 'dark' {
-  if (typeof document === 'undefined') return 'dark';
+function getThemeMode(themeOverride?: 'light' | 'dark'): 'light' | 'dark' {
+  // If theme is explicitly provided, use it
+  if (themeOverride === 'light' || themeOverride === 'dark') return themeOverride;
+  
+  if (typeof document === 'undefined') return 'light';
   // Check for ICPay-specific theme attribute first
   const icpayTheme = document.documentElement.getAttribute('data-icpay-theme');
   if (icpayTheme === 'light' || icpayTheme === 'dark') return icpayTheme;
   // Fallback to generic data-theme
   const theme = document.documentElement.getAttribute('data-theme');
   if (theme === 'light' || theme === 'dark') return theme;
-  // Default to dark
-  return 'dark';
+  // Default to light
+  return 'light';
 }
 
 export type OnrampModalOptions = {
@@ -22,6 +25,7 @@ export type OnrampModalOptions = {
 	onClose: () => void;
 	onBack?: () => void;
 	title?: string;
+	theme?: 'light' | 'dark'; // Theme mode from widget config
 };
 
 export function renderOnrampModal(opts: OnrampModalOptions): TemplateResult | null {
@@ -29,7 +33,7 @@ export function renderOnrampModal(opts: OnrampModalOptions): TemplateResult | nu
 	const width = opts.width ?? 420;
 	const height = opts.height ?? 680;
 	const hasUrl = typeof opts.url === 'string' && (opts.url || '').startsWith('http');
-	const themeMode = getThemeMode();
+	const themeMode = getThemeMode(opts.theme);
 	return html`
 		<style>
 			/* Theme-aware color variables - Light mode defaults */

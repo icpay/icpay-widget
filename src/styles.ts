@@ -116,7 +116,7 @@ export const baseStyles = css`
     width: 100%;
     background: var(--icpay-foreground);
     color: var(--icpay-background);
-    border: 1px solid var(--icpay-border);
+    border: none;
     border-radius: 16px;
     padding: 16px;
     font-size: 16px;
@@ -124,6 +124,10 @@ export const baseStyles = css`
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: none;
+  }
+
+  :host([data-theme="dark"]) .pay-button {
+    border: 1px solid var(--icpay-border);
   }
 
   .pay-button:hover {
@@ -145,31 +149,38 @@ export const baseStyles = css`
 `;
 
 
-export function applyThemeVars(host: HTMLElement, theme?: ThemeConfig | null): void {
+// Helper to extract theme mode from config (handles both string and object formats)
+export function getThemeModeFromConfig(theme?: 'light' | 'dark' | ThemeConfig | null): 'light' | 'dark' {
+  if (typeof theme === 'string') {
+    return theme;
+  } else if (theme && typeof theme === 'object' && theme.mode) {
+    return theme.mode;
+  }
+  return 'light'; // Default to light
+}
+
+export function applyThemeVars(host: HTMLElement, theme?: 'light' | 'dark' | ThemeConfig | null): void {
   if (!host) return;
   
-  // Determine mode: use theme.mode, or check document, or default to 'light'
+  // Normalize theme: handle both string ('light' | 'dark') and ThemeConfig object formats
+  let themeConfig: ThemeConfig | null = null;
   let mode: 'light' | 'dark' = 'light';
-  if (theme?.mode) {
-    mode = theme.mode;
+  
+  if (typeof theme === 'string') {
+    // Simple string format: theme = 'light' or 'dark'
+    mode = theme;
+    themeConfig = { mode };
+  } else if (theme && typeof theme === 'object') {
+    // ThemeConfig object format
+    themeConfig = theme;
+    mode = theme.mode || 'light';
   } else if (typeof document !== 'undefined') {
+    // Fallback to document theme if no theme provided
     const docTheme = document.documentElement.getAttribute('data-icpay-theme') || 
                     document.documentElement.getAttribute('data-theme');
     if (docTheme === 'light' || docTheme === 'dark') {
       mode = docTheme;
     }
-  }
-  
-  if (!theme) {
-    // If no theme config provided, just set the mode attribute
-    if (host instanceof HTMLElement) {
-      host.setAttribute('data-theme', mode);
-    }
-    if (typeof document !== 'undefined' && document.documentElement) {
-      document.documentElement.setAttribute('data-icpay-theme', mode);
-      document.documentElement.style.setProperty('--icpay-theme-mode', mode);
-    }
-    return;
   }
   
   // Set data-theme attribute for CSS variable inheritance
@@ -186,23 +197,28 @@ export function applyThemeVars(host: HTMLElement, theme?: ThemeConfig | null): v
     root.style.setProperty('--icpay-theme-mode', mode);
   }
   
+  if (!themeConfig) {
+    // If no theme config provided, just set the mode attribute (already done above)
+    return;
+  }
+  
   const set = (k: string, v?: string) => { if (v) host.style.setProperty(k, v); };
   
   // Apply custom colors if provided
-  if (theme.primaryColor) set('--icpay-primary', theme.primaryColor);
-  if (theme.secondaryColor) set('--icpay-secondary', theme.secondaryColor);
-  if (theme.accentColor) set('--icpay-accent', theme.accentColor);
-  if (theme.textColor) set('--icpay-foreground', theme.textColor);
-  if (theme.mutedTextColor) set('--icpay-muted-foreground', theme.mutedTextColor);
-  if (theme.surfaceColor) set('--icpay-background', theme.surfaceColor);
-  if (theme.surfaceAltColor) set('--icpay-secondary', theme.surfaceAltColor);
-  if (theme.borderColor) set('--icpay-border', theme.borderColor);
-  if (theme.fontFamily) set('--icpay-font', theme.fontFamily);
+  if (themeConfig.primaryColor) set('--icpay-primary', themeConfig.primaryColor);
+  if (themeConfig.secondaryColor) set('--icpay-secondary', themeConfig.secondaryColor);
+  if (themeConfig.accentColor) set('--icpay-accent', themeConfig.accentColor);
+  if (themeConfig.textColor) set('--icpay-foreground', themeConfig.textColor);
+  if (themeConfig.mutedTextColor) set('--icpay-muted-foreground', themeConfig.mutedTextColor);
+  if (themeConfig.surfaceColor) set('--icpay-background', themeConfig.surfaceColor);
+  if (themeConfig.surfaceAltColor) set('--icpay-secondary', themeConfig.surfaceAltColor);
+  if (themeConfig.borderColor) set('--icpay-border', themeConfig.borderColor);
+  if (themeConfig.fontFamily) set('--icpay-font', themeConfig.fontFamily);
   
   // Legacy compatibility
-  if (theme.textColor) set('--icpay-text', theme.textColor);
-  if (theme.mutedTextColor) set('--icpay-muted', theme.mutedTextColor);
-  if (theme.surfaceAltColor) set('--icpay-surface-alt', theme.surfaceAltColor);
+  if (themeConfig.textColor) set('--icpay-text', themeConfig.textColor);
+  if (themeConfig.mutedTextColor) set('--icpay-muted', themeConfig.mutedTextColor);
+  if (themeConfig.surfaceAltColor) set('--icpay-surface-alt', themeConfig.surfaceAltColor);
 }
 
 

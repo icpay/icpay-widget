@@ -68,7 +68,8 @@ export type CommonConfig = {
   connectedWallet?: any;
   useOwnWallet?: boolean; // If true, widget will not handle wallet connection
   plugNPlay?: PlugNPlayConfig; // Configuration for built-in Plug N Play
-  theme?: ThemeConfig;
+  // Theme: can be a simple string ('light' | 'dark') or a ThemeConfig object for advanced customization
+  theme?: 'light' | 'dark' | ThemeConfig;
   debug?: boolean; // Enable debug logging for both widget and SDK
   progressBar?: ProgressBarConfig; // Progress bar settings
   // If true, disable the payment button manually
