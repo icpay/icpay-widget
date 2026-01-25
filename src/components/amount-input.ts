@@ -302,8 +302,18 @@ export class ICPayAmountInput extends LitElement {
               });
               this.showBalanceModal = false;
               return;
-            } catch {
-              // fall back to normal flow
+            } catch (e) {
+              // fall back to normal flow, but surface error if user should see it
+              handleWidgetError(e, {
+                onError: (error) => {
+                  this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
+                  if (shouldShowErrorToUser(error)) {
+                    this.errorMessage = getErrorMessage(error);
+                    this.errorSeverity = getErrorSeverity(error);
+                    this.errorAction = getErrorAction(error);
+                  }
+                }
+              });
             }
           }
           await (sdk.client as any).createPaymentUsd({
@@ -315,8 +325,19 @@ export class ICPayAmountInput extends LitElement {
               icpay_ledger_id: sel?.ledgerId
             },
             recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
+          }).catch((err: any) => { throw err; });
+        } catch (e) {
+          handleWidgetError(e, {
+            onError: (error) => {
+              this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
+              if (shouldShowErrorToUser(error)) {
+                this.errorMessage = getErrorMessage(error);
+                this.errorSeverity = getErrorSeverity(error);
+                this.errorAction = getErrorAction(error);
+              }
+            }
           });
-        } catch {}
+        }
         this.showBalanceModal = false;
       });
       return;
@@ -352,8 +373,18 @@ export class ICPayAmountInput extends LitElement {
               recipientAddress: (chosen || ''),
             });
             return;
-          } catch {
-            // Do not fallback to normal flow for Solana x402
+          } catch (e) {
+            // Do not fallback to normal flow for Solana x402; surface error
+            handleWidgetError(e, {
+              onError: (error) => {
+                this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
+                if (shouldShowErrorToUser(error)) {
+                  this.errorMessage = getErrorMessage(error);
+                  this.errorSeverity = getErrorSeverity(error);
+                  this.errorAction = getErrorAction(error);
+                }
+              }
+            });
             return;
           }
         }
@@ -369,8 +400,19 @@ export class ICPayAmountInput extends LitElement {
           }
           },
           recipientAddress: chosen || '0x0000000000000000000000000000000000000000',
+        }).catch((err: any) => { throw err; });
+      } catch (e) {
+        handleWidgetError(e, {
+          onError: (error) => {
+            this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
+            if (shouldShowErrorToUser(error)) {
+              this.errorMessage = getErrorMessage(error);
+              this.errorSeverity = getErrorSeverity(error);
+              this.errorAction = getErrorAction(error);
+            }
+          }
         });
-      } catch {}
+      }
     }
   };
 

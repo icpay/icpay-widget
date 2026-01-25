@@ -421,8 +421,19 @@ export class ICPayPayButton extends LitElement {
               }
             },
             recipientAddress: evmDest2,
+          }).catch((err: any) => { throw err; });
+        } catch (e) {
+          handleWidgetError(e, {
+            onError: (error) => {
+              this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
+              if (shouldShowErrorToUser(error)) {
+                this.errorMessage = getErrorMessage(error);
+                this.errorSeverity = getErrorSeverity(error);
+                this.errorAction = getErrorAction(error);
+              }
+            }
           });
-        } catch {}
+        }
       });
       return;
     }
@@ -489,8 +500,19 @@ export class ICPayPayButton extends LitElement {
             }
           },
           recipientAddress: chosen || '0x0000000000000000000000000000000000000000',
+        }).catch((err: any) => { throw err; });
+      } catch (e) {
+        handleWidgetError(e, {
+          onError: (error) => {
+            this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
+            if (shouldShowErrorToUser(error)) {
+              this.errorMessage = getErrorMessage(error);
+              this.errorSeverity = getErrorSeverity(error);
+              this.errorAction = getErrorAction(error);
+            }
+          }
         });
-      } catch {}
+      }
     }
   };
 

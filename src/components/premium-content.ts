@@ -516,7 +516,19 @@ export class ICPayPremiumContent extends LitElement {
                 recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
               });
               return;
-            } catch { /* fallback */ }
+            } catch (e) {
+              // Surface x402 error but allow fallback
+              handleWidgetError(e, {
+                onError: (error) => {
+                  this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
+                  if (shouldShowErrorToUser(error)) {
+                    this.errorMessage = getErrorMessage(error);
+                    this.errorSeverity = getErrorSeverity(error);
+                    this.errorAction = getErrorAction(error);
+                  }
+                }
+              });
+            }
           }
           await (sdk.client as any).createPaymentUsd({
             usdAmount: amountUsd,
@@ -530,8 +542,19 @@ export class ICPayPremiumContent extends LitElement {
               }
             },
             recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
+          }).catch((err: any) => { throw err; });
+        } catch (e) {
+          handleWidgetError(e, {
+            onError: (error) => {
+              this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
+              if (shouldShowErrorToUser(error)) {
+                this.errorMessage = getErrorMessage(error);
+                this.errorSeverity = getErrorSeverity(error);
+                this.errorAction = getErrorAction(error);
+              }
+            }
           });
-        } catch {}
+        }
       });
       return;
     }
@@ -566,8 +589,18 @@ export class ICPayPremiumContent extends LitElement {
               recipientAddress: chosen || '',
             });
             return;
-          } catch {
-            // No fallback to normal flow for Solana x402
+          } catch (e) {
+            // No fallback to normal flow for Solana x402; surface error
+            handleWidgetError(e, {
+              onError: (error) => {
+                this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
+                if (shouldShowErrorToUser(error)) {
+                  this.errorMessage = getErrorMessage(error);
+                  this.errorSeverity = getErrorSeverity(error);
+                  this.errorAction = getErrorAction(error);
+                }
+              }
+            });
             return;
           }
         }
@@ -583,8 +616,19 @@ export class ICPayPremiumContent extends LitElement {
             }
           },
           recipientAddress: chosen || '0x0000000000000000000000000000000000000000',
+        }).catch((err: any) => { throw err; });
+      } catch (e) {
+        handleWidgetError(e, {
+          onError: (error) => {
+            this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
+            if (shouldShowErrorToUser(error)) {
+              this.errorMessage = getErrorMessage(error);
+              this.errorSeverity = getErrorSeverity(error);
+              this.errorAction = getErrorAction(error);
+            }
+          }
         });
-      } catch {}
+      }
     }
   };
 

@@ -473,7 +473,18 @@ export class ICPayDonationThermometer extends LitElement {
               });
               this.showBalanceModal = false;
               return;
-            } catch {}
+            } catch (e) {
+              handleWidgetError(e, {
+                onError: (error) => {
+                  this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
+                  if (shouldShowErrorToUser(error)) {
+                    this.errorMessage = getErrorMessage(error);
+                    this.errorSeverity = getErrorSeverity(error);
+                    this.errorAction = getErrorAction(error);
+                  }
+                }
+              });
+            }
           }
           await (sdk.client as any).createPaymentUsd({
             usdAmount: amountUsd,
@@ -484,8 +495,19 @@ export class ICPayDonationThermometer extends LitElement {
               icpay_ledger_id: sel?.ledgerId
             },
             recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
+          }).catch((err: any) => { throw err; });
+        } catch (e) {
+          handleWidgetError(e, {
+            onError: (error) => {
+              this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
+              if (shouldShowErrorToUser(error)) {
+                this.errorMessage = getErrorMessage(error);
+                this.errorSeverity = getErrorSeverity(error);
+                this.errorAction = getErrorAction(error);
+              }
+            }
           });
-        } catch {}
+        }
         this.showBalanceModal = false;
       });
       return;
@@ -518,8 +540,18 @@ export class ICPayDonationThermometer extends LitElement {
               recipientAddress: chosen || '',
             });
             return;
-          } catch {
-            // No fallback to normal flow for Solana x402
+          } catch (e) {
+            // No fallback to normal flow for Solana x402; surface error
+            handleWidgetError(e, {
+              onError: (error) => {
+                this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
+                if (shouldShowErrorToUser(error)) {
+                  this.errorMessage = getErrorMessage(error);
+                  this.errorSeverity = getErrorSeverity(error);
+                  this.errorAction = getErrorAction(error);
+                }
+              }
+            });
             return;
           }
         }
@@ -535,8 +567,19 @@ export class ICPayDonationThermometer extends LitElement {
           }
           },
           recipientAddress: chosen || '0x0000000000000000000000000000000000000000',
+        }).catch((err: any) => { throw err; });
+      } catch (e) {
+        handleWidgetError(e, {
+          onError: (error) => {
+            this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
+            if (shouldShowErrorToUser(error)) {
+              this.errorMessage = getErrorMessage(error);
+              this.errorSeverity = getErrorSeverity(error);
+              this.errorAction = getErrorAction(error);
+            }
+          }
         });
-      } catch {}
+      }
     }
   };
 
