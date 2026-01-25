@@ -85,7 +85,33 @@ export const ERROR_MESSAGES = {
 
 // Get user-friendly error message
 export function getErrorMessage(error: IcpayError): string {
-  return ERROR_MESSAGES[error.code] || error.message || 'An error occurred';
+  // Prefer server-provided structured messages if present
+  const details: any = (error as any)?.details || {};
+  const apiMsg: string | undefined = typeof details?.data?.message === 'string' ? details.data.message : undefined;
+  const directMsg: string | undefined = typeof details?.message === 'string' ? details.message : undefined;
+  const serverMsg: string | undefined = apiMsg || directMsg;
+  if (serverMsg && serverMsg.length > 0) {
+    // Normalize common prefixes to friendlier text
+    if (serverMsg.startsWith('missing_required_fields:')) {
+      const tail = serverMsg.split(':')[1] || '';
+      const fields = tail.split(',').map(s => s.trim()).filter(Boolean);
+      if (fields.length) {
+        return `Missing required: ${fields.join(', ')}`;
+      }
+      return 'Missing required fields';
+    }
+    // Also handle "Missing required fields: a, b" shape
+    const m = serverMsg.match(/^Missing required fields:\s*(.+)$/i);
+    if (m && m[1]) {
+      const fields = m[1].split(',').map(s => s.trim()).filter(Boolean);
+      if (fields.length) {
+        return `Missing required: ${fields.join(', ')}`;
+      }
+      return 'Missing required fields';
+    }
+    return serverMsg;
+  }
+  return (ERROR_MESSAGES as Record<string, string>)[error.code] || error.message || 'An error occurred';
 }
 
 // Check if error should be shown to user (vs logged only)

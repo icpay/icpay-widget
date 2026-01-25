@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { applyThemeVars } from '../../styles';
 import { customElement, property, state } from 'lit/decorators.js';
+import { getErrorMessage } from '../../error-handling';
 
 // Debug logger utility (mirrors other widgets)
 function debugLog(debug: boolean, message: string, data?: any): void {
@@ -1254,7 +1255,9 @@ export class ICPayProgressBar extends LitElement {
   };
 
   private onTransactionFailed = (e: any) => {
-    const errorMessage = e?.detail?.message || e?.detail?.error?.message || 'Transaction failed';
+    const errorObj = e?.detail?.error;
+    const rawMessage = e?.detail?.message || e?.detail?.error?.message || 'Transaction failed';
+    const errorMessage = errorObj ? getErrorMessage(errorObj) : this.transformErrorMessage(rawMessage);
     const errorCode = e?.detail?.error?.code || e?.detail?.code || 'UNKNOWN_ERROR';
     const transactionId = e?.detail?.transactionId || e?.detail?.id;
 
@@ -1262,16 +1265,16 @@ export class ICPayProgressBar extends LitElement {
 
     // Mark as failed and keep modal open with error message
     this.failed = true;
-    this.errorMessage = this.transformErrorMessage(errorMessage);
+    this.errorMessage = this.preferSpecificError(this.errorMessage, errorMessage);
     this.showSuccess = false;
-    this.updateStepStatus(this.activeIndex, 'error', errorMessage);
+    this.updateStepStatus(this.activeIndex, 'error', this.errorMessage);
     this.stopAutomaticProgression();
     this.open = true;
     this.isOnrampFlow = false;
 
     // Dispatch transaction failed event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-failed', {
-      detail: { errorMessage, errorCode, transactionId, step: this.activeIndex },
+      detail: { errorMessage: this.errorMessage, errorCode, transactionId, step: this.activeIndex },
       bubbles: true
     }));
   };
@@ -1303,7 +1306,9 @@ export class ICPayProgressBar extends LitElement {
 
   private onMethodError = (e: any) => {
     const methodName = e?.detail?.name || '';
-    const errorMessage = e?.detail?.error?.message || e?.detail?.message || 'An error occurred';
+    const errorObj = e?.detail?.error;
+    const rawMessage = e?.detail?.message || (errorObj && errorObj.message) || 'An error occurred';
+    const errorMessage = errorObj ? getErrorMessage(errorObj) : this.transformErrorMessage(rawMessage);
     const errorCode = e?.detail?.error?.code || e?.detail?.code || 'METHOD_ERROR';
 
     debugLog(this.debug, 'ICPay Progress: Method error event received:', e.detail);
@@ -1314,39 +1319,41 @@ export class ICPayProgressBar extends LitElement {
         methodName === 'order') {
       // Mark as failed and keep modal open with error message
       this.failed = true;
-      this.errorMessage = this.transformErrorMessage(errorMessage);
+      this.errorMessage = this.preferSpecificError(this.errorMessage, errorMessage);
       this.showSuccess = false;
-      this.updateStepStatus(this.activeIndex, 'error', errorMessage);
+      this.updateStepStatus(this.activeIndex, 'error', this.errorMessage);
       this.stopAutomaticProgression();
       this.open = true;
       this.isOnrampFlow = false;
 
       // Dispatch method error event for external listeners
       this.dispatchEvent(new CustomEvent('icpay-progress-error', {
-        detail: { methodName, errorMessage, errorCode, step: this.activeIndex },
+        detail: { methodName, errorMessage: this.errorMessage, errorCode, step: this.activeIndex },
         bubbles: true
       }));
     }
   };
 
   private onSDKError = (e: any) => {
-    const errorMessage = e?.detail?.message || 'SDK error occurred';
+    const errorObj = e?.detail?.error;
+    const rawMessage = e?.detail?.message || (errorObj && errorObj.message) || 'SDK error occurred';
+    const errorMessage = errorObj ? getErrorMessage(errorObj) : this.transformErrorMessage(rawMessage);
     const errorCode = e?.detail?.code || 'SDK_ERROR';
 
     debugLog(this.debug, 'ICPay Progress: SDK error event received:', e.detail);
 
     // Mark as failed and keep modal open with error message
     this.failed = true;
-    this.errorMessage = this.transformErrorMessage(errorMessage);
+    this.errorMessage = this.preferSpecificError(this.errorMessage, errorMessage);
     this.showSuccess = false;
-    this.updateStepStatus(this.activeIndex, 'error', errorMessage);
+    this.updateStepStatus(this.activeIndex, 'error', this.errorMessage);
     this.stopAutomaticProgression();
     this.open = true;
     this.isOnrampFlow = false;
 
     // Dispatch SDK error event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-sdk-error', {
-      detail: { errorMessage, errorCode, step: this.activeIndex },
+      detail: { errorMessage: this.errorMessage, errorCode, step: this.activeIndex },
       bubbles: true
     }));
   };
@@ -1474,22 +1481,25 @@ export class ICPayProgressBar extends LitElement {
   };
 
   private onWidgetError = (e: any) => {
-    const errorMessage = e?.detail?.message || 'Widget error occurred';
-    const errorCode = e?.detail?.code || 'WIDGET_ERROR';
+    // `icpay-error` detail may be the error object itself or wrapped
+    const errObj = e?.detail?.error || e?.detail;
+    const rawMessage = (errObj && errObj.message) || e?.detail?.message || 'Widget error occurred';
+    const errorMessage = errObj ? getErrorMessage(errObj) : this.transformErrorMessage(rawMessage);
+    const errorCode = (errObj && errObj.code) || e?.detail?.code || 'WIDGET_ERROR';
 
     debugLog(this.debug, 'ICPay Progress: Widget error event received:', e.detail);
 
     // Mark as failed and keep modal open with error message
     this.failed = true;
-    this.errorMessage = this.transformErrorMessage(errorMessage);
+    this.errorMessage = this.preferSpecificError(this.errorMessage, errorMessage);
     this.showSuccess = false;
-    this.updateStepStatus(this.activeIndex, 'error', errorMessage);
+    this.updateStepStatus(this.activeIndex, 'error', this.errorMessage);
     this.stopAutomaticProgression();
     this.open = true;
 
     // Dispatch widget error event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-widget-error', {
-      detail: { errorMessage, errorCode, step: this.activeIndex },
+      detail: { errorMessage: this.errorMessage, errorCode, step: this.activeIndex },
       bubbles: true
     }));
   };
@@ -1659,6 +1669,28 @@ export class ICPayProgressBar extends LitElement {
     if (msg.includes('user cancelled') || msg.includes('user canceled')) return 'User have rejected the transfer';
     if (msg.includes('signature rejected')) return 'User have rejected the transfer';
     return message;
+  }
+
+  // Prefer keeping a specific server message; don't overwrite with generic fallbacks
+  private isGenericErrorText(message: string | null | undefined): boolean {
+    if (!message) return true;
+    const m = message.toLowerCase();
+    return (
+      m === 'an error occurred' ||
+      m === 'sdk error occurred' ||
+      m === 'transaction failed' ||
+      m.includes('failed to create payment') ||
+      m.includes('wallet error') ||
+      m.includes('network error')
+    );
+  }
+
+  private preferSpecificError(currentMsg: string | null | undefined, incoming: string): string {
+    const next = this.transformErrorMessage(incoming || '');
+    if (currentMsg && !this.isGenericErrorText(currentMsg) && this.isGenericErrorText(next)) {
+      return currentMsg;
+    }
+    return next;
   }
 
   private renderConfetti() {
