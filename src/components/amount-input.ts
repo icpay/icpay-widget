@@ -13,6 +13,7 @@ import { renderWalletSelectorModal } from './ui/wallet-selector-modal';
 import { renderOnrampModal } from './ui/onramp-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
 import { clientSupportsX402 } from '../utils/x402';
+import { resetPaymentFlow as resetPaymentFlowUtil, type PaymentFlowResetContext } from '../utils/payment-flow-reset';
 
 const isBrowser = typeof window !== 'undefined';
 let WalletSelect: any = null;
@@ -505,13 +506,14 @@ export class ICPayAmountInput extends LitElement {
     this.onrampPollTimer = 1 as any;
   }
 
-  private async pay() {
-    if (!isBrowser || this.processing) return;
+  private resetPaymentFlow() {
+    resetPaymentFlowUtil(this as PaymentFlowResetContext, { pendingAction: 'pay' });
+  }
 
-    // Reset error state
-    this.errorMessage = null;
-    this.errorSeverity = null;
-    this.errorAction = null;
+  private async pay() {
+    if (!isBrowser) return;
+
+    this.resetPaymentFlow();
 
     if (!this.isValidAmount()) {
       this.errorMessage = 'Please enter a valid amount';
@@ -523,11 +525,9 @@ export class ICPayAmountInput extends LitElement {
 
     this.processing = true;
     try {
-      // Do not attempt x402 here; x402 is decided after token selection in the balance modal (EVM branch).
       const ready = await this.ensureWallet();
       if (!ready) return;
 
-      // Wallet is connected; proceed to token selection to initiate payment via selection handler
       this.showWalletModal = true;
       await this.fetchAndShowBalances();
       return;

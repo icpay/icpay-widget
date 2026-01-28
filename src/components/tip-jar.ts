@@ -10,6 +10,7 @@ import './ui/progress-bar';
 import { renderWalletSelectorModal } from './ui/wallet-selector-modal';
 import { renderOnrampModal } from './ui/onramp-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
+import { resetPaymentFlow as resetPaymentFlowUtil } from '../utils/payment-flow-reset';
 import { getWalletBalanceEntries, isEvmWalletId, ensureEvmChain } from '../utils/balances';
 import { renderWalletBalanceModal } from './ui/wallet-balance-modal';
 
@@ -189,16 +190,16 @@ export class ICPayTipJar extends LitElement {
     return Math.min((this.total / max) * 100, 100);
   }
 
+  private resetPaymentFlow() {
+    resetPaymentFlowUtil(this, { pendingAction: 'tip' });
+  }
+
   private async tip() {
-    if (!isBrowser) return; // Skip in SSR
+    if (!isBrowser) return;
+
+    this.resetPaymentFlow();
 
     debugLog(this.config?.debug || false, 'Tip button clicked!', { config: this.config, processing: this.processing });
-    if (this.processing) return;
-
-    // Clear previous errors
-    this.errorMessage = null;
-    this.errorSeverity = null;
-    this.errorAction = null;
 
     try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'tip', type: 'sendUsd', amount: this.selectedAmount, currency: this.selectedSymbol || 'ICP' } })); } catch {}
 

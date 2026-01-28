@@ -78,7 +78,7 @@ export class ICPayProgressBar extends LitElement {
       --icpay-input: #e5e7eb;
       --icpay-ring: #3b82f6;
       --icpay-destructive-foreground: #ffffff;
-      
+
       /* Status colors */
       --icpay-success-bg: rgba(16, 185, 129, 0.1);
       --icpay-success-text: #059669;
@@ -144,7 +144,7 @@ export class ICPayProgressBar extends LitElement {
       --icpay-input: hsl(217.2 32.6% 17.5%);
       --icpay-ring: hsl(210 40% 98%);
       --icpay-destructive-foreground: hsl(210 40% 98%);
-      
+
       /* Status colors for dark mode */
       --icpay-success-bg: rgba(16, 185, 129, 0.1);
       --icpay-success-text: #34d399;
@@ -847,7 +847,7 @@ export class ICPayProgressBar extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
-    try { 
+    try {
       applyThemeVars(this, this.theme as any);
       // Extract theme mode from theme prop
       let themeMode: 'light' | 'dark' = 'light';
@@ -856,7 +856,7 @@ export class ICPayProgressBar extends LitElement {
       } else if (this.theme && typeof this.theme === 'object' && this.theme.mode) {
         themeMode = this.theme.mode;
       } else if (typeof document !== 'undefined') {
-        const docTheme = document.documentElement.getAttribute('data-icpay-theme') || 
+        const docTheme = document.documentElement.getAttribute('data-icpay-theme') ||
                         document.documentElement.getAttribute('data-theme');
         if (docTheme === 'light' || docTheme === 'dark') {
           themeMode = docTheme;
@@ -883,7 +883,7 @@ export class ICPayProgressBar extends LitElement {
 
   protected updated(changed: Map<string, unknown>): void {
     if (changed.has('theme')) {
-      try { 
+      try {
         applyThemeVars(this, this.theme as any);
         // Extract theme mode from theme prop
         let themeMode: 'light' | 'dark' = 'light';
@@ -892,7 +892,7 @@ export class ICPayProgressBar extends LitElement {
         } else if (this.theme && typeof this.theme === 'object' && this.theme.mode) {
           themeMode = this.theme.mode;
         } else if (typeof document !== 'undefined') {
-          const docTheme = document.documentElement.getAttribute('data-icpay-theme') || 
+          const docTheme = document.documentElement.getAttribute('data-icpay-theme') ||
                           document.documentElement.getAttribute('data-theme');
           if (docTheme === 'light' || docTheme === 'dark') {
             themeMode = docTheme;
@@ -934,6 +934,9 @@ export class ICPayProgressBar extends LitElement {
     window.addEventListener('icpay-tip', this.onWidgetTip as EventListener);
     window.addEventListener('icpay-donation', this.onWidgetDonation as EventListener);
     window.addEventListener('icpay-coffee', this.onWidgetCoffee as EventListener);
+
+    // Reset when user starts a new payment from any widget (full start-over)
+    window.addEventListener('icpay-payment-reset', this.onPaymentReset as EventListener);
   }
 
   private detachSDKEventListeners() {
@@ -966,7 +969,24 @@ export class ICPayProgressBar extends LitElement {
     window.removeEventListener('icpay-tip', this.onWidgetTip as EventListener);
     window.removeEventListener('icpay-donation', this.onWidgetDonation as EventListener);
     window.removeEventListener('icpay-coffee', this.onWidgetCoffee as EventListener);
+    window.removeEventListener('icpay-payment-reset', this.onPaymentReset as EventListener);
   }
+
+  private onPaymentReset = () => {
+    this.stopAutomaticProgression();
+    this.open = false;
+    this.showWalletSelector = false;
+    this.isTransitioning = false;
+    this.activeIndex = 0;
+    this.completed = false;
+    this.failed = false;
+    this.errorMessage = null;
+    this.showSuccess = false;
+    this.showConfetti = false;
+    this.isOnrampFlow = false;
+    this.currentSteps = [...this.steps].map(step => ({ ...step, status: 'pending' as StepStatus }));
+    this.requestUpdate();
+  };
 
   private onMethodStart = (e: any) => {
     const methodName = e?.detail?.name || '';
@@ -1056,6 +1076,11 @@ export class ICPayProgressBar extends LitElement {
         this.completeByKey('wallet');
         this.completeByKey('await');
         this.setLoadingByKey('transfer');
+      } else if (methodName === 'settleX402') {
+        // IC x402: settle request sent — mark awaiting confirmation as completed, show transferring funds
+        this.completeByKey('wallet');
+        this.completeByKey('await');
+        this.setLoadingByKey('transfer');
       }
     }
   };
@@ -1139,6 +1164,12 @@ export class ICPayProgressBar extends LitElement {
         this.completeByKey('await');
         this.completeByKey('transfer');
         // Keep verify loading until completion
+        this.setLoadingByKey('verify');
+      } else if (methodName === 'createPaymentX402Usd') {
+        // IC x402: settle response received — mark Transferring funds as done, show verifying
+        this.completeByKey('wallet');
+        this.completeByKey('await');
+        this.completeByKey('transfer');
         this.setLoadingByKey('verify');
       }
     }
@@ -1906,9 +1937,9 @@ export class ICPayProgressBar extends LitElement {
       const awaitIdx = this.getStepIndexByKey('await');
       const transferIdx = this.getStepIndexByKey('transfer');
       const verifyIdx = this.getStepIndexByKey('verify');
-      
+
       // Check if any step after wallet (await, transfer, or verify) has progressed beyond pending
-      const hasPaymentStarted = this.currentSteps && this.currentSteps.length > 0 && 
+      const hasPaymentStarted = this.currentSteps && this.currentSteps.length > 0 &&
         this.currentSteps.some((step, idx) => {
           // Check if any step after wallet is loading or completed
           if (walletIdx >= 0 && idx > walletIdx) {
@@ -1916,11 +1947,11 @@ export class ICPayProgressBar extends LitElement {
           }
           return false;
         });
-      
+
       // Also check if wallet step itself has completed (meaning wallet was connected)
       const walletStep = walletIdx >= 0 ? this.currentSteps[walletIdx] : null;
       const walletWasConnected = walletStep?.status === 'completed';
-      
+
       // If no payment transaction has started AND wallet wasn't connected, close the modal
       if (!hasPaymentStarted && !walletWasConnected) {
         this.open = false;
@@ -1930,7 +1961,7 @@ export class ICPayProgressBar extends LitElement {
         this.requestUpdate();
         return;
       }
-      
+
       // Payment transaction has started OR wallet was connected, so show error state
       // Ensure the progress modal is visible if it was initiated
       this.open = true;

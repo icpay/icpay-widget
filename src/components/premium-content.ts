@@ -12,6 +12,7 @@ import { getWalletBalanceEntries, buildWalletEntries, isEvmWalletId, ensureEvmCh
 import type { WalletBalanceEntry } from '../utils/balances';
 import { renderOnrampModal } from './ui/onramp-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
+import { resetPaymentFlow as resetPaymentFlowUtil } from '../utils/payment-flow-reset';
 
 // Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';
@@ -227,21 +228,21 @@ export class ICPayPremiumContent extends LitElement {
 
 
 
-  private async onPay() {
-    if (!isBrowser) return; // Skip in SSR
+  private resetPaymentFlow() {
+    resetPaymentFlowUtil(this, { pendingAction: 'pay' });
+  }
 
-    if (this.processing || this.unlocked) return;
+  private async onPay() {
+    if (!isBrowser) return;
+    if (this.unlocked) return;
+
+    this.resetPaymentFlow();
 
     debugLog(this.config?.debug || false, 'Premium content payment started', {
       priceUsd: this.config.priceUsd,
       selectedSymbol: this.selectedSymbol,
       useOwnWallet: this.config.useOwnWallet
     });
-
-    // Clear previous errors
-    this.errorMessage = null;
-    this.errorSeverity = null;
-    this.errorAction = null;
 
     try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'pay', type: 'sendUsd', amount: this.config.priceUsd, currency: this.selectedSymbol || 'ICP' } })); } catch {}
 

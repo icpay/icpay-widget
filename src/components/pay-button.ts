@@ -14,6 +14,7 @@ import type { WalletBalanceEntry } from '../utils/balances';
 import { renderWalletBalanceModal } from './ui/wallet-balance-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
 import { clientSupportsX402 } from '../utils/x402';
+import { resetPaymentFlow as resetPaymentFlowUtil, type PaymentFlowResetContext } from '../utils/payment-flow-reset';
 
 const isBrowser = typeof window !== 'undefined';
 let WalletSelect: any = null;
@@ -662,31 +663,21 @@ export class ICPayPayButton extends LitElement {
     this.onrampPollTimer = 1 as any;
   }
 
-  private async pay() {
-    if (!isBrowser || this.processing) return;
+  private resetPaymentFlow() {
+    resetPaymentFlowUtil(this as PaymentFlowResetContext, { pendingAction: 'pay' });
+  }
 
-    // Reset error state
-    this.errorMessage = null;
-    this.errorSeverity = null;
-    this.errorAction = null;
+  private async pay() {
+    if (!isBrowser) return;
+
+    // Every button press = full reset and start from scratch (wallet, progress, selection)
+    this.resetPaymentFlow();
 
     // Emit method start to open progress modal and set first step
     try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'pay', type: 'sendUsd', amount: this.config?.amountUsd, currency: this.selectedSymbol || 'ICP' } })); } catch {}
 
     this.processing = true;
     try {
-      // Disconnect current built-in wallet before new payment attempt unless we just connected
-      if (!this.skipDisconnectOnce) {
-        try {
-          if (!this.config.useOwnWallet && this.pnp) {
-            await this.pnp.disconnect?.();
-            this.walletConnected = false;
-            this.config = { ...this.config, actorProvider: undefined as any, connectedWallet: undefined } as any;
-          }
-        } catch {}
-      } else {
-        this.skipDisconnectOnce = false;
-      }
       const ready = await this.ensureWallet();
       if (!ready) return;
 
