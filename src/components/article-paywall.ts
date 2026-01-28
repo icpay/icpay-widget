@@ -108,6 +108,8 @@ export class ICPayArticlePaywall extends LitElement {
   @state() private balancesError: string | null = null;
   @state() private walletBalances: WalletBalanceEntry[] = [];
   private sdk: WidgetSdk | null = null;
+  private onTransactionCompleted: EventListener | null = null;
+  private onUnlock: EventListener | null = null;
   private async tryAutoConnectPNP() {
     try {
       if (!this.config || this.config?.useOwnWallet) return;
@@ -244,7 +246,46 @@ export class ICPayArticlePaywall extends LitElement {
     this.tryAutoConnectPNP();
     // Listen for switch-account request
     try { window.addEventListener('icpay-switch-account', this.onSwitchAccount as EventListener); } catch {}
-    // No ledger preload; balances flow handles token availability
+    // Close wallet/balance modals when SDK intent is created
+    try {
+      window.addEventListener('icpay-sdk-transaction-created', (() => {
+        this.showWalletModal = false;
+        this.showBalanceModal = false;
+        this.requestUpdate();
+      }) as EventListener);
+    } catch {}
+    // Unlock content when transaction completes (wallet or onramp)
+    this.onTransactionCompleted = (() => {
+      this.unlocked = true;
+      this.succeeded = true;
+      this.processing = false;
+      try { window.dispatchEvent(new CustomEvent('icpay-unlock', { detail: { amount: this.config?.priceUsd, currency: this.selectedSymbol || 'ICP' } })); } catch {}
+      this.requestUpdate();
+    }) as EventListener;
+    try {
+      window.addEventListener('icpay-sdk-transaction-completed', this.onTransactionCompleted);
+    } catch {}
+    // Also listen for unlock event (in case it's dispatched elsewhere)
+    this.onUnlock = (() => {
+      this.unlocked = true;
+      this.succeeded = true;
+      this.processing = false;
+      this.requestUpdate();
+    }) as EventListener;
+    try {
+      window.addEventListener('icpay-unlock', this.onUnlock);
+    } catch {}
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    try { window.removeEventListener('icpay-switch-account', this.onSwitchAccount as EventListener); } catch {}
+    if (this.onTransactionCompleted) {
+      try { window.removeEventListener('icpay-sdk-transaction-completed', this.onTransactionCompleted); } catch {}
+    }
+    if (this.onUnlock) {
+      try { window.removeEventListener('icpay-unlock', this.onUnlock); } catch {}
+    }
   }
 
   protected updated(changed: Map<string, unknown>): void {
