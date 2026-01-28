@@ -9,6 +9,7 @@ import './ui/progress-bar';
 import { renderWalletSelectorModal } from './ui/wallet-selector-modal';
 import { renderOnrampModal } from './ui/onramp-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
+import { resetPaymentFlow as resetPaymentFlowUtil } from '../utils/payment-flow-reset';
 import { buildWalletEntries, getWalletBalanceEntries, isEvmWalletId, ensureEvmChain } from '../utils/balances';
 import { renderWalletBalanceModal } from './ui/wallet-balance-modal';
 
@@ -149,21 +150,20 @@ export class ICPayCoffeeShop extends LitElement {
 
   private get selectedItem() { return this.config?.items?.[this.selectedIndex] || { name: 'Loading...', priceUsd: 0 }; }
 
-  private async order() {
-    if (!isBrowser) return; // Skip in SSR
+  private resetPaymentFlow() {
+    resetPaymentFlowUtil(this, { pendingAction: 'order' });
+  }
 
-    if (this.processing) return;
+  private async order() {
+    if (!isBrowser) return;
+
+    this.resetPaymentFlow();
 
     debugLog(this.config?.debug || false, 'Coffee order started', {
       selectedItem: this.selectedItem,
       selectedSymbol: this.selectedSymbol,
       useOwnWallet: this.config.useOwnWallet
     });
-
-    // Clear previous errors
-    this.errorMessage = null;
-    this.errorSeverity = null;
-    this.errorAction = null;
 
     try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'order', type: 'sendUsd', amount: this.selectedItem.priceUsd, currency: this.selectedSymbol || 'ICP' } })); } catch {}
 

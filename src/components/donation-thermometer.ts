@@ -10,6 +10,7 @@ import './ui/progress-bar';
 import { renderWalletSelectorModal } from './ui/wallet-selector-modal';
 import { renderOnrampModal } from './ui/onramp-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
+import { resetPaymentFlow as resetPaymentFlowUtil } from '../utils/payment-flow-reset';
 import { getWalletBalanceEntries, isEvmWalletId, ensureEvmChain } from '../utils/balances';
 import { renderWalletBalanceModal } from './ui/wallet-balance-modal';
 
@@ -188,21 +189,20 @@ export class ICPayDonationThermometer extends LitElement {
     return Math.min((this.raised / denom) * 100, 100);
   }
 
-  private async donate() {
-    if (!isBrowser) return; // Skip in SSR
+  private resetPaymentFlow() {
+    resetPaymentFlowUtil(this, { pendingAction: 'donate' });
+  }
 
-    if (this.processing) return;
+  private async donate() {
+    if (!isBrowser) return;
+
+    this.resetPaymentFlow();
 
     debugLog(this.config?.debug || false, 'Donation started', {
       amount: this.selectedAmount,
       selectedSymbol: this.selectedSymbol,
       useOwnWallet: this.config.useOwnWallet
     });
-
-    // Clear previous errors
-    this.errorMessage = null;
-    this.errorSeverity = null;
-    this.errorAction = null;
 
     try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'donate', type: 'sendUsd', amount: this.selectedAmount, currency: this.selectedSymbol || 'ICP' } })); } catch {}
 

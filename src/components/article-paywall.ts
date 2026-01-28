@@ -12,6 +12,7 @@ import type { WalletBalanceEntry } from '../utils/balances';
 import { getWalletBalanceEntries, buildWalletEntries, isEvmWalletId, ensureEvmChain } from '../utils/balances';
 import { renderOnrampModal } from './ui/onramp-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
+import { resetPaymentFlow as resetPaymentFlowUtil, type PaymentFlowResetContext } from '../utils/payment-flow-reset';
 
 // Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';
@@ -290,21 +291,21 @@ export class ICPayArticlePaywall extends LitElement {
 
   private selectSymbol(s: string) { this.selectedSymbol = s; }
 
-  private async unlock() {
-    if (!isBrowser) return; // Skip in SSR
+  private resetPaymentFlow() {
+    resetPaymentFlowUtil(this as PaymentFlowResetContext, { pendingAction: 'unlock' });
+  }
 
-    if (this.processing || this.unlocked) return;
+  private async unlock() {
+    if (!isBrowser) return;
+    if (this.unlocked) return;
+
+    this.resetPaymentFlow();
 
     debugLog(this.config?.debug || false, 'Article paywall unlock started', {
       priceUsd: this.config.priceUsd,
       selectedSymbol: this.selectedSymbol,
       useOwnWallet: this.config.useOwnWallet
     });
-
-    // Clear previous errors
-    this.errorMessage = null;
-    this.errorSeverity = null;
-    this.errorAction = null;
 
     try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'unlock', type: 'sendUsd', amount: this.config.priceUsd, currency: this.selectedSymbol || 'ICP' } })); } catch {}
 
