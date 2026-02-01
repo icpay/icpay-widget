@@ -515,6 +515,7 @@ export class ICPayPremiumContent extends LitElement {
                   }
                 },
                 recipientAddress: ((((this.config as any)?.recipientAddresses) || {})?.evm) || '0x0000000000000000000000000000000000000000',
+                fiat_currency: (this.config as any)?.fiat_currency,
               });
               return;
             } catch (e) {
@@ -588,6 +589,7 @@ export class ICPayPremiumContent extends LitElement {
                 }
               },
               recipientAddress: chosen || '',
+              fiat_currency: (this.config as any)?.fiat_currency,
             });
             return;
           } catch (e) {

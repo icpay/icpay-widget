@@ -64,6 +64,11 @@ export function createSdk(config: CommonConfig): WidgetSdk {
     sdkConfig.debug = config.debug;
   }
 
+  // Pass fiat currency so createPaymentUsd/createPaymentX402Usd use it when request omits it
+  if ((config as any).fiat_currency != null && (config as any).fiat_currency !== '') {
+    (sdkConfig as any).fiat_currency = (config as any).fiat_currency;
+  }
+
   debugLog(config.debug || false, 'Filtered SDK config:', sdkConfig);
   try {
     debugLog(config.debug || false, 'typeof Icpay:', typeof Icpay);

@@ -390,6 +390,7 @@ export class ICPayPayButton extends LitElement {
                 tokenShortcode: (sel as any)?.tokenShortcode,
                 metadata,
                 recipientAddress: evmDest,
+                fiat_currency: (this.config as any)?.fiat_currency,
               });
               return;
             } catch (x402Err: any) {
@@ -480,6 +481,7 @@ export class ICPayPayButton extends LitElement {
               tokenShortcode: (sel as any)?.tokenShortcode,
               metadata,
               recipientAddress: chosen || '',
+              fiat_currency: (this.config as any)?.fiat_currency,
             });
             return;
           } catch (x402Err: any) {
