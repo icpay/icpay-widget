@@ -100,22 +100,23 @@ export async function getWalletBalanceEntries(params: {
   lastWalletId?: string | null;
   connectedWallet?: { owner?: string; principal?: string } | any;
   amountUsd?: number;
+  fiatCurrency?: string;
   chainShortcodes?: string[];
   tokenShortcodes?: string[];
 }): Promise<{ balances: WalletBalanceEntry[]; totalBalancesUSD?: number; lastUpdated: Date }>
 {
-  const { sdk, lastWalletId, connectedWallet, amountUsd, chainShortcodes, tokenShortcodes } = params;
+  const { sdk, lastWalletId, connectedWallet, amountUsd, fiatCurrency, chainShortcodes, tokenShortcodes } = params;
   let response: any;
   const lowerId = (lastWalletId || '').toLowerCase();
   const addrOrPrincipal = (connectedWallet?.owner || connectedWallet?.principal || '').toString();
   try {
     if (lowerId && EVM_WALLET_IDS.has(lowerId)) {
-      response = await (sdk?.client as any)?.getExternalWalletBalances?.({ network: 'evm', address: addrOrPrincipal, amountUsd, chainShortcodes, tokenShortcodes });
+      response = await (sdk?.client as any)?.getExternalWalletBalances?.({ network: 'evm', address: addrOrPrincipal, amountUsd, fiatCurrency, chainShortcodes, tokenShortcodes });
     } else if (lowerId && SOL_WALLET_IDS.has(lowerId)) {
-      response = await (sdk?.client as any)?.getExternalWalletBalances?.({ network: 'sol', address: addrOrPrincipal, amountUsd, chainShortcodes, tokenShortcodes });
+      response = await (sdk?.client as any)?.getExternalWalletBalances?.({ network: 'sol', address: addrOrPrincipal, amountUsd, fiatCurrency, chainShortcodes, tokenShortcodes });
     } else {
       // Prefer API for IC balances too for uniform behavior
-      response = await (sdk?.client as any)?.getExternalWalletBalances?.({ network: 'ic', principal: addrOrPrincipal, amountUsd, chainShortcodes, tokenShortcodes });
+      response = await (sdk?.client as any)?.getExternalWalletBalances?.({ network: 'ic', principal: addrOrPrincipal, amountUsd, fiatCurrency, chainShortcodes, tokenShortcodes });
     }
   } catch {
     // Fallbacks: for IC wallets use client method; for EVM wallets, return empty set

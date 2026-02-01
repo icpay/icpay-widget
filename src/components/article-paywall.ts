@@ -487,6 +487,7 @@ export class ICPayArticlePaywall extends LitElement {
         lastWalletId: this.lastWalletId,
         connectedWallet: (this.config as any)?.connectedWallet,
         amountUsd: Number(this.config?.priceUsd ?? 0),
+        fiatCurrency: (this.config as any)?.fiat_currency,
         chainShortcodes: (this.config as any)?.chainShortcodes,
         tokenShortcodes: (this.config as any)?.tokenShortcodes,
       });
