@@ -1762,7 +1762,7 @@ export class ICPayProgressBar extends LitElement {
 
   private renderSuccessState() {
     const displayAmount = this.currentAmount || this.amount;
-    const fiatLabel = (this.currentFiatSymbol ?? this.currentFiatCode) || 'USD';
+    const fiatLabel = (this.currentFiatCode ?? this.currentFiatSymbol) || 'USD';
 
     debugLog(this.debug, 'ICPay Progress: Rendering success state with:', {
       displayAmount,
