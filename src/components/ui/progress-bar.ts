@@ -836,6 +836,9 @@ export class ICPayProgressBar extends LitElement {
   @state() private currentAmount = 0;
   @state() private currentCurrency = '';
   @state() private currentLedgerSymbol = '';
+  /** Fiat currency code/symbol from payment intent (for success message). */
+  @state() private currentFiatCode = '';
+  @state() private currentFiatSymbol: string | null = null;
   @state() private confirmLoadingStartedAt: number | null = null;
   private progressionTimer: number | null = null;
   @state() private currentWalletType: string | null = null;
@@ -1242,6 +1245,15 @@ export class ICPayProgressBar extends LitElement {
   private onTransactionCompleted = (e: any) => {
     const transactionId = e?.detail?.transactionId || e?.detail?.id;
     const status = e?.detail?.status || 'completed';
+    const paymentIntent = e?.detail?.paymentIntent ?? e?.detail?.payment?.paymentIntent;
+    if (paymentIntent && typeof paymentIntent === 'object') {
+      if (paymentIntent.fiatCurrencyCode != null && paymentIntent.fiatCurrencyCode !== '') {
+        this.currentFiatCode = String(paymentIntent.fiatCurrencyCode);
+      }
+      if (paymentIntent.fiatCurrencySymbol != null && paymentIntent.fiatCurrencySymbol !== '') {
+        this.currentFiatSymbol = String(paymentIntent.fiatCurrencySymbol);
+      }
+    }
 
     debugLog(this.debug, 'ICPay Progress: Transaction completed event received:', e.detail);
     debugLog(this.debug, 'ICPay Progress: Current state when transaction completed:', {
@@ -1750,6 +1762,7 @@ export class ICPayProgressBar extends LitElement {
 
   private renderSuccessState() {
     const displayAmount = this.currentAmount || this.amount;
+    const fiatLabel = (this.currentFiatSymbol ?? this.currentFiatCode) || 'USD';
 
     debugLog(this.debug, 'ICPay Progress: Rendering success state with:', {
       displayAmount,
@@ -1758,7 +1771,8 @@ export class ICPayProgressBar extends LitElement {
       currentCurrency: this.currentCurrency,
       currency: this.currency,
       currentLedgerSymbol: this.currentLedgerSymbol,
-      ledgerSymbol: this.ledgerSymbol
+      ledgerSymbol: this.ledgerSymbol,
+      fiatLabel: fiatLabel
     });
 
     return html`
@@ -1770,7 +1784,7 @@ export class ICPayProgressBar extends LitElement {
             </svg>
           </div>
           <h2 class="success-title">Payment Complete!</h2>
-          <p class="success-message">Your payment of ${displayAmount} USD has been successfully processed.</p>
+          <p class="success-message">Your payment of ${displayAmount} ${fiatLabel} has been successfully processed.</p>
           <div class="success-actions">
             <button class="btn btn-primary" @click=${() => { this.open = false; }}>Close</button>
           </div>
