@@ -476,7 +476,7 @@ export class ICPayPremiumContent extends LitElement {
       this.walletModalStep = 'balances';
       this.showBalanceModal = false;
       const sdk = createSdk(this.config);
-      const { balances } = await getWalletBalanceEntries({ sdk, lastWalletId: this.lastWalletId, connectedWallet: (this.config as any)?.connectedWallet, amountUsd: Number(this.config?.priceUsd ?? 0) });
+      const { balances } = await getWalletBalanceEntries({ sdk, lastWalletId: this.lastWalletId, connectedWallet: (this.config as any)?.connectedWallet, amountUsd: Number(this.config?.priceUsd ?? 0), fiatCurrency: (this.config as any)?.fiat_currency });
       this.walletBalances = balances as WalletBalanceEntry[];
       this.pendingAction = action;
     } catch (e: any) {
