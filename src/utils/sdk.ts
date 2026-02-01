@@ -121,6 +121,9 @@ export function createSdk(config: CommonConfig): WidgetSdk {
         recipientAddresses: (config as any).recipientAddresses,
         recipientAddress: (config as any).recipientAddress,
       };
+      if ((config as any).fiat_currency != null && (config as any).fiat_currency !== '') {
+        payload.fiat_currency = (config as any).fiat_currency;
+      }
       if (typeof tokenShortcode === 'string' && tokenShortcode.trim().length > 0) {
         payload.tokenShortcode = tokenShortcode.toLowerCase();
       }
@@ -148,17 +151,19 @@ export function createSdk(config: CommonConfig): WidgetSdk {
         ledgerCanisterId,
         description,
       });
-      return (client as any).createPaymentUsd({
+      const onrampPayload: any = {
         usdAmount,
         ledgerCanisterId,
         metadata: mergedMeta,
         onrampPayment: true,
         description,
-        // On onramp flows, do NOT send single recipientAddress (chain not chosen by user).
-        // Always send the multi-map so backend can pick based on provider/chain.
         recipientAddresses: (config as any).recipientAddresses,
         recipientAddress: '',
-      });
+      };
+      if ((config as any).fiat_currency != null && (config as any).fiat_currency !== '') {
+        onrampPayload.fiat_currency = (config as any).fiat_currency;
+      }
+      return (client as any).createPaymentUsd(onrampPayload);
     }
 
 

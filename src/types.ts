@@ -60,6 +60,8 @@ export type CommonConfig = {
   tokenShortcodes?: string[];  // e.g., ['icp','pay']
   // Optional wallet selection filter: which chain types to show wallets for
   chainTypes?: Array<'ic' | 'evm' | 'sol'>;
+  // Optional: fiat currency for display (id or code, e.g. USD, EUR). Defaults to USD if missing.
+  fiat_currency?: string;
   // Optional metadata to include on created payment intents
   metadata?: Record<string, any>;
   // Optional derivation origin override used by wallet connectors like Internet Identity
