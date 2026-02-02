@@ -13,7 +13,7 @@ import { getWalletBalanceEntries, buildWalletEntries, isEvmWalletId, ensureEvmCh
 import type { WalletBalanceEntry } from '../utils/balances';
 import { renderWalletBalanceModal } from './ui/wallet-balance-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
-import { clientSupportsX402 } from '../utils/x402';
+import { clientSupportsX402, shouldSkipX402ForBaseOnIos } from '../utils/x402';
 import { resetPaymentFlow as resetPaymentFlowUtil, type PaymentFlowResetContext } from '../utils/payment-flow-reset';
 
 const isBrowser = typeof window !== 'undefined';
@@ -463,12 +463,14 @@ export class ICPayPayButton extends LitElement {
         const sdk = this.getSdk();
         const amountUsd = Number(this.config?.amountUsd ?? 0);
           const symbolNow = sel?.ledgerSymbol;
-          const tryX402 = Boolean(sel && sel.x402Accepts);
+          const skipX402BaseIos = shouldSkipX402ForBaseOnIos(this.lastWalletId);
+          const tryX402 = Boolean(sel && sel.x402Accepts) && !skipX402BaseIos;
           debugLog(this.config?.debug || false, 'EVM post-ensure chain snapshot', {
             targetChain,
             amountUsd,
             symbolNow,
             tryX402,
+            skipX402BaseIos,
             x402Accepts: sel?.x402Accepts,
           });
           if (tryX402) {

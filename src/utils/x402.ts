@@ -1,6 +1,21 @@
 // Minimal detection utility for X402-capable clients
 // This centralizes all future X402-related checks
 
+/**
+ * Returns true when the connected wallet is Base/Coinbase on iOS.
+ * On iOS, Base Wallet uses Passkeys (WebAuthn) and returns an assertion blob, not raw ECDSA r,s,v,
+ * so x402 (EIP-3009) cannot be used on-chain. Use normal payment flow instead.
+ */
+export function shouldSkipX402ForBaseOnIos(walletId: string | null | undefined): boolean {
+  if (!walletId || String(walletId).toLowerCase() !== 'coinbase') return false;
+  try {
+    const ua = typeof navigator !== 'undefined' ? String(navigator.userAgent || '').toLowerCase() : '';
+    return ua.includes('iphone') || ua.includes('ipad');
+  } catch {
+    return false;
+  }
+}
+
 function debugLogLocal(debug: boolean, message: string, data?: any): void {
   if (!debug) return;
   try {
