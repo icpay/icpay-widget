@@ -77,9 +77,10 @@ export class ICPayPayButton extends LitElement {
   private getSdk(): WidgetSdk {
     if (!this.sdk) {
       let cfg: any = this.config;
-      if (this.lastWalletId === 'walletconnect' && this.pnp) {
-        const wcProv = (this.pnp as any).getEvmProvider?.();
-        if (wcProv) cfg = { ...cfg, evmProvider: wcProv };
+      const usePnpEvm = (this.lastWalletId === 'walletconnect' || this.lastWalletId === 'coinbase') && this.pnp;
+      if (usePnpEvm) {
+        const evmProv = (this.pnp as any).getEvmProvider?.();
+        if (evmProv) cfg = { ...cfg, evmProvider: evmProv };
       }
       this.sdk = createSdk(cfg);
     }
