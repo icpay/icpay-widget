@@ -61,31 +61,37 @@ export function disconnectWalletForReset(ctx: PaymentFlowResetContext): void {
 /**
  * Resets all common payment flow state on the widget context and performs disconnect + onramp cleanup.
  * Call this at the start of every create-payment action (pay, unlock, order, donate, tip).
+ * When keepWalletConnected is true (e.g. user already connected via pre-generated WalletConnect QR),
+ * wallet state is preserved and disconnect is skipped so Pay goes straight to token selection.
  */
 export function resetPaymentFlow(
   ctx: PaymentFlowResetContext,
-  options: { pendingAction: PaymentFlowPendingAction }
+  options: { pendingAction: PaymentFlowPendingAction; keepWalletConnected?: boolean }
 ): void {
   const c = (ctx as Record<string, unknown>) ?? {};
   if (typeof c !== 'object') return;
+  const keepWallet = !!options.keepWalletConnected;
   dispatchPaymentReset();
 
   c.errorMessage = null;
   c.errorSeverity = null;
   c.errorAction = null;
   c.processing = false;
-  c.showWalletModal = true;
-  c.walletModalStep = 'connect';
   c.showBalanceModal = false;
   c.selectedSymbol = null;
-  c.lastWalletId = null;
-  c.walletConnected = false;
   c.pendingAction = options.pendingAction;
   c.oisyReadyToPay = false;
   c.showOnrampModal = false;
   c.onrampUrl = null;
   c.onrampPaymentIntentId = null;
   c.onrampErrorMessage = null;
+
+  if (!keepWallet) {
+    c.showWalletModal = true;
+    c.walletModalStep = 'connect';
+    c.lastWalletId = null;
+    c.walletConnected = false;
+  }
 
   if ('succeeded' in c) c.succeeded = false;
   if ('skipDisconnectOnce' in c) c.skipDisconnectOnce = false;
@@ -94,7 +100,7 @@ export function resetPaymentFlow(
   if ('selectedOnrampProvider' in c) c.selectedOnrampProvider = null;
 
   stopOnrampPolling(ctx);
-  disconnectWalletForReset(ctx);
+  if (!keepWallet) disconnectWalletForReset(ctx);
 
   const req = (ctx as Record<string, unknown>).requestUpdate;
   if (typeof req === 'function') req.call(ctx);

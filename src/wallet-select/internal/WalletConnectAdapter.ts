@@ -162,6 +162,7 @@ async function ensureQrLib(): Promise<void> {
   }, 2000, 50);
 }
 
+/** Show overlay with QR drawn from WalletConnect URI (used when generating QR on connect). */
 async function showQrOverlay(uri: string): Promise<void> {
   try {
     const d: any = (typeof document !== 'undefined' ? document : null);
@@ -265,11 +266,17 @@ async function showQrOverlay(uri: string): Promise<void> {
       title.style.color = '#fff';
       title.style.fontSize = '16px';
       title.style.marginBottom = '12px';
+      const qrContainer = d.createElement('div');
+      qrContainer.id = 'icpay-wc-qr-container';
+      qrContainer.style.width = '260px';
+      qrContainer.style.height = '260px';
+      qrContainer.style.background = '#fff';
+      qrContainer.style.borderRadius = '8px';
       const canvas = d.createElement('canvas');
       canvas.id = 'icpay-wc-qr-canvas';
       canvas.style.width = '260px';
       canvas.style.height = '260px';
-      canvas.style.background = '#fff';
+      canvas.style.display = 'block';
       canvas.style.borderRadius = '8px';
       const isMobile = isMobileBrowserGlobal();
       if (isMobile) {
@@ -308,21 +315,32 @@ async function showQrOverlay(uri: string): Promise<void> {
       close.onclick = () => { try { const cur = d.getElementById('icpay-wc-overlay'); if (cur && cur.parentNode) cur.parentNode.removeChild(cur); } catch {} };
       box.appendChild(title);
       if (!isMobile) {
-        box.appendChild(canvas);
+        qrContainer.appendChild(canvas);
+        box.appendChild(qrContainer);
       }
       box.appendChild(close);
       ov.appendChild(box);
       d.body.appendChild(ov);
       overlay = ov;
     }
-    const canvas = d.getElementById('icpay-wc-qr-canvas') as HTMLCanvasElement | null;
+    const qrContainerEl = d.getElementById('icpay-wc-qr-container');
     // On desktop we draw QR; on mobile we rely on wallet buttons and skip QR
     const isMobile = isMobileBrowserGlobal();
-    if (!isMobile) {
+    if (!isMobile && qrContainerEl) {
       await ensureQrLib();
       const w: any = (typeof window !== 'undefined' ? window : {}) as any;
-      if (canvas && w?.QRCode?.toCanvas) {
-        try { w.QRCode.toCanvas(canvas, uri, { width: 260, margin: 2 }); } catch {}
+      if (w?.QRCode?.toCanvas) {
+        try {
+          qrContainerEl.innerHTML = '';
+          const canvas = d.createElement('canvas');
+          canvas.id = 'icpay-wc-qr-canvas';
+          canvas.style.width = '260px';
+          canvas.style.height = '260px';
+          canvas.style.display = 'block';
+          canvas.style.borderRadius = '8px';
+          qrContainerEl.appendChild(canvas);
+          w.QRCode.toCanvas(canvas, uri, { width: 260, margin: 2 });
+        } catch {}
       }
     }
   } catch {}
@@ -333,6 +351,74 @@ function hideQrOverlay(): void {
     const d: any = (typeof document !== 'undefined' ? document : null);
     const overlay = d?.getElementById('icpay-wc-overlay');
     if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  } catch {}
+}
+
+/** Show overlay with pre-generated QR image (data URL). Reuses same modal layout. */
+function showQrOverlayWithDataUrl(dataUrl: string): void {
+  try {
+    const d: any = (typeof document !== 'undefined' ? document : null);
+    if (!d) return;
+    let overlay = d.getElementById('icpay-wc-overlay') as HTMLElement | null;
+    if (!overlay) {
+      const ov = d.createElement('div') as HTMLElement;
+      ov.id = 'icpay-wc-overlay';
+      ov.style.position = 'fixed';
+      ov.style.inset = '0';
+      ov.style.background = 'rgba(0,0,0,0.55)';
+      ov.style.display = 'flex';
+      ov.style.alignItems = 'center';
+      ov.style.justifyContent = 'center';
+      ov.style.zIndex = '999999';
+      const box = d.createElement('div');
+      box.style.background = '#1a1a1a';
+      box.style.border = '1px solid #333';
+      box.style.borderRadius = '16px';
+      box.style.padding = '16px';
+      box.style.width = '320px';
+      box.style.boxShadow = '0 10px 30px rgba(0,0,0,0.4)';
+      box.style.display = 'flex';
+      box.style.flexDirection = 'column';
+      box.style.alignItems = 'center';
+      const title = d.createElement('div');
+      title.textContent = 'Connect with your wallet';
+      title.style.color = '#fff';
+      title.style.fontSize = '16px';
+      title.style.marginBottom = '12px';
+      const qrContainer = d.createElement('div');
+      qrContainer.id = 'icpay-wc-qr-container';
+      qrContainer.style.width = '260px';
+      qrContainer.style.height = '260px';
+      qrContainer.style.background = '#fff';
+      qrContainer.style.borderRadius = '8px';
+      const close = d.createElement('button');
+      close.textContent = 'Close';
+      close.style.marginTop = '12px';
+      close.style.background = '#2a2a2a';
+      close.style.color = '#fff';
+      close.style.border = '1px solid #444';
+      close.style.padding = '6px 10px';
+      close.style.borderRadius = '8px';
+      close.onclick = () => { try { const cur = d.getElementById('icpay-wc-overlay'); if (cur && cur.parentNode) cur.parentNode.removeChild(cur); } catch {} };
+      box.appendChild(title);
+      box.appendChild(qrContainer);
+      box.appendChild(close);
+      ov.appendChild(box);
+      d.body.appendChild(ov);
+      overlay = ov;
+    }
+    const qrContainerEl = d.getElementById('icpay-wc-qr-container');
+    if (qrContainerEl) {
+      qrContainerEl.innerHTML = '';
+      const img = d.createElement('img');
+      img.src = dataUrl;
+      img.alt = 'WalletConnect QR';
+      img.style.width = '260px';
+      img.style.height = '260px';
+      img.style.display = 'block';
+      img.style.borderRadius = '8px';
+      qrContainerEl.appendChild(img);
+    }
   } catch {}
 }
 
@@ -347,6 +433,16 @@ export class WalletConnectAdapter implements AdapterInterface {
   private lastDisplayUri: string | null = null;
   private autoOpenedWcDeepLink = false;
   private autoOpenedPhantom = false;
+  /** When true, display_uri handler skips showing overlay (used during getOrCreateQrDataUrl). */
+  _preGenerateMode = false;
+  /** Pre-generated QR as data URL for host to show in placeholder; reused in modal when user picks WC. */
+  preGeneratedQrDataUrl: string | null = null;
+  /** URI used for the pre-generated QR (for mobile deep links if needed). */
+  preGeneratedUri: string | null = null;
+  /** Pending connect() promise when QR was pre-generated; await this when user clicks WalletConnect. */
+  pendingConnectPromise: Promise<WalletAccount> | null = null;
+  /** Provider instance when QR was pre-generated; reuse in connect() when user picks WalletConnect. */
+  private _wcProviderFromPreGenerate: any = null;
 
   constructor(args: { config: WalletSelectConfig }) {
     this.config = args.config || {};
@@ -376,7 +472,7 @@ export class WalletConnectAdapter implements AdapterInterface {
   getEvmProvider(): any {
     if (this.wcProviderProxy) return this.wcProviderProxy;
     if (this.wcProvider) return this.wcProvider;
-    return this.getInjectedWcProvider();
+    return null;
   }
 
   async isInstalled(): Promise<boolean> {
@@ -635,11 +731,12 @@ export class WalletConnectAdapter implements AdapterInterface {
             optionalEvents: events
           });
 
-      // Listen for display_uri to render our QR (and mobile deep-link choices)
+      // Listen for display_uri to render our QR (and mobile deep-link choices); skip overlay when pre-generating
       try {
         await ensureQrLib();
         provider.on?.( 'display_uri', (uri: string) => {
           try { this.lastDisplayUri = uri; } catch {}
+          if (this._preGenerateMode) return;
           try { showQrOverlay(uri); } catch {}
         } );
         provider.on?.('disconnect', () => { try { hideQrOverlay(); } catch {} });
@@ -652,7 +749,125 @@ export class WalletConnectAdapter implements AdapterInterface {
     }
   }
 
+  /**
+   * Pre-generate WalletConnect QR as a data URL. Host can show it in a placeholder.
+   * When user later picks WalletConnect, the same QR is shown in the modal and the same session is reused.
+   * Returns the QR image as data URL, or null if WalletConnect is not available.
+   */
+  async getOrCreateQrDataUrl(options?: { onConnected?: (account: WalletAccount) => void }): Promise<string | null> {
+    if (this.preGeneratedQrDataUrl) return this.preGeneratedQrDataUrl;
+    this._preGenerateMode = true;
+    try {
+      const provider = await this.initGlobalProvider();
+      if (!provider) return null;
+      await ensureQrLib();
+      const w: any = (typeof window !== 'undefined' ? window : {}) as any;
+      if (!w?.QRCode?.toCanvas) return null;
+      return await new Promise<string | null>((resolve, reject) => {
+        let settled = false;
+        let timeoutId: ReturnType<typeof setTimeout> | null = null;
+        const finish = (v: string | null) => {
+          if (settled) return;
+          settled = true;
+          if (timeoutId != null) clearTimeout(timeoutId);
+          resolve(v);
+        };
+        const onUri = (uri: string) => {
+          try {
+            this.preGeneratedUri = uri;
+            const d = typeof document !== 'undefined' ? document : null;
+            const canvas = d?.createElement('canvas');
+            if (!canvas) { finish(null); return; }
+            w.QRCode.toCanvas(canvas, uri, { width: 260, margin: 2 });
+            this.preGeneratedQrDataUrl = canvas.toDataURL('image/png');
+            this._wcProviderFromPreGenerate = provider;
+            finish(this.preGeneratedQrDataUrl);
+          } catch {
+            finish(null);
+          }
+        };
+        timeoutId = setTimeout(() => finish(null), 15000);
+        try {
+          provider.once?.('display_uri', onUri);
+          const connectPromise = provider.connect?.({ chains: DEFAULT_WC_CHAINS.slice(), optionalChains: DEFAULT_WC_OPTIONAL_CHAINS.slice() });
+          this.pendingConnectPromise = (connectPromise && typeof (connectPromise as any).then === 'function')
+            ? (connectPromise as Promise<void>).then(async () => {
+                try {
+                  const accounts = await provider.request?.({ method: 'eth_accounts' });
+                  const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
+                  if (addr) return { owner: addr, principal: addr, connected: true };
+                } catch {}
+                throw new Error('No account returned by WalletConnect');
+              })
+            : null;
+          if (this.pendingConnectPromise) {
+            this.pendingConnectPromise.then((account: WalletAccount) => {
+              this.wcProvider = this._wcProviderFromPreGenerate;
+              this.wcProviderProxy = this.wrapProviderForMobileWake(this.wcProvider);
+              try { options?.onConnected?.(account); } catch {}
+            }).catch(() => {});
+          }
+          if (connectPromise && typeof (connectPromise as any).catch === 'function') {
+            (connectPromise as Promise<void>).catch(() => {});
+          }
+        } catch {
+          finish(null);
+        }
+      });
+    } finally {
+      this._preGenerateMode = false;
+    }
+  }
+
   async connect(): Promise<WalletAccount> {
+    // Reuse pre-generated QR and pending session when user picks WalletConnect after host called getOrCreateQrDataUrl
+    if (this.pendingConnectPromise && this.preGeneratedQrDataUrl && this._wcProviderFromPreGenerate) {
+      this.wcProvider = this._wcProviderFromPreGenerate;
+      this.wcProviderProxy = this.wrapProviderForMobileWake(this.wcProvider);
+      // If session is already established (user already scanned the QR on the page), return account without showing overlay
+      try {
+        const a = await this.wcProviderProxy.request?.({ method: 'eth_accounts' });
+        if (Array.isArray(a) && a.length > 0) {
+          const addr = a[0] || '';
+          return { owner: addr, principal: addr, connected: true };
+        }
+      } catch {}
+      // Session not yet established: show same pre-generated QR in overlay and wait for approval
+      try { showQrOverlayWithDataUrl(this.preGeneratedQrDataUrl); } catch {}
+      try {
+        this.wcProviderProxy.on?.('connect', async () => {
+          try {
+            const a = await this.wcProviderProxy.request?.({ method: 'eth_accounts' });
+            if (Array.isArray(a) && a.length > 0) { try { hideQrOverlay(); } catch {} }
+          } catch {}
+        });
+      } catch {}
+      try {
+        await this.pendingConnectPromise;
+        const a = await this.wcProviderProxy.request?.({ method: 'eth_accounts' });
+        if (Array.isArray(a) && a.length > 0) {
+          try { hideQrOverlay(); } catch {}
+          const addr = a[0] || '';
+          return { owner: addr, principal: addr, connected: true };
+        }
+      } catch {}
+      // Poll for accounts (session may still be establishing)
+      const start = Date.now();
+      while (Date.now() - start < 60000) {
+        try {
+          const a = await this.wcProviderProxy.request?.({ method: 'eth_accounts' });
+          if (Array.isArray(a) && a.length > 0) {
+            try { hideQrOverlay(); } catch {}
+            const addr = a[0] || '';
+            return { owner: addr, principal: addr, connected: true };
+          }
+        } catch {}
+        await new Promise(r => setTimeout(r, 500));
+      }
+      try { hideQrOverlay(); } catch {}
+      throw new Error('No account returned by WalletConnect');
+    }
+
     // Proactively clear stale WalletConnect v1/v2 residues that can block mobile approval screens
     try {
       const keysToNuke: string[] = [];
@@ -783,6 +998,10 @@ export class WalletConnectAdapter implements AdapterInterface {
       try { await provider?.disconnect?.(); } catch {}
       try { await provider?.disconnectSession?.(); } catch {}
       try { hideQrOverlay(); } catch {}
+      this.preGeneratedQrDataUrl = null;
+      this.preGeneratedUri = null;
+      this.pendingConnectPromise = null;
+      this._wcProviderFromPreGenerate = null;
       try {
         const keysToNuke: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {

@@ -85,6 +85,8 @@ export class WalletSelect {
   private _adapters: Record<string, AdapterConfig>;
   private _activeAdapter: AdapterInterface | null = null;
   private _account: WalletAccount | null = null;
+  /** Cached WalletConnect adapter when host pre-generates QR via generateWalletConnectQr(); reused on connect('walletconnect'). */
+  private _walletConnectAdapter: InstanceType<typeof WalletConnectAdapter> | null = null;
 
   private isMobileBrowser(): boolean {
     try {
@@ -225,13 +227,14 @@ export class WalletSelect {
     return getIcon(id, fallback || null);
   }
 
-  // Expose the active EVM provider (if adapter supports it). Falls back to window.ethereum.
+  // Expose the active EVM provider (if adapter supports it). Falls back to window.ethereum only when active adapter is not WalletConnect (so we never use browser wallet when user connected via WC QR).
   getEvmProvider(): any {
     try {
       const anyAdapter: any = this._activeAdapter as any;
       if (anyAdapter && typeof anyAdapter.getEvmProvider === 'function') {
         const prov = anyAdapter.getEvmProvider();
         if (prov) return prov;
+        if (anyAdapter.id === 'walletconnect') return null;
       }
     } catch {}
     try { return (typeof window !== 'undefined' ? (window as any).ethereum : null) || null; } catch { return null; }
@@ -259,11 +262,50 @@ export class WalletSelect {
     }
   }
 
+  /**
+   * Pre-generate WalletConnect QR as a data URL. Host can show it in a placeholder.
+   * When user scans and approves, onConnected(account) is called; WalletSelect is updated so getEvmProvider() etc. work.
+   * Returns the QR image as data URL, or null if WalletConnect is not enabled/available.
+   */
+  async generateWalletConnectQr(options?: { onConnected?: (account: WalletAccount) => void }): Promise<string | null> {
+    const cfg = this._adapters['walletconnect'];
+    if (!cfg || cfg.enabled === false) return null;
+    if (!this._walletConnectAdapter) {
+      this._walletConnectAdapter = new WalletConnectAdapter({ config: this._config }) as InstanceType<typeof WalletConnectAdapter>;
+    }
+    const onConnected = options?.onConnected;
+    return this._walletConnectAdapter.getOrCreateQrDataUrl({
+      onConnected: (account: WalletAccount) => {
+        this._activeAdapter = this._walletConnectAdapter;
+        this._account = { owner: account?.principal ?? account?.owner ?? null, principal: account?.principal ?? account?.owner ?? null, connected: true };
+        try { onConnected?.(account); } catch {}
+      },
+    });
+  }
+
+  /** Check if Coinbase/Base provider is available and has accounts (e.g. after returning from Base app deep link). */
+  async hasCoinbaseAccounts(): Promise<boolean> {
+    try {
+      const cfg = this._adapters['coinbase'];
+      if (!cfg || cfg.enabled === false) return false;
+      const adapter = new cfg.adapter({ config: this._config }) as any;
+      const provider = adapter.getEvmProvider?.();
+      if (!provider || typeof provider.request !== 'function') return false;
+      const accounts = await provider.request({ method: 'eth_accounts' });
+      return Array.isArray(accounts) && accounts.length > 0;
+    } catch {
+      return false;
+    }
+  }
+
   connect(walletId?: string): Promise<WalletAccount> {
     const id = (walletId || '').toLowerCase();
     const cfg = id ? this._adapters[id] : undefined;
     if (!cfg || cfg.enabled === false) throw new Error('No wallets available');
-    const adapter = new cfg.adapter({ config: this._config });
+    // Reuse cached WalletConnect adapter when host pre-generated QR so we use the same session
+    const adapter = (id === 'walletconnect' && this._walletConnectAdapter)
+      ? this._walletConnectAdapter
+      : new cfg.adapter({ config: this._config });
     this._activeAdapter = adapter;
     return adapter.connect().then((acc) => {
       const principal = toStringPrincipal(acc?.principal || acc?.owner);
@@ -274,6 +316,7 @@ export class WalletSelect {
 
   async disconnect(): Promise<void> {
     try { await this._activeAdapter?.disconnect(); } catch {}
+    if (this._activeAdapter?.id === 'walletconnect') this._walletConnectAdapter = null;
     this._activeAdapter = null;
     this._account = null;
   }
