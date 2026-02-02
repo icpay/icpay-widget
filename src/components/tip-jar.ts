@@ -12,6 +12,7 @@ import { renderOnrampModal } from './ui/onramp-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
 import { resetPaymentFlow as resetPaymentFlowUtil } from '../utils/payment-flow-reset';
 import { getWalletBalanceEntries, isEvmWalletId, ensureEvmChain } from '../utils/balances';
+import { shouldSkipX402ForBaseOnIos } from '../utils/x402';
 import { renderWalletBalanceModal } from './ui/wallet-balance-modal';
 
 // Check if we're in a browser environment
@@ -128,6 +129,101 @@ export class ICPayTipJar extends LitElement {
 
   private get amounts(): number[] {
     return this.config?.amountsUsd || [1, 5, 10];
+  }
+
+  /** Ensure WalletSelect (pnp) is created with same config as wallet modal; used by generateWalletConnectQr / connectWallet. */
+  private async getOrCreatePnp(): Promise<any> {
+    if (this.pnp) return this.pnp;
+    if (!WalletSelect) {
+      const module = await import('../wallet-select');
+      WalletSelect = module.WalletSelect;
+    }
+    const wantsOisyTab = !!((this.config as any)?.openOisyInNewTab || (this.config as any)?.plugNPlay?.openOisyInNewTab);
+    const _rawCfg: any = { ...(this.config?.plugNPlay || {}) };
+    const _dest = (this.config as any)?.recipientAddresses;
+    if (_dest && (_dest.ic || _dest.evm || _dest.sol)) {
+      const allowed: Array<'ic'|'evm'|'sol'> = [];
+      if (_dest.ic) allowed.push('ic');
+      if (_dest.evm) allowed.push('evm');
+      if (_dest.sol) allowed.push('sol');
+      if (allowed.length) _rawCfg.chainTypes = allowed as any;
+    } else if ((this.config as any)?.chainTypes) {
+      _rawCfg.chainTypes = (this.config as any).chainTypes;
+    }
+    const _cfg: any = wantsOisyTab ? applyOisyNewTabConfig(_rawCfg) : _rawCfg;
+    try {
+      if (typeof window !== 'undefined') {
+        const { resolveDerivationOrigin } = await import('../utils/origin');
+        _cfg.derivationOrigin = this.config?.derivationOrigin || resolveDerivationOrigin();
+      }
+    } catch {}
+    this.pnp = new WalletSelect(_cfg);
+    return this.pnp;
+  }
+
+  /**
+   * Pre-generate WalletConnect QR as a data URL. Host can show it in a placeholder (e.g. pay page left column).
+   * When user scans and approves, the widget is updated to "connected" so Pay does not open the wallet selector.
+   * hostOptions.onConnected is called when the phone wallet connects so the host can show "Connected" etc.
+   * Returns the QR image as data URL, or null if WalletConnect is not enabled/available.
+   */
+  async generateWalletConnectQr(hostOptions?: { onConnected?: () => void }): Promise<string | null> {
+    try {
+      const pnp = await this.getOrCreatePnp();
+      if (!pnp || typeof pnp.generateWalletConnectQr !== 'function') return null;
+      return await pnp.generateWalletConnectQr({
+        onConnected: (account: any) => {
+          this.walletConnected = true;
+          this.lastWalletId = 'walletconnect';
+          const normalized = normalizeConnectedWallet(this.pnp, account);
+          const evmProvider = (this.pnp as any)?.getEvmProvider?.();
+          const solanaProvider = (this.pnp as any)?.getSolanaProvider?.();
+          this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }), ...(evmProvider ? { evmProvider } : {}), ...(solanaProvider ? { solanaProvider } : {}) } as any;
+          this.sdk = null;
+          try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: 'walletconnect' } })); } catch {}
+          try { hostOptions?.onConnected?.(); } catch {}
+          this.requestUpdate();
+        },
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Check if Coinbase/Base wallet is already connected (e.g. user returned from Base app deep link).
+   * Host can call this on load when showing Base option on mobile to show "Connected".
+   */
+  async checkCoinbaseConnection(): Promise<boolean> {
+    try {
+      const pnp = await this.getOrCreatePnp();
+      return (pnp as any)?.hasCoinbaseAccounts?.() ?? false;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Connect a specific wallet by id (e.g. 'coinbase' for Base Wallet deep link on mobile).
+   * Host can use this for "Connect with Base" without opening the wallet modal.
+   * Resolves when connected; rejects on error.
+   */
+  async connectWallet(walletId: string): Promise<void> {
+    const pnp = await this.getOrCreatePnp();
+    if (!pnp || !walletId) throw new Error('Wallet not available');
+    const id = (walletId || '').toLowerCase();
+    const result = await pnp.connect(id);
+    const isConnected = !!(result && (result.connected === true || (result as any).principal || (result as any).owner || pnp.account));
+    if (!isConnected) throw new Error('Wallet connection was rejected');
+    this.walletConnected = true;
+    this.lastWalletId = id;
+    const normalized = normalizeConnectedWallet(this.pnp, result);
+    const evmProvider = (this.pnp as any)?.getEvmProvider?.();
+    const solanaProvider = (this.pnp as any)?.getSolanaProvider?.();
+    this.config = { ...this.config, connectedWallet: normalized, actorProvider: (canisterId: string, idl: any) => this.pnp!.getActor({ canisterId, idl, requiresSigning: true, anon: false }), ...(evmProvider ? { evmProvider } : {}), ...(solanaProvider ? { solanaProvider } : {}) } as any;
+    this.sdk = null;
+    try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-connected', { detail: { walletType: id } })); } catch {}
+    this.requestUpdate();
   }
 
   connectedCallback(): void {
@@ -458,7 +554,7 @@ export class ICPayTipJar extends LitElement {
         try {
           const sdk = createSdk(this.config);
           const amountUsd = Number(this.selectedAmount || 0);
-          if (sel?.x402Accepts) {
+          if (sel?.x402Accepts && !shouldSkipX402ForBaseOnIos(this.lastWalletId)) {
             try {
               await (sdk.client as any).createPaymentX402Usd({
                 usdAmount: amountUsd,
