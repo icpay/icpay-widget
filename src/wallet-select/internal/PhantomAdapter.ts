@@ -67,6 +67,9 @@ export class PhantomAdapter implements AdapterInterface {
 
 	async isInstalled(): Promise<boolean> {
 		try {
+			// On mobile, provider is only injected inside Phantom's in-app browser.
+			// We can't detect the app, so treat as "available" and deep link on connect.
+			if (isMobileBrowser()) return true;
 			return !!getPhantomSolanaProvider();
 		} catch {
 			return false;
@@ -93,15 +96,21 @@ export class PhantomAdapter implements AdapterInterface {
 	async connect(): Promise<WalletAccount> {
 		let provider = getPhantomSolanaProvider();
 		if (!provider) {
+			// On mobile, the Solana provider is only injected when the dapp runs inside Phantom's in-app browser.
+			// Redirect to Phantom's "browse" deep link so the user opens this page inside Phantom.
 			if (typeof window !== 'undefined' && isMobileBrowser()) {
-				// On mobile, attempt Phantom connect which should trigger the app if available
-				// If unavailable, present a friendly error
+				const href = String(window.location?.href || '');
+				const ref = String(window.location?.origin || href.replace(/\/[^/]*$/, '') || '');
+				const deepLink = `https://phantom.app/ul/browse/${encodeURIComponent(href)}?ref=${encodeURIComponent(ref)}`;
 				try {
-					provider = getPhantomSolanaProvider();
-					if (!provider) throw new Error('Phantom (Solana) not available');
-				} catch (e: any) {
-					throw new Error('Phantom (Solana) not available');
+					window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-deeplink', { detail: { wallet: 'phantom', url: deepLink } }));
+				} catch {}
+				try {
+					window.location.href = deepLink;
+				} catch {
+					try { window.open(deepLink, '_self', 'noopener,noreferrer'); } catch {}
 				}
+				throw new Error('Opening Phantom… If nothing happens, install Phantom and try again.');
 			}
 			throw new Error('Phantom (Solana) not available');
 		}
