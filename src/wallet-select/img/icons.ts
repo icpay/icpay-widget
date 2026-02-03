@@ -12,6 +12,7 @@ import coinbaseIcon from './coinbase.js';
 import rainbowIcon from './rainbow.js';
 import ledgerIcon from './ledger.js';
 import okxIcon from './okx.js';
+import trustIcon from './trust.js';
 import walletconnectIcon from './walletconnect.js'; // Disabled
 import braveIcon from './brave.js';
 import phantomIcon from './phantom.js';
@@ -33,6 +34,7 @@ const ICONS: Record<string, string> = {
   rabby: rabbyIcon,
   ledger: ledgerIcon,
   okx: okxIcon,
+  trust: trustIcon,
   walletconnect: walletconnectIcon
 };
 

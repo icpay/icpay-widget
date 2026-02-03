@@ -71,11 +71,11 @@ export class CoinbaseAdapter implements AdapterInterface {
   async connect(): Promise<WalletAccount> {
 		let provider = getCoinbaseProvider();
 		if (!provider) {
-			// Deep link to Coinbase Wallet in-app browser on mobile
+			// Deep link to open current page in Base/Coinbase in-app explorer (same as pay page)
 			if (typeof window !== 'undefined' && isMobileBrowser()) {
 				try {
 					const href = String(window.location?.href || '');
-					const deepLink = `https://go.cb-w.com/dapp?cb_url=${encodeURIComponent(href)}`;
+					const deepLink = `cbwallet://dapp?url=${encodeURIComponent(href)}`;
 					try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-deeplink', { detail: { wallet: 'coinbase', url: deepLink } })); } catch {}
 					try { window.location.href = deepLink; } catch { try { window.open(deepLink, '_self', 'noopener,noreferrer'); } catch {} }
 				} catch {}
