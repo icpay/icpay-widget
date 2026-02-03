@@ -23,7 +23,7 @@ export type WalletBalanceEntry = {
   logoUrl?: string | null;
 };
 
-const EVM_WALLET_IDS = new Set(['metamask', 'walletconnect', 'coinbase', 'brave', 'rainbow', 'rabby', 'okx']);
+const EVM_WALLET_IDS = new Set(['metamask', 'walletconnect', 'coinbase', 'brave', 'rainbow', 'rabby', 'okx', 'trust']);
 const SOL_WALLET_IDS = new Set(['phantom', 'backpack']);
 
 export function isEvmWalletId(walletId?: string | null): boolean {

@@ -3,7 +3,8 @@ import type { AdapterInterface, GetActorOptions, WalletSelectConfig, WalletAccou
 declare global {
 	interface Window {
 		ethereum?: any;
-		okxwallet?: any;
+		trustwallet?: any;
+		trustWallet?: any;
 	}
 }
 
@@ -17,30 +18,33 @@ function isMobileBrowser(): boolean {
 	}
 }
 
-function getOkxProvider(): any | null {
+function getTrustProvider(): any | null {
 	try {
 		const anyWin: any = (typeof window !== 'undefined' ? window : {}) as any;
-		// Dedicated OKX handle if present
-		const okx = anyWin.okxwallet;
-		if (okx && (okx.isOkxWallet || okx.ethereum)) return okx.ethereum || okx;
-		// Check injected ethereum flags
+		// Trust Wallet injects at trustwallet or trustWallet (browser extension)
+		if (anyWin.trustwallet?.ethereum) return anyWin.trustwallet.ethereum;
+		if (anyWin.trustWallet?.ethereum) return anyWin.trustWallet.ethereum;
+		if (anyWin.trustwallet && typeof anyWin.trustwallet.request === 'function') return anyWin.trustwallet;
+		if (anyWin.trustWallet && typeof anyWin.trustWallet.request === 'function') return anyWin.trustWallet;
+		// Check injected ethereum with Trust flag
 		const eth = anyWin.ethereum;
 		if (eth && Array.isArray(eth.providers)) {
-			const p = eth.providers.find((p: any) => p && (p.isOkxWallet || p?.provider?.isOkxWallet));
-			if (p) return p;
+			const tw = eth.providers.find((p: any) => p && (p.isTrust || p?.isTrustWallet));
+			if (tw) return tw;
 		}
-		if (eth && (eth.isOkxWallet || eth?.provider?.isOkxWallet)) return eth;
-		// Mobile in-app browsers sometimes miss flags; accept generic provider on mobile
-		if (isMobileBrowser() && eth && typeof eth.request === 'function') return eth;
+		if (eth && (eth.isTrust || eth?.isTrustWallet)) return eth;
+		// Mobile in-app browsers sometimes miss flags; accept generic provider on mobile when UA suggests Trust
+		const ua = String((typeof navigator !== 'undefined' ? navigator : (anyWin as any)?.navigator)?.userAgent || '').toLowerCase();
+		if (isMobileBrowser() && (ua.includes('trust') || ua.includes('trustwallet')) && eth && typeof eth.request === 'function') return eth;
 		return null;
 	} catch {
 		return null;
 	}
 }
 
-export class OkxAdapter implements AdapterInterface {
-	readonly id = 'okx';
-	readonly label = 'OKX Wallet';
+export class TrustAdapter implements AdapterInterface {
+	readonly id = 'trust';
+	readonly label = 'Trust Wallet';
 	readonly icon?: string | null;
 	private readonly config: WalletSelectConfig;
 
@@ -48,11 +52,11 @@ export class OkxAdapter implements AdapterInterface {
 		this.config = args.config || {};
 	}
 
-	getEvmProvider(): any { return getOkxProvider(); }
+	getEvmProvider(): any { return getTrustProvider(); }
 
 	async isInstalled(): Promise<boolean> {
 		try {
-			return !!getOkxProvider();
+			return !!getTrustProvider();
 		} catch {
 			return false;
 		}
@@ -60,7 +64,7 @@ export class OkxAdapter implements AdapterInterface {
 
 	async isConnected(): Promise<boolean> {
 		try {
-			const provider = getOkxProvider();
+			const provider = getTrustProvider();
 			if (!provider) return false;
 			const accounts = await provider.request({ method: 'eth_accounts' });
 			return Array.isArray(accounts) && accounts.length > 0;
@@ -70,20 +74,19 @@ export class OkxAdapter implements AdapterInterface {
 	}
 
 	async connect(): Promise<WalletAccount> {
-		let provider = getOkxProvider();
+		let provider = getTrustProvider();
 		if (!provider) {
 			if (typeof window !== 'undefined' && isMobileBrowser()) {
 				try {
 					const href = String(window.location?.href || '');
-					// OKX: dappUrl param (docs). Use universal link so app can open when scheme is blocked (e.g. iOS).
-					const scheme = `okx://wallet/dapp/url?dappUrl=${encodeURIComponent(href)}`;
-					const universalLink = `https://web3.okx.com/download?deeplink=${encodeURIComponent(scheme)}`;
-					try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-deeplink', { detail: { wallet: 'okx', url: universalLink } })); } catch {}
-					try { window.location.href = universalLink; } catch { try { window.open(universalLink, '_self', 'noopener,noreferrer'); } catch {} }
+					// Trust Wallet dapp browser: coin_id=60 for Ethereum/EVM (https://developer.trustwallet.com/developer/develop-for-trust/deeplinking)
+					const deepLink = `https://link.trustwallet.com/open_url?coin_id=60&url=${encodeURIComponent(href)}`;
+					try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-deeplink', { detail: { wallet: 'trust', url: deepLink } })); } catch {}
+					try { window.location.href = deepLink; } catch { try { window.open(deepLink, '_self', 'noopener,noreferrer'); } catch {} }
 				} catch {}
-				throw new Error('Opening OKX Wallet… If nothing happens, install OKX Wallet and try again.');
+				throw new Error('Opening Trust Wallet… If nothing happens, install Trust Wallet and try again.');
 			}
-			throw new Error('OKX Wallet not available');
+			throw new Error('Trust Wallet not available');
 		}
 		const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 		const getAccountsOnce = async (): Promise<string[]> => {
@@ -106,20 +109,19 @@ export class OkxAdapter implements AdapterInterface {
 		};
 		let accounts: string[] = [];
 		for (let i = 0; i < 3 && accounts.length === 0; i++) {
-			provider = getOkxProvider() || provider;
+			provider = getTrustProvider() || provider;
 			accounts = await getAccountsOnce();
 			if (accounts.length === 0) await delay(300);
 		}
 		const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
-		if (!addr) throw new Error('No account returned by OKX Wallet');
+		if (!addr) throw new Error('No account returned by Trust Wallet');
 		return { owner: addr, principal: addr, connected: true };
 	}
 
 	async disconnect(): Promise<void> {
 		try {
-			const provider = getOkxProvider();
+			const provider = getTrustProvider();
 			if (!provider) return;
-			try { await provider.request?.({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] }); } catch {}
 			try { provider.removeAllListeners?.('accountsChanged'); } catch {}
 			try { provider.removeAllListeners?.('chainChanged'); } catch {}
 			try { provider.removeAllListeners?.('disconnect'); } catch {}
@@ -128,7 +130,7 @@ export class OkxAdapter implements AdapterInterface {
 
 	async getPrincipal(): Promise<string | null> {
 		try {
-			const provider = getOkxProvider();
+			const provider = getTrustProvider();
 			if (!provider) return null;
 			const accounts = await provider.request({ method: 'eth_accounts' });
 			const addr = Array.isArray(accounts) ? (accounts[0] || '') : '';
@@ -142,6 +144,3 @@ export class OkxAdapter implements AdapterInterface {
 		throw new Error('EVM wallets cannot provide IC actors. Use IC adapters for IC canister interactions.');
 	}
 }
-
-
-

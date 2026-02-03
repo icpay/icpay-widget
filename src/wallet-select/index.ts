@@ -76,6 +76,7 @@ import { RainbowAdapter } from './internal/RainbowAdapter.js';
 import { RabbyAdapter } from './internal/RabbyAdapter.js';
 import { PhantomAdapter } from './internal/PhantomAdapter.js';
 import { OkxAdapter } from './internal/OkxAdapter.js';
+import { TrustAdapter } from './internal/TrustAdapter.js';
 import { BackpackAdapter } from './internal/BackpackAdapter.js';
 import { getIcon } from './img/icons.js';
 
@@ -112,6 +113,7 @@ export class WalletSelect {
     baseAdapters.rabby = { id: 'rabby', label: 'Rabby', icon: null, enabled: true, adapter: RabbyAdapter };
     baseAdapters.brave = { id: 'brave', label: 'Brave Wallet', icon: null, enabled: true, adapter: BraveAdapter };
     baseAdapters.okx = { id: 'okx', label: 'OKX Wallet', icon: null, enabled: true, adapter: OkxAdapter };
+    baseAdapters.trust = { id: 'trust', label: 'Trust Wallet', icon: null, enabled: true, adapter: TrustAdapter };
     baseAdapters.oisy = { id: 'oisy', label: 'Oisy', icon: null, enabled: true, adapter: OisyAdapter };
     baseAdapters.nfid = { id: 'nfid', label: 'NFID', icon: null, enabled: false, adapter: NfidAdapter };
     baseAdapters.ii = { id: 'ii', label: 'Internet Identity', icon: null, enabled: false, adapter: IIAdapter };
@@ -173,7 +175,7 @@ export class WalletSelect {
     const idToType: Record<string, 'ic' | 'evm' | 'sol'> = {
       oisy: 'ic', nfid: 'ic', ii: 'ic', plug: 'ic',
       metamask: 'evm', walletconnect: 'evm', coinbase: 'evm',
-      brave: 'evm', rainbow: 'evm', rabby: 'evm', okx: 'evm',
+      brave: 'evm', rainbow: 'evm', rabby: 'evm', okx: 'evm', trust: 'evm',
       phantom: 'sol', backpack: 'sol',
     };
     // Build list with original index to allow stable sort after prioritization
@@ -190,6 +192,12 @@ export class WalletSelect {
         }
         // Hide Rabby on mobile (not supported)
         if (a.id === 'rabby' && this.isMobileBrowser()) return false;
+        // Hide Backpack on mobile (use Phantom/other Solana wallets)
+        if (a.id === 'backpack' && this.isMobileBrowser()) return false;
+        // Hide Brave on mobile (browser extension only)
+        if (a.id === 'brave' && this.isMobileBrowser()) return false;
+        // Hide Plug on mobile (not supported)
+        if (a.id === 'plug' && this.isMobileBrowser()) return false;
         // Respect allowedTypes if provided
         if (Array.isArray(allowedTypes) && allowedTypes.length > 0) {
           const t = idToType[a.id];
