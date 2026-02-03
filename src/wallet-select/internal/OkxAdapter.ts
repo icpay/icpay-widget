@@ -76,7 +76,8 @@ export class OkxAdapter implements AdapterInterface {
 				try {
 					const href = String(window.location?.href || '');
 					// Try OKX scheme; some platforms require scheme. Provide a fallback to download page.
-					const scheme = `okx://wallet/dapp/url?url=${encodeURIComponent(href)}`;
+					// OKX official deep link uses dappUrl param (see https://web3.okx.com/build/docs/waas/app-universal-link)
+					const scheme = `okx://wallet/dapp/url?dappUrl=${encodeURIComponent(href)}`;
 					try { window.dispatchEvent(new CustomEvent('icpay-sdk-wallet-deeplink', { detail: { wallet: 'okx', url: scheme } })); } catch {}
 					try { window.location.href = scheme; } catch { try { window.open(scheme, '_self', 'noopener,noreferrer'); } catch {} }
 				} catch {}
