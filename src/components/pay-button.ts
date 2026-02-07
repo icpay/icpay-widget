@@ -837,7 +837,7 @@ export class ICPayPayButton extends LitElement {
 
     const selectedSymbol = this.selectedSymbol || 'ICP';
     const amountPart = typeof this.config?.amountUsd === 'number' ? `${Number(this.config.amountUsd).toFixed(2)}` : '';
-    const rawLabel = this.config?.buttonLabel || (typeof this.config?.amountUsd === 'number' ? 'Pay ${amount} with crypto' : 'Pay with {symbol}');
+    const rawLabel = this.config?.buttonLabel || (typeof this.config?.amountUsd === 'number' ? 'Pay with crypto' : 'Pay with {symbol}');
     const label = rawLabel.replace('{amount}', amountPart || '$0.00').replace('{symbol}', selectedSymbol);
     const progressEnabled = this.config?.progressBar?.enabled !== false;
     const showProgressBar = progressEnabled;

@@ -1,6 +1,6 @@
 {
   "name": "@ic-pay/icpay-widget",
-  "version": "1.2.108",
+  "version": "1.2.109",
   "description": "ICPay embeddable payment widgets for multi-chain crypto payments (EVM, Solana, Internet Computer)",
   "keywords": [
     "icpay",

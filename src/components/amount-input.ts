@@ -633,7 +633,7 @@ export class ICPayAmountInput extends LitElement {
   render() {
     if (!this.config) return html`<div class="icpay-card icpay-section">Loading...</div>`;
     const placeholder = this.config?.placeholder || 'Enter amount in USD';
-    const payLabelRaw = this.config?.buttonLabel || 'Pay ${amount} with crypto';
+    const payLabelRaw = this.config?.buttonLabel || 'Pay with crypto';
     const payLabel = payLabelRaw
       .replace('{amount}', this.amountUsd ? `${Number(this.amountUsd).toFixed(2)}` : '$0.00')
       .replace('{symbol}', this.selectedSymbol || 'ICP');
