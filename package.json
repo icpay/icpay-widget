@@ -1,7 +1,18 @@
 {
   "name": "@ic-pay/icpay-widget",
-  "version": "1.2.107",
-  "description": "ICPay embeddable payment widgets as framework-agnostic Web Components",
+  "version": "1.2.108",
+  "description": "ICPay embeddable payment widgets for multi-chain crypto payments (EVM, Solana, Internet Computer)",
+  "keywords": [
+    "icpay",
+    "widget",
+    "payments",
+    "web-components",
+    "evm",
+    "base",
+    "solana",
+    "internet-computer",
+    "react"
+  ],
   "homepage": "https://github.com/icpay/icpay-widget#readme",
   "bugs": {
     "url": "https://github.com/icpay/icpay-widget/issues"
