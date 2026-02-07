@@ -759,7 +759,7 @@ export class ICPayPremiumContent extends LitElement {
 
         <button class="pay-button ${this.processing ? 'processing' : ''}" ?disabled=${this.processing || this.unlocked || (this.config?.disablePaymentButton === true) || (this.succeeded && this.config?.disableAfterSuccess === true)} @click=${() => this.onPay()}>
           ${this.unlocked ? 'Unlocked' : (this.processing ? 'Processing…' : (
-            (this.config?.buttonLabel || 'Pay ${amount} with crypto')
+            (this.config?.buttonLabel || 'Pay with crypto')
               .replace('{amount}', `${Number(this.config?.priceUsd ?? 0).toFixed(2)}`)
               .replace('{symbol}', (this.selectedSymbol || 'ICP'))
           ))}
