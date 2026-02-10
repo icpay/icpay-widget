@@ -15,6 +15,7 @@ import { renderWalletBalanceModal } from './ui/wallet-balance-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
 import { clientSupportsX402, shouldSkipX402ForBaseOnIos } from '../utils/x402';
 import { resetPaymentFlow as resetPaymentFlowUtil, type PaymentFlowResetContext } from '../utils/payment-flow-reset';
+import { fetchPaymentIntent, isPaymentIntentCompleted, type PaymentIntentResponse } from '../utils/fetch-payment-intent';
 
 const isBrowser = typeof window !== 'undefined';
 let WalletSelect: any = null;
@@ -67,12 +68,15 @@ export class ICPayPayButton extends LitElement {
   @state() private balancesLoading = false;
   @state() private balancesError: string | null = null;
   @state() private walletBalances: WalletBalanceEntry[] = [];
+  @state() private loadedPaymentIntent: PaymentIntentResponse | null = null;
+  @state() private paymentIntentLoading = false;
   private onrampPollTimer: number | null = null;
   private pnp: any | null = null;
   private oisyConnectRetriedNewTab: boolean = false;
   private sdk: WidgetSdk | null = null;
   private onrampPollingActive: boolean = false;
   private onrampNotifyController: { stop: () => void } | null = null;
+  private onTransactionCompleted: (() => void) | null = null;
 
   private getSdk(): WidgetSdk {
     if (!this.sdk) {
@@ -81,6 +85,9 @@ export class ICPayPayButton extends LitElement {
       if (usePnpEvm) {
         const evmProv = (this.pnp as any).getEvmProvider?.();
         if (evmProv) cfg = { ...cfg, evmProvider: evmProv };
+      }
+      if (this.loadedPaymentIntent?.paymentIntent) {
+        cfg = { ...cfg, paymentIntent: this.loadedPaymentIntent.paymentIntent };
       }
       this.sdk = createSdk(cfg);
     }
@@ -190,10 +197,7 @@ export class ICPayPayButton extends LitElement {
     if (this.config?.theme) {
       applyThemeVars(this, this.config.theme);
     }
-    // No ledger preload; balances flow handles token availability
-    // selectedSymbol will be set from balance selection flow
     try { window.addEventListener('icpay-switch-account', this.onSwitchAccount as EventListener); } catch {}
-    // Observe SDK intent creation event: ensure balance/wallet modals close so progress is visible
     try {
       window.addEventListener('icpay-sdk-transaction-created', ((e: any) => {
         debugLog(this.config?.debug || false, 'SDK transaction created', { detail: e?.detail });
@@ -202,12 +206,72 @@ export class ICPayPayButton extends LitElement {
         this.requestUpdate();
       }) as EventListener);
     } catch {}
+    this.onTransactionCompleted = () => {
+      this.succeeded = true;
+      this.processing = false;
+      this.requestUpdate();
+    };
+    try { window.addEventListener('icpay-sdk-transaction-completed', this.onTransactionCompleted as EventListener); } catch {}
+    this.loadPaymentIntentIfNeeded();
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    if (this.onTransactionCompleted) {
+      try { window.removeEventListener('icpay-sdk-transaction-completed', this.onTransactionCompleted as EventListener); } catch {}
+    }
+  }
+
+  /** Load payment intent by id from config; if completed show success, else merge intent into config for amount/currency and pass to SDK. */
+  private async loadPaymentIntentIfNeeded(): Promise<void> {
+    const intentId = (this.config as any)?.paymentIntentId;
+    if (!intentId || typeof intentId !== 'string' || intentId.trim() === '') return;
+    if (this.loadedPaymentIntent != null) return;
+    const key = this.config?.publishableKey;
+    const apiUrl = this.config?.apiUrl || 'https://api.icpay.org';
+    if (!key) return;
+    this.paymentIntentLoading = true;
+    this.requestUpdate();
+    try {
+      const data = await fetchPaymentIntent(apiUrl, key, intentId.trim(), !!this.config?.debug);
+      this.loadedPaymentIntent = data ?? null;
+      if (data?.paymentIntent) {
+        if (isPaymentIntentCompleted(data.paymentIntent.status)) {
+          this.succeeded = true;
+          this.requestUpdate();
+        } else {
+          const pi = data.paymentIntent;
+          this.config = {
+            ...this.config,
+            paymentIntent: pi,
+            amountUsd: typeof pi.amountUsd === 'number' ? pi.amountUsd : (this.config?.amountUsd ?? 0),
+            fiat_currency: (pi.fiatCurrencyCode ?? (this.config as any)?.fiat_currency) ?? undefined,
+          } as any;
+          this.sdk = null;
+          this.requestUpdate();
+        }
+      }
+    } catch (e) {
+      debugLog(this.config?.debug || false, 'Load payment intent error', e);
+    } finally {
+      this.paymentIntentLoading = false;
+      this.requestUpdate();
+    }
   }
 
   protected updated(changed: Map<string, unknown>): void {
-    // Apply theme when config changes
     if (changed.has('config') && this.config?.theme) {
       applyThemeVars(this, this.config.theme);
+    }
+    if (changed.has('config')) {
+      const newId = (this.config as any)?.paymentIntentId;
+      if (this.loadedPaymentIntent && this.loadedPaymentIntent.paymentIntentId !== newId) {
+        this.loadedPaymentIntent = null;
+        this.sdk = null;
+      }
+      if (newId && this.loadedPaymentIntent == null && !this.paymentIntentLoading) {
+        this.loadPaymentIntentIfNeeded();
+      }
     }
     if (changed.has('config') && this.pendingAction && this.config?.actorProvider) {
       const action = this.pendingAction as 'pay';
@@ -835,9 +899,14 @@ export class ICPayPayButton extends LitElement {
   render() {
     if (!this.config) return html`<div class="icpay-card icpay-section">Loading...</div>`;
 
+    if (this.paymentIntentLoading && (this.config as any)?.paymentIntentId) {
+      return html`<div class="icpay-card icpay-section">Loading payment...</div>`;
+    }
+
     const selectedSymbol = this.selectedSymbol || 'ICP';
-    const amountPart = typeof this.config?.amountUsd === 'number' ? `${Number(this.config.amountUsd).toFixed(2)}` : '';
-    const rawLabel = this.config?.buttonLabel || (typeof this.config?.amountUsd === 'number' ? 'Pay with crypto' : 'Pay with {symbol}');
+    const amountUsd = typeof this.config?.amountUsd === 'number' ? this.config.amountUsd : (this.loadedPaymentIntent?.paymentIntent?.amountUsd != null ? Number(this.loadedPaymentIntent.paymentIntent.amountUsd) : undefined);
+    const amountPart = typeof amountUsd === 'number' ? `${Number(amountUsd).toFixed(2)}` : '';
+    const rawLabel = this.config?.buttonLabel || (typeof amountUsd === 'number' ? 'Pay with crypto' : 'Pay with {symbol}');
     const label = rawLabel.replace('{amount}', amountPart || '$0.00').replace('{symbol}', selectedSymbol);
     const progressEnabled = this.config?.progressBar?.enabled !== false;
     const showProgressBar = progressEnabled;
@@ -849,7 +918,7 @@ export class ICPayPayButton extends LitElement {
           <icpay-progress-bar
             .debug=${!!this.config?.debug}
             .theme=${this.config?.theme}
-            .amount=${Number(this.config?.amountUsd || 0)}
+            .amount=${Number(this.config?.amountUsd ?? this.loadedPaymentIntent?.paymentIntent?.amountUsd ?? 0)}
             .ledgerSymbol=${selectedSymbol}
             .suspended=${suspendProgress}
           ></icpay-progress-bar>

@@ -69,6 +69,11 @@ export function createSdk(config: CommonConfig): WidgetSdk {
     (sdkConfig as any).fiat_currency = (config as any).fiat_currency;
   }
 
+  // Pass pre-resolved payment intent (e.g. from widget loading by paymentIntentId) so SDK skips create and uses it
+  if ((config as any).paymentIntent != null && typeof (config as any).paymentIntent === 'object') {
+    (sdkConfig as any).paymentIntent = (config as any).paymentIntent;
+  }
+
   debugLog(config.debug || false, 'Filtered SDK config:', sdkConfig);
   try {
     debugLog(config.debug || false, 'typeof Icpay:', typeof Icpay);
