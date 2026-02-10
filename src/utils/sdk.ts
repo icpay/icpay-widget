@@ -73,6 +73,10 @@ export function createSdk(config: CommonConfig): WidgetSdk {
   if ((config as any).paymentIntent != null && typeof (config as any).paymentIntent === 'object') {
     (sdkConfig as any).paymentIntent = (config as any).paymentIntent;
   }
+  // When we only have the id (object never loaded), pass paymentIntentId so SDK can fetch/use the intent by id
+  if ((config as any).paymentIntentId != null && typeof (config as any).paymentIntentId === 'string') {
+    (sdkConfig as any).paymentIntentId = (config as any).paymentIntentId;
+  }
 
   debugLog(config.debug || false, 'Filtered SDK config:', sdkConfig);
   try {
