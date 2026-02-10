@@ -82,6 +82,12 @@ export type CommonConfig = {
   onrampDisabled?: boolean;
   // Optional onramp (Transak) configuration
   onramp?: OnrampConfig;
+  /**
+   * Optional: existing payment intent id (e.g. from server/checkout).
+   * When set, widget loads the intent from icpay-api; if already completed, shows success.
+   * Otherwise amount/currency and payment flow are driven by the loaded intent.
+   */
+  paymentIntentId?: string;
 };
 
 
