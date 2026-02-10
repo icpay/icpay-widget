@@ -86,8 +86,15 @@ export class ICPayPayButton extends LitElement {
         const evmProv = (this.pnp as any).getEvmProvider?.();
         if (evmProv) cfg = { ...cfg, evmProvider: evmProv };
       }
+      // Pass payment intent so SDK uses existing intent instead of creating a new one (e.g. from pay page ?paymentIntent= in URL)
       if (this.loadedPaymentIntent?.paymentIntent) {
         cfg = { ...cfg, paymentIntent: this.loadedPaymentIntent.paymentIntent };
+      } else if ((this.config as any)?.paymentIntent != null && typeof (this.config as any).paymentIntent === 'object') {
+        cfg = { ...cfg, paymentIntent: (this.config as any).paymentIntent };
+      }
+      // When we never loaded the full object, pass paymentIntentId so the SDK can fetch/use the existing intent by id
+      if (!cfg.paymentIntent && (this.loadedPaymentIntent?.paymentIntentId ?? (this.config as any)?.paymentIntentId)) {
+        cfg = { ...cfg, paymentIntentId: this.loadedPaymentIntent?.paymentIntentId ?? (this.config as any).paymentIntentId };
       }
       this.sdk = createSdk(cfg);
     }
