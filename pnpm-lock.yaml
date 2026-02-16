@@ -24,17 +24,17 @@ importers:
         specifier: ^3.4.3
         version: 3.4.3
       '@ic-pay/icpay-sdk':
-        specifier: ^1.4.99
-        version: 1.4.99(@dfinity/identity@3.4.3(@dfinity/agent@3.4.3(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/hashes@1.8.0))(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/curves@1.9.7)(@noble/hashes@1.8.0))(@noble/hashes@1.8.0)
+        specifier: ^1.4.103
+        version: 1.4.103(@dfinity/identity@3.4.3(@dfinity/agent@3.4.3(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/hashes@1.8.0))(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/curves@1.9.7)(@noble/hashes@1.8.0))(@noble/hashes@1.8.0)
       '@slide-computer/signer':
-        specifier: ^4.1.0
-        version: 4.1.0
+        specifier: ^4.2.0
+        version: 4.2.0
       '@slide-computer/signer-agent':
-        specifier: ^4.1.0
-        version: 4.1.0(@slide-computer/signer@4.1.0)
+        specifier: ^4.2.0
+        version: 4.2.0(@slide-computer/signer@4.2.0)
       '@slide-computer/signer-web':
-        specifier: ^4.1.0
-        version: 4.1.0(@slide-computer/signer@4.1.0)
+        specifier: ^4.2.0
+        version: 4.2.0(@slide-computer/signer@4.2.0)
       lit:
         specifier: ^3.3.2
         version: 3.3.2
@@ -261,8 +261,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@ic-pay/icpay-sdk@1.4.99':
-    resolution: {integrity: sha512-8MwGqq1iBjpjSn7L/Hm5AnwmRJaffO0hyaBu/R8K/SZ3F481TelY+kpHCEZGp2yRY2aGjHauss88BDYjsoQThg==}
+  '@ic-pay/icpay-sdk@1.4.103':
+    resolution: {integrity: sha512-l1IHFLI5CPF5HJN4NJGAzj4mKvKhJt4kQu9YjOrxIbeRt9NpPDDbdDmD4OWK8dN68jC60yyVq7GXyQEAl9Wljw==}
 
   '@icp-sdk/core@5.0.0':
     resolution: {integrity: sha512-t6iRbdylHG57MicWRpR1uMTFXRW7GCzec6KAg55CBwDHbHLQDKikQ252lmlcEa80DrKa3LPvMKYZEUYjEq5XUQ==}
@@ -440,18 +440,18 @@ packages:
   '@scure/bip39@1.6.0':
     resolution: {integrity: sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==}
 
-  '@slide-computer/signer-agent@4.1.0':
-    resolution: {integrity: sha512-YCuVFaFP4kOSpd8RbWLKPZ4A0Y2EFomDNhzqQ1yX6NJ1VZTxZX/cz+yMNFGUksbr83J1bbRN/uDm90LOY7bUzw==}
+  '@slide-computer/signer-agent@4.2.0':
+    resolution: {integrity: sha512-3XQcWENR3JHQLd1juuBeSM3cHjVNXbrZMeAsv5cBnCOZhy8fP3622J8Z4tsn/l9ajYScRE69Y8LKlabEy9mQaA==}
     peerDependencies:
-      '@slide-computer/signer': ^4.1.0
+      '@slide-computer/signer': ^4.2.0
 
-  '@slide-computer/signer-web@4.1.0':
-    resolution: {integrity: sha512-icnwz5GL3NizyGXK+83TDcxZo1415vxBAiLz+swhoe4jUZ1rZfcuwYUX75FyboaATMDSAjrgju3fP5kILkq9mg==}
+  '@slide-computer/signer-web@4.2.0':
+    resolution: {integrity: sha512-IOUwxW+F9sqgWhwxQex1Lq+gD4eV9f6eK4qqxrH86IK+xts5IW1df+q9V6hB8A1y/qfsNG30iEmbjMhOXDmJnA==}
     peerDependencies:
-      '@slide-computer/signer': ^4.1.0
+      '@slide-computer/signer': ^4.2.0
 
-  '@slide-computer/signer@4.1.0':
-    resolution: {integrity: sha512-5+JjQLGUzfu2tLf5coKUUmU3jOs88TcBg+3ipwaoX/BlMGgeX9zcS0wCOBJ8pLKrNwYXOl2MTp7c5y04T1W62w==}
+  '@slide-computer/signer@4.2.0':
+    resolution: {integrity: sha512-D4+Rv/q3A+mQMIO2FpDUobo6H8E4AHt0Ux7Dshym3jflYSRvalG/uggsLo1p/5lDAgFMAvp8DTUmqrGMV047Dw==}
 
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
@@ -528,8 +528,8 @@ packages:
     resolution: {integrity: sha512-L28STB170nwWS63UjtlEOE3dldQApaJXZkOI1uMFfzf3rRuPegHaHesyee+YxQ+W6SvRDQV6UrdOdRiR153wJg==}
     engines: {node: '>=6'}
 
-  caniuse-lite@1.0.30001769:
-    resolution: {integrity: sha512-BCfFL1sHijQlBGWBMuJyhZUhzo7wer5sVj9hqekB/7xn0Ypy+pER/edCYQm4exbXj4WiySGp40P8UuTh6w1srg==}
+  caniuse-lite@1.0.30001770:
+    resolution: {integrity: sha512-x/2CLQ1jHENRbHg5PSId2sXq1CIO1CISvwWAj027ltMVG2UNgW+w9oH2+HzgEIRFembL8bUlXtfbBHR1fCg2xw==}
 
   chokidar@3.6.0:
     resolution: {integrity: sha512-7VT13fmjotKpGipCW9JEQAusEPE+Ei8nl6/g4FBAmIm0GOOLMua9NDDo/DWp0ZAxCr3cPq5ZpBqmPAQgDda2Pw==}
@@ -1146,7 +1146,7 @@ snapshots:
   '@esbuild/win32-x64@0.27.3':
     optional: true
 
-  '@ic-pay/icpay-sdk@1.4.99(@dfinity/identity@3.4.3(@dfinity/agent@3.4.3(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/hashes@1.8.0))(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/curves@1.9.7)(@noble/hashes@1.8.0))(@noble/hashes@1.8.0)':
+  '@ic-pay/icpay-sdk@1.4.103(@dfinity/identity@3.4.3(@dfinity/agent@3.4.3(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/hashes@1.8.0))(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/curves@1.9.7)(@noble/hashes@1.8.0))(@noble/hashes@1.8.0)':
     dependencies:
       '@dfinity/agent': 3.4.3(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/hashes@1.8.0)
       '@dfinity/auth-client': 3.4.3(@dfinity/agent@3.4.3(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/hashes@1.8.0))(@dfinity/identity@3.4.3(@dfinity/agent@3.4.3(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/hashes@1.8.0))(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/curves@1.9.7)(@noble/hashes@1.8.0))(@dfinity/principal@3.4.3)
@@ -1291,16 +1291,16 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
-  '@slide-computer/signer-agent@4.1.0(@slide-computer/signer@4.1.0)':
+  '@slide-computer/signer-agent@4.2.0(@slide-computer/signer@4.2.0)':
     dependencies:
       '@icp-sdk/core': 5.0.0
-      '@slide-computer/signer': 4.1.0
+      '@slide-computer/signer': 4.2.0
 
-  '@slide-computer/signer-web@4.1.0(@slide-computer/signer@4.1.0)':
+  '@slide-computer/signer-web@4.2.0(@slide-computer/signer@4.2.0)':
     dependencies:
-      '@slide-computer/signer': 4.1.0
+      '@slide-computer/signer': 4.2.0
 
-  '@slide-computer/signer@4.1.0':
+  '@slide-computer/signer@4.2.0':
     dependencies:
       '@icp-sdk/core': 5.0.0
 
@@ -1334,7 +1334,7 @@ snapshots:
   autoprefixer@10.4.24(postcss@8.5.6):
     dependencies:
       browserslist: 4.28.1
-      caniuse-lite: 1.0.30001769
+      caniuse-lite: 1.0.30001770
       fraction.js: 5.3.4
       picocolors: 1.1.1
       postcss: 8.5.6
@@ -1351,7 +1351,7 @@ snapshots:
   browserslist@4.28.1:
     dependencies:
       baseline-browser-mapping: 2.9.19
-      caniuse-lite: 1.0.30001769
+      caniuse-lite: 1.0.30001770
       electron-to-chromium: 1.5.286
       node-releases: 2.0.27
       update-browserslist-db: 1.2.3(browserslist@4.28.1)
@@ -1367,7 +1367,7 @@ snapshots:
 
   camelcase@5.3.1: {}
 
-  caniuse-lite@1.0.30001769: {}
+  caniuse-lite@1.0.30001770: {}
 
   chokidar@3.6.0:
     dependencies:
