@@ -16,6 +16,7 @@ import trustIcon from './trust.js';
 import walletconnectIcon from './walletconnect.js'; // Disabled
 import braveIcon from './brave.js';
 import phantomIcon from './phantom.js';
+import solflareIcon from './solflare.js';
 import rabbyIcon from './rabby.js';
 import backpackIcon from './backpack.js';
 
@@ -30,6 +31,7 @@ const ICONS: Record<string, string> = {
   rainbow: rainbowIcon,
   brave: braveIcon,
   phantom: phantomIcon,
+  solflare: solflareIcon,
   backpack: backpackIcon,
   rabby: rabbyIcon,
   ledger: ledgerIcon,

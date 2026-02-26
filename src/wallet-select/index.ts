@@ -75,6 +75,7 @@ import { BraveAdapter } from './internal/BraveAdapter.js';
 import { RainbowAdapter } from './internal/RainbowAdapter.js';
 import { RabbyAdapter } from './internal/RabbyAdapter.js';
 import { PhantomAdapter } from './internal/PhantomAdapter.js';
+import { SolflareAdapter } from './internal/SolflareAdapter.js';
 import { OkxAdapter } from './internal/OkxAdapter.js';
 import { TrustAdapter } from './internal/TrustAdapter.js';
 import { BackpackAdapter } from './internal/BackpackAdapter.js';
@@ -107,6 +108,7 @@ export class WalletSelect {
     // WalletConnect is disabled by default; enable via config.adapters.walletconnect.enabled = true and provide projectId
     baseAdapters.walletconnect = { id: 'walletconnect', label: 'WalletConnect', icon: null, enabled: false, adapter: WalletConnectAdapter };
     baseAdapters.phantom = { id: 'phantom', label: 'Phantom', icon: null, enabled: true, adapter: PhantomAdapter };
+    baseAdapters.solflare = { id: 'solflare', label: 'Solflare', icon: null, enabled: true, adapter: SolflareAdapter };
     baseAdapters.backpack = { id: 'backpack', label: 'Backpack', icon: null, enabled: true, adapter: BackpackAdapter };
     // Temporarily disable Rainbow due to provider interoperability issues
     baseAdapters.rainbow = { id: 'rainbow', label: 'Rainbow', icon: null, enabled: false, adapter: RainbowAdapter };
@@ -176,7 +178,7 @@ export class WalletSelect {
       oisy: 'ic', nfid: 'ic', ii: 'ic', plug: 'ic',
       metamask: 'evm', walletconnect: 'evm', coinbase: 'evm',
       brave: 'evm', rainbow: 'evm', rabby: 'evm', okx: 'evm', trust: 'evm',
-      phantom: 'sol', backpack: 'sol',
+      phantom: 'sol', solflare: 'sol', backpack: 'sol',
     };
     // Build list with original index to allow stable sort after prioritization
     const entries = Object.values(this._adapters)
@@ -264,6 +266,7 @@ export class WalletSelect {
       if (w?.xnft?.solana) return w.xnft.solana;
       if (w?.solana && (w.solana.isBackpack === true || w?.solana?.provider?.isBackpack === true)) return w.solana;
       if (w?.phantom?.solana) return w.phantom.solana;
+      if (w?.solflare) return w.solflare;
       return w?.solana || null;
     } catch {
       return null;
