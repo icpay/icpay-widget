@@ -8,7 +8,7 @@ import { renderPayWithStyles, renderPayWithContent } from './shared/pay-with';
 function getThemeMode(themeOverride?: 'light' | 'dark'): 'light' | 'dark' {
   // If theme is explicitly provided, use it
   if (themeOverride === 'light' || themeOverride === 'dark') return themeOverride;
-  
+
   if (typeof document === 'undefined') return 'light';
   // Check for ICPay-specific theme attribute first
   const icpayTheme = document.documentElement.getAttribute('data-icpay-theme');
@@ -185,28 +185,28 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
             justify-content: stretch;
             padding: 0;
           }
-          .modal { 
-            max-width:100%; 
-            width:100%; 
+          .modal {
+            max-width:100%;
+            width:100%;
             height:auto;
-            max-height:50vh; 
-            border-radius:24px 24px 0 0; 
-            margin:0; 
+            max-height:50vh;
+            border-radius:24px 24px 0 0;
+            margin:0;
             padding:16px;
-            transform:translateY(100%); 
-            overflow:hidden; 
-            display:flex; 
+            transform:translateY(100%);
+            overflow:hidden;
+            display:flex;
             flex-direction:column;
             transition:transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
             align-self: flex-end;
           }
-          .icpay-modal-overlay:not([style*="display: none"]) .modal { 
-            transform:translateY(0); 
+          .icpay-modal-overlay:not([style*="display: none"]) .modal {
+            transform:translateY(0);
           }
-          .wallet-list { 
-            overflow-y:auto; 
-            flex:1; 
-            min-height:0; 
+          .wallet-list {
+            overflow-y:auto;
+            flex:1;
+            min-height:0;
             max-height:calc(50vh - 120px); /* Account for header, footer, and padding */
           }
         }
@@ -215,7 +215,7 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
         .close-button:hover { opacity:1; }
         .title { font-size:20px; font-weight:600; text-align:center; margin:0; }
         .wallet-list { display:flex; flex-direction:column; gap:0; overflow-y:auto; flex:1; padding-right:8px; padding-top:4px; scrollbar-gutter: stable; }
-        .wallet-item { display:flex; align-items:center; padding:16px 12px; cursor:pointer; transition:background-color 0.2s; border-radius:12px; }
+        .wallet-item { display:flex; align-items:center; padding:14px 12px; cursor:pointer; transition:background-color 0.2s; border-radius:12px; }
         .wallet-item:hover { background-color:var(--icpay-accent); }
         .wallet-icon { width:48px; height:48px; border-radius:12px; margin-right:16px; display:flex; align-items:center; justify-content:center; font-size:24px; overflow:hidden; }
         .oisy-icon { background-color:var(--icpay-primary); }
@@ -264,7 +264,7 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
                 const id = (w.id || '').toLowerCase();
                 const displayName = getWalletFriendlyName(w.id, w.label);
                 const isEvm = isEvmWalletId(id);
-                const type: 'sol' | 'evm' | 'ic' = (id === 'phantom' || id === 'backpack') ? 'sol' : (isEvm ? 'evm' : 'ic');
+                const type: 'sol' | 'evm' | 'ic' = (id === 'phantom' || id === 'solflare' || id === 'backpack') ? 'sol' : (isEvm ? 'evm' : 'ic');
                 // Insert a divider whenever transitioning between wallet groups (sol -> evm -> ic)
                 if (lastGroup !== null && type !== lastGroup) {
                   items.push(html`<div class="divider"></div>`);
@@ -272,7 +272,7 @@ export function renderWalletSelectorModal(opts: Options & { oisyReadyToPay?: boo
                 const chainLabel =
                   (id === 'oisy' || id === 'plug' || id === 'nfid' || id === 'ii')
                     ? 'Internet Computer'
-                    : (id === 'phantom' || id === 'backpack'
+                    : (id === 'phantom' || id === 'solflare' || id === 'backpack'
                       ? 'Solana'
                       : (isEvm ? 'Ethereum-compatible' : ''));
                 items.push(html`
