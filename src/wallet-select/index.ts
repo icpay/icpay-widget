@@ -6,7 +6,7 @@ export type WalletSelectConfig = {
   icHost?: string;
   derivationOrigin?: string;
   adapters?: Partial<Record<string, { adapter?: any; config?: any; enabled?: boolean; label?: string; icon?: string }>>;
-  chainTypes?: Array<'ic' | 'evm' | 'sol'>; // optional: restrict which wallets to show
+  chainTypes?: Array<'ic' | 'evm' | 'sol' | 'stripe'>; // optional: restrict which wallets to show; 'stripe' = Credit card
 };
 
 export type GetActorOptions = {
@@ -79,6 +79,7 @@ import { SolflareAdapter } from './internal/SolflareAdapter.js';
 import { OkxAdapter } from './internal/OkxAdapter.js';
 import { TrustAdapter } from './internal/TrustAdapter.js';
 import { BackpackAdapter } from './internal/BackpackAdapter.js';
+import { StripeAdapter } from './internal/StripeAdapter.js';
 import { getIcon } from './img/icons.js';
 
 
@@ -118,6 +119,7 @@ export class WalletSelect {
     baseAdapters.trust = { id: 'trust', label: 'Trust Wallet', icon: null, enabled: true, adapter: TrustAdapter };
     baseAdapters.oisy = { id: 'oisy', label: 'Oisy', icon: null, enabled: true, adapter: OisyAdapter };
     baseAdapters.nfid = { id: 'nfid', label: 'NFID', icon: null, enabled: false, adapter: NfidAdapter };
+    baseAdapters.stripe = { id: 'stripe', label: 'Credit card', icon: null, enabled: true, adapter: StripeAdapter };
     baseAdapters.ii = { id: 'ii', label: 'Internet Identity', icon: null, enabled: false, adapter: IIAdapter };
     baseAdapters.plug = { id: 'plug', label: 'Plug', icon: null, enabled: true, adapter: PlugAdapter };
     // Initialize adapters config with sane defaults and allow overrides
@@ -174,11 +176,12 @@ export class WalletSelect {
 
   getEnabledWallets(): any[] {
     const allowedTypes = Array.isArray(this._config.chainTypes) ? this._config.chainTypes.map((t) => String(t).toLowerCase()) : null;
-    const idToType: Record<string, 'ic' | 'evm' | 'sol'> = {
+    const idToType: Record<string, 'ic' | 'evm' | 'sol' | 'stripe'> = {
       oisy: 'ic', nfid: 'ic', ii: 'ic', plug: 'ic',
       metamask: 'evm', walletconnect: 'evm', coinbase: 'evm',
       brave: 'evm', rainbow: 'evm', rabby: 'evm', okx: 'evm', trust: 'evm',
       phantom: 'sol', solflare: 'sol', backpack: 'sol',
+      stripe: 'stripe',
     };
     // Build list with original index to allow stable sort after prioritization
     const entries = Object.values(this._adapters)
@@ -208,10 +211,10 @@ export class WalletSelect {
         return true;
       });
     // Determine desired type order: if user supplied chainTypes, respect that order; otherwise prefer 'sol' first by default then evm, then ic
-    const defaultOrder: Array<'sol' | 'evm' | 'ic'> = ['sol', 'evm', 'ic'];
-    const typeOrder: Array<'ic' | 'evm' | 'sol'> = (allowedTypes && allowedTypes.length > 0)
-      ? (allowedTypes as Array<'ic' | 'evm' | 'sol'>)
-      : (defaultOrder as Array<'ic' | 'evm' | 'sol'>);
+    const defaultOrder: Array<'sol' | 'evm' | 'ic' | 'stripe'> = ['sol', 'evm', 'ic'];
+    const typeOrder: Array<'ic' | 'evm' | 'sol' | 'stripe'> = (allowedTypes && allowedTypes.length > 0)
+      ? (allowedTypes as Array<'ic' | 'evm' | 'sol' | 'stripe'>)
+      : (defaultOrder as Array<'ic' | 'evm' | 'sol' | 'stripe'>);
     const priority: Record<string, number> = {};
     typeOrder.forEach((t, i) => { priority[t] = i; });
     // Stable sort: first by type priority (sol first), then by original declaration order

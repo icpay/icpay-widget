@@ -58,8 +58,8 @@ export type CommonConfig = {
   // Optional filtering for wallet balance checker
   chainShortcodes?: string[];   // e.g., ['base','ic']
   tokenShortcodes?: string[];  // e.g., ['icp','pay']
-  // Optional wallet selection filter: which chain types to show wallets for
-  chainTypes?: Array<'ic' | 'evm' | 'sol'>;
+  // Optional wallet selection filter: which chain types to show wallets for ('stripe' = Credit card)
+  chainTypes?: Array<'ic' | 'evm' | 'sol' | 'stripe'>;
   // Optional: fiat currency for display (id or code, e.g. USD, EUR). Defaults to USD if missing.
   fiat_currency?: string;
   // Optional metadata to include on created payment intents

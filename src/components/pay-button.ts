@@ -482,6 +482,26 @@ export class ICPayPayButton extends LitElement {
       this.balancesError = null;
       this.walletModalStep = 'balances';
       this.showBalanceModal = false; // integrated flow uses wallet modal
+      if ((this.lastWalletId || '').toLowerCase() === 'stripe') {
+        const amountUsd = Number(this.config?.amountUsd ?? 0);
+        this.walletBalances = [{
+          ledgerId: '',
+          ledgerName: 'US Dollar',
+          ledgerSymbol: 'USD',
+          tokenShortcode: 'stripe_usd',
+          canisterId: 'stripe_usd',
+          balance: '0',
+          formattedBalance: '0',
+          decimals: 2,
+          lastUpdated: new Date(),
+          requiredAmount: String(Math.round(amountUsd * 100)),
+          requiredAmountFormatted: amountUsd.toFixed(2),
+          hasSufficientBalance: true,
+        } as WalletBalanceEntry];
+        this.pendingAction = action;
+        this.balancesLoading = false;
+        return;
+      }
       const sdk = this.getSdk();
       const { balances } = await getWalletBalanceEntries({
         sdk,
@@ -510,6 +530,54 @@ export class ICPayPayButton extends LitElement {
     // Close wallet modal before starting progress to reveal progress bar
     this.showBalanceModal = false;
     this.showWalletModal = false;
+
+    // Stripe (credit card) flow: create hosted Stripe Checkout session and open in new tab
+    if (shortcode === 'stripe_usd' || (this.lastWalletId || '').toLowerCase() === 'stripe') {
+      try {
+        const sdk = this.getSdk();
+        const amountUsd = Number(this.config?.amountUsd ?? 0);
+        const result = await (sdk.client as any).createPayment({
+          amountUsd,
+          networkType: 'stripe',
+          metadata: (this.config as any)?.metadata || {},
+          fiat_currency: (this.config as any)?.fiat_currency,
+          returnUrl: typeof window !== 'undefined' ? window.location.href : undefined,
+        });
+        const checkoutUrl = (result as any)?.checkoutUrl;
+        const paymentIntentId = (result as any)?.paymentIntentId;
+        try {
+          window.dispatchEvent(new CustomEvent('icpay-stripe-intent-created', {
+            detail: { checkoutUrl, paymentIntentId, amountUsd },
+            bubbles: true,
+          }));
+        } catch {}
+        this.dispatchEvent(new CustomEvent('icpay-stripe-intent-created', {
+          detail: { checkoutUrl, paymentIntentId, amountUsd },
+          bubbles: true,
+        }));
+        if (checkoutUrl && typeof window !== 'undefined') {
+          try {
+            window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
+            try { window.dispatchEvent(new CustomEvent('icpay-stripe-newtab-opened', { detail: { checkoutUrl, paymentIntentId }, bubbles: true })); } catch {}
+          } catch (e) {
+            this.errorMessage = (e as Error)?.message || 'Could not open Stripe checkout page';
+            this.errorSeverity = ErrorSeverity.ERROR;
+          }
+        } else {
+          this.errorMessage = 'Stripe checkout session created; check icpay-stripe-intent-created event for checkoutUrl.';
+          this.errorSeverity = ErrorSeverity.INFO;
+        }
+      } catch (e: any) {
+        handleWidgetError(e, {
+          onError: (error) => {
+            this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
+            this.errorMessage = getErrorMessage(error);
+            this.errorSeverity = getErrorSeverity(error);
+          },
+        });
+      }
+      return;
+    }
 
     // If EVM wallet, ensure correct network first, then emit EVM payment start
     if (isEvmWalletId(this.lastWalletId)) {
