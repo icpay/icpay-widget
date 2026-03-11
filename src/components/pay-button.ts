@@ -161,6 +161,42 @@ export class ICPayPayButton extends LitElement {
   }
 
   /**
+   * Poll a payment intent until it reaches a terminal status so the button can
+   * reflect completion for X402 up-to flows where settlement happens server-side.
+   */
+  private async pollUntilIntentTerminal(paymentIntentId: string): Promise<void> {
+    if (!paymentIntentId || !this.config?.publishableKey) return;
+    const maxAttempts = 30;
+    const delayMs = 2000;
+    const debug = !!this.config?.debug;
+    const apiUrl = (this.config as any)?.apiUrl || '';
+    let attempt = 0;
+    while (attempt < maxAttempts) {
+      attempt++;
+      try {
+        const resp = await fetchPaymentIntent(apiUrl, this.config.publishableKey, paymentIntentId, debug);
+        const status = resp?.paymentIntent?.status;
+        if (isPaymentIntentCompleted(status)) {
+          this.succeeded = true;
+          this.processing = false;
+          try {
+            this.config.onSuccess?.({ id: 0, status: 'completed' });
+          } catch {}
+          return;
+        }
+        if (!resp || !resp.paymentIntent || !status) {
+          // keep polling; might be propagating
+        }
+      } catch (e) {
+        if (debug) {
+          console.log('[ICPay Widget] pollUntilIntentTerminal error', e);
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  /**
    * Check if Coinbase/Base wallet is already connected (e.g. user returned from Base app deep link).
    * Host can call this on load when showing Base option on mobile to show "Connected".
    */
@@ -626,13 +662,37 @@ export class ICPayPayButton extends LitElement {
                 }
               };
               debugLog(this.config?.debug || false, 'Attempting X402 flow (EVM selection)', { amountUsd, tokenShortcode: sel?.tokenShortcode, x402Accepts: sel?.x402Accepts });
-              await (sdk.client as any).createPaymentX402Usd({
+              const x402Resp: any = await (sdk.client as any).createPaymentX402Usd({
                 usdAmount: amountUsd,
                 tokenShortcode: (sel as any)?.tokenShortcode,
                 metadata,
                 recipientAddress: evmDest,
                 fiat_currency: (this.config as any)?.fiat_currency,
+                x402Upto: Boolean((this.config as any)?.x402Upto),
               });
+              if ((this.config as any)?.x402Upto && typeof (this.config as any)?.onX402UptoIntent === 'function') {
+                try {
+                  const paymentData: any = x402Resp?.payment || {};
+                  const paymentIntentId: string =
+                    x402Resp?.paymentIntentId ||
+                    paymentData?.paymentIntentId ||
+                    paymentData?.intentId ||
+                    '';
+                  const accepts: any[] = Array.isArray(paymentData?.accepts) ? paymentData.accepts : [];
+                  (this.config as any).onX402UptoIntent({
+                    paymentIntentId,
+                    amountUsd,
+                    metadata,
+                    accepts,
+                  });
+                  // After notifying host, poll intent until terminal so UI can reflect completion.
+                  if (paymentIntentId) {
+                    await this.pollUntilIntentTerminal(paymentIntentId);
+                  }
+                } catch (cbErr) {
+                  debugLog(this.config?.debug || false, 'onX402UptoIntent callback failed', { error: String(cbErr) });
+                }
+              }
               return;
             } catch (x402Err: any) {
               debugLog(this.config?.debug || false, 'X402 payment failed (EVM selection), falling back', {
@@ -717,13 +777,36 @@ export class ICPayPayButton extends LitElement {
                 icpay_context: 'pay-button:x402'
               }
             };
-            await (sdk.client as any).createPaymentX402Usd({
+            const x402Resp: any = await (sdk.client as any).createPaymentX402Usd({
               usdAmount: amountUsd,
               tokenShortcode: (sel as any)?.tokenShortcode,
               metadata,
               recipientAddress: chosen || '',
               fiat_currency: (this.config as any)?.fiat_currency,
+              x402Upto: Boolean((this.config as any)?.x402Upto),
             });
+            if ((this.config as any)?.x402Upto && typeof (this.config as any)?.onX402UptoIntent === 'function') {
+              try {
+                const paymentData: any = x402Resp?.payment || {};
+                const paymentIntentId: string =
+                  x402Resp?.paymentIntentId ||
+                  paymentData?.paymentIntentId ||
+                  paymentData?.intentId ||
+                  '';
+                const accepts: any[] = Array.isArray(paymentData?.accepts) ? paymentData.accepts : [];
+                (this.config as any).onX402UptoIntent({
+                  paymentIntentId,
+                  amountUsd,
+                  metadata,
+                  accepts,
+                });
+                if (paymentIntentId) {
+                  await this.pollUntilIntentTerminal(paymentIntentId);
+                }
+              } catch (cbErr) {
+                debugLog(this.config?.debug || false, 'onX402UptoIntent callback failed', { error: String(cbErr) });
+              }
+            }
             return;
           } catch (x402Err: any) {
             debugLog(this.config?.debug || false, 'X402 payment failed (SOL selection), falling back', {
