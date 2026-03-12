@@ -794,11 +794,15 @@ export class ICPayPayButton extends LitElement {
                   paymentData?.intentId ||
                   '';
                 const accepts: any[] = Array.isArray(paymentData?.accepts) ? paymentData.accepts : [];
+                const paymentHeader: string | undefined = paymentData?.paymentHeader;
+                const paymentRequirements: any = paymentData?.paymentRequirements ?? (accepts.length > 0 ? accepts[0] : undefined);
                 (this.config as any).onX402UptoIntent({
                   paymentIntentId,
                   amountUsd,
                   metadata,
                   accepts,
+                  paymentHeader,
+                  paymentRequirements,
                 });
                 if (paymentIntentId) {
                   await this.pollUntilIntentTerminal(paymentIntentId);
