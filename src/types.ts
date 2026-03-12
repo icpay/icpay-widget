@@ -177,6 +177,8 @@ export type PayButtonConfig = CommonConfig & {
     amountUsd: number;
     metadata?: Record<string, any>;
     accepts: any[];
+    paymentHeader?: string;
+    paymentRequirements?: any;
   }) => void | Promise<void>;
 };
 
