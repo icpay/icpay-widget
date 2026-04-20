@@ -994,8 +994,22 @@ export class ICPayProgressBar extends LitElement {
   private onMethodStart = (e: any) => {
     const methodName = e?.detail?.name || '';
     const methodType = e?.detail?.type || '';
+    const requestArgs = e?.detail?.args?.request;
+    const isStripeCheckoutCreate =
+      methodName === 'createPayment' &&
+      requestArgs &&
+      (requestArgs.networkType === 'stripe' || requestArgs.paymentMethod === 'stripe');
 
     debugLog(this.debug, 'ICPay Progress: Method start event received:', e.detail);
+
+    // Stripe Checkout runs in another tab after pay flow already opened the progress UI — do not reset.
+    if (isStripeCheckoutCreate && this.open && !this.failed && !this.completed) {
+      this.completeByKey('wallet');
+      this.completeByKey('await');
+      this.setLoadingByKey('transfer');
+      this.requestUpdate();
+      return;
+    }
 
     // Handle different payment methods (top-level starts)
     if (methodName === 'createPayment' || methodName === 'createPaymentUsd' ||
@@ -1170,6 +1184,12 @@ export class ICPayProgressBar extends LitElement {
         this.setLoadingByKey('verify');
       } else if (methodName === 'createPaymentX402Usd') {
         // IC x402: settle response received — mark Transferring funds as done, show verifying
+        this.completeByKey('wallet');
+        this.completeByKey('await');
+        this.completeByKey('transfer');
+        this.setLoadingByKey('verify');
+      } else if (methodName === 'createPayment' && e?.detail?.result?.checkoutUrl) {
+        // Stripe hosted Checkout: session ready; user completes payment in another tab
         this.completeByKey('wallet');
         this.completeByKey('await');
         this.completeByKey('transfer');
