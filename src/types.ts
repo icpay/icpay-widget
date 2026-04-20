@@ -164,8 +164,13 @@ export type PayButtonConfig = CommonConfig & {
   amountUsd?: number;
   // Optional: override button label when amountUsd is not provided
   buttonLabel?: string;
-  // Called on successful payment
-  onSuccess?: (tx: { id: number; status: string }) => void;
+  // Called on successful payment (Stripe poll may include paymentIntentId / paymentIntent)
+  onSuccess?: (tx: {
+    id: number;
+    status: string;
+    paymentIntentId?: string;
+    paymentIntent?: Record<string, unknown>;
+  }) => void;
   // When true, x402 payments created by this button use the 'upto' scheme instead of 'exact'
   x402Upto?: boolean;
   /**

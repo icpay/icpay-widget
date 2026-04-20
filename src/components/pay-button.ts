@@ -15,7 +15,7 @@ import { renderWalletBalanceModal } from './ui/wallet-balance-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
 import { clientSupportsX402, shouldSkipX402ForBaseOnIos } from '../utils/x402';
 import { resetPaymentFlow as resetPaymentFlowUtil, type PaymentFlowResetContext } from '../utils/payment-flow-reset';
-import { fetchPaymentIntent, isPaymentIntentCompleted, type PaymentIntentResponse } from '../utils/fetch-payment-intent';
+import { fetchPaymentIntent, isPaymentIntentCompleted, isPaymentIntentTerminal, type PaymentIntentResponse } from '../utils/fetch-payment-intent';
 
 const isBrowser = typeof window !== 'undefined';
 let WalletSelect: any = null;
@@ -77,6 +77,8 @@ export class ICPayPayButton extends LitElement {
   private onrampPollingActive: boolean = false;
   private onrampNotifyController: { stop: () => void } | null = null;
   private onTransactionCompleted: (() => void) | null = null;
+  private onStripeReturnMessageBound: ((ev: MessageEvent) => void) | null = null;
+  private readonly activeIntentPollIds = new Set<string>();
 
   private getSdk(): WidgetSdk {
     if (!this.sdk) {
@@ -166,33 +168,79 @@ export class ICPayPayButton extends LitElement {
    */
   private async pollUntilIntentTerminal(paymentIntentId: string): Promise<void> {
     if (!paymentIntentId || !this.config?.publishableKey) return;
-    const maxAttempts = 30;
+    if (this.activeIntentPollIds.has(paymentIntentId)) return;
+    this.activeIntentPollIds.add(paymentIntentId);
+    const maxAttempts = 60;
     const delayMs = 2000;
     const debug = !!this.config?.debug;
     const apiUrl = (this.config as any)?.apiUrl || '';
     let attempt = 0;
-    while (attempt < maxAttempts) {
-      attempt++;
-      try {
-        const resp = await fetchPaymentIntent(apiUrl, this.config.publishableKey, paymentIntentId, debug);
-        const status = resp?.paymentIntent?.status;
-        if (isPaymentIntentCompleted(status)) {
-          this.succeeded = true;
-          this.processing = false;
-          try {
-            this.config.onSuccess?.({ id: 0, status: 'completed' });
-          } catch {}
-          return;
+    try {
+      while (attempt < maxAttempts) {
+        attempt++;
+        try {
+          const resp = await fetchPaymentIntent(apiUrl, this.config.publishableKey, paymentIntentId, debug);
+          const status = resp?.paymentIntent?.status;
+          if (isPaymentIntentCompleted(status)) {
+            this.succeeded = true;
+            this.processing = false;
+            try {
+              this.config.onSuccess?.({
+                id: 0,
+                status: 'completed',
+                paymentIntentId,
+                paymentIntent: resp?.paymentIntent,
+              });
+            } catch {}
+            try {
+              window.dispatchEvent(
+                new CustomEvent('icpay-sdk-transaction-completed', {
+                  detail: {
+                    transactionId: paymentIntentId,
+                    id: paymentIntentId,
+                    status: 'completed',
+                    paymentIntent: resp?.paymentIntent,
+                  },
+                  bubbles: true,
+                })
+              );
+            } catch {}
+            return;
+          }
+          if (isPaymentIntentTerminal(status)) {
+            this.processing = false;
+            const msg = `Payment intent ended with status: ${status || 'unknown'}`;
+            try {
+              window.dispatchEvent(
+                new CustomEvent('icpay-sdk-transaction-failed', {
+                  detail: {
+                    message: msg,
+                    transactionId: paymentIntentId,
+                    id: paymentIntentId,
+                    status,
+                  },
+                  bubbles: true,
+                })
+              );
+            } catch {}
+            return;
+          }
+          if (!resp || !resp.paymentIntent || !status) {
+            // keep polling; might be propagating
+          }
+        } catch (e) {
+          if (debug) {
+            console.log('[ICPay Widget] pollUntilIntentTerminal error', e);
+          }
         }
-        if (!resp || !resp.paymentIntent || !status) {
-          // keep polling; might be propagating
-        }
-      } catch (e) {
-        if (debug) {
-          console.log('[ICPay Widget] pollUntilIntentTerminal error', e);
-        }
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      this.processing = false;
+      if (debug) {
+        console.log('[ICPay Widget] pollUntilIntentTerminal exhausted', paymentIntentId);
+      }
+    } finally {
+      this.activeIntentPollIds.delete(paymentIntentId);
     }
   }
 
@@ -235,6 +283,7 @@ export class ICPayPayButton extends LitElement {
   connectedCallback(): void {
     super.connectedCallback();
     if (!isBrowser) return;
+    this.handleStripeReturnUrlIfNeeded();
     debugLog(this.config?.debug || false, 'Pay button connected', { config: this.config });
     // Apply theme
     if (this.config?.theme) {
@@ -255,6 +304,17 @@ export class ICPayPayButton extends LitElement {
       this.requestUpdate();
     };
     try { window.addEventListener('icpay-sdk-transaction-completed', this.onTransactionCompleted as EventListener); } catch {}
+    this.onStripeReturnMessageBound = (ev: MessageEvent) => {
+      if (ev.origin !== window.location.origin) return;
+      const d = ev.data;
+      if (!d || d.type !== 'icpay-stripe-checkout-return') return;
+      if (typeof d.paymentIntentId === 'string' && d.paymentIntentId) {
+        void this.pollUntilIntentTerminal(d.paymentIntentId);
+      }
+    };
+    try {
+      window.addEventListener('message', this.onStripeReturnMessageBound as EventListener);
+    } catch {}
     this.loadPaymentIntentIfNeeded();
   }
 
@@ -263,6 +323,45 @@ export class ICPayPayButton extends LitElement {
     if (this.onTransactionCompleted) {
       try { window.removeEventListener('icpay-sdk-transaction-completed', this.onTransactionCompleted as EventListener); } catch {}
     }
+    if (this.onStripeReturnMessageBound) {
+      try {
+        window.removeEventListener('message', this.onStripeReturnMessageBound as EventListener);
+      } catch {}
+      this.onStripeReturnMessageBound = null;
+    }
+  }
+
+  /**
+   * When Stripe Checkout redirects back to the merchant site in the payment tab, notify the opener
+   * (same origin) and try to close this tab so the widget tab can keep polling alone.
+   */
+  private handleStripeReturnUrlIfNeeded(): void {
+    if (!isBrowser) return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('icpay_stripe_return') !== '1') return;
+      const paymentIntentId = params.get('paymentIntentId') || '';
+      const opener = window.opener as Window | null;
+      if (opener && typeof opener.postMessage === 'function' && !opener.closed) {
+        try {
+          opener.postMessage(
+            { type: 'icpay-stripe-checkout-return', paymentIntentId },
+            window.location.origin
+          );
+        } catch {}
+      }
+      try {
+        window.close();
+      } catch {}
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('icpay_stripe_return');
+        url.searchParams.delete('paymentIntentId');
+        const qs = url.searchParams.toString();
+        const next = url.pathname + (qs ? `?${qs}` : '') + url.hash;
+        window.history.replaceState({}, '', next);
+      } catch {}
+    } catch {}
   }
 
   /** Load payment intent by id from config; if completed show success, else merge intent into config for amount/currency and pass to SDK. */
@@ -569,6 +668,9 @@ export class ICPayPayButton extends LitElement {
 
     // Stripe (credit card) flow: create hosted Stripe Checkout session and open in new tab
     if (shortcode === 'stripe_usd' || (this.lastWalletId || '').toLowerCase() === 'stripe') {
+      this.processing = true;
+      this.errorMessage = null;
+      this.errorSeverity = null;
       try {
         const sdk = this.getSdk();
         const amountUsd = Number(this.config?.amountUsd ?? 0);
@@ -580,7 +682,11 @@ export class ICPayPayButton extends LitElement {
           returnUrl: typeof window !== 'undefined' ? window.location.href : undefined,
         });
         const checkoutUrl = (result as any)?.checkoutUrl;
-        const paymentIntentId = (result as any)?.paymentIntentId;
+        const paymentIntentId = (result as any)?.paymentIntentId as string | undefined;
+        if (paymentIntentId) {
+          this.config = { ...(this.config as any), paymentIntentId } as any;
+          this.sdk = null;
+        }
         try {
           window.dispatchEvent(new CustomEvent('icpay-stripe-intent-created', {
             detail: { checkoutUrl, paymentIntentId, amountUsd },
@@ -595,15 +701,21 @@ export class ICPayPayButton extends LitElement {
           try {
             window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
             try { window.dispatchEvent(new CustomEvent('icpay-stripe-newtab-opened', { detail: { checkoutUrl, paymentIntentId }, bubbles: true })); } catch {}
+            if (paymentIntentId) {
+              void this.pollUntilIntentTerminal(paymentIntentId);
+            }
           } catch (e) {
             this.errorMessage = (e as Error)?.message || 'Could not open Stripe checkout page';
             this.errorSeverity = ErrorSeverity.ERROR;
+            this.processing = false;
           }
         } else {
           this.errorMessage = 'Stripe checkout session created; check icpay-stripe-intent-created event for checkoutUrl.';
           this.errorSeverity = ErrorSeverity.INFO;
+          this.processing = false;
         }
       } catch (e: any) {
+        this.processing = false;
         handleWidgetError(e, {
           onError: (error) => {
             this.dispatchEvent(new CustomEvent('icpay-error', { detail: error, bubbles: true }));
