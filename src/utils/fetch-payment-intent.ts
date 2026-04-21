@@ -5,6 +5,12 @@
 
 const isBrowser = typeof window !== 'undefined';
 
+const TRANSIENT_HTTP = new Set([429, 502, 503, 504]);
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 export type PaymentIntentResponse = {
   paymentIntentId: string;
   paymentIntentCode: number | null;
@@ -57,14 +63,31 @@ export async function fetchPaymentIntent(
     if (debug) {
       console.log('[ICPay Widget] Fetching payment intent', { intentId, url: url.replace(publishableKey, '***') });
     }
-    const res = await fetch(url, { method: 'GET' });
-    if (!res.ok) {
-      if (debug) console.log('[ICPay Widget] Fetch payment intent failed', res.status, await res.text());
+    const maxAttempts = 4; // 1 try + 3 retries for nginx/upstream blips (common around webhook completion)
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const res = await fetch(url, { method: 'GET', cache: 'no-store' });
+      if (res.ok) {
+        const data = (await res.json()) as PaymentIntentResponse;
+        if (!data?.paymentIntent?.id) return null;
+        return data;
+      }
+      const errBody = await res.text();
+      const retryable = TRANSIENT_HTTP.has(res.status) && attempt < maxAttempts - 1;
+      if (debug) {
+        console.log(
+          '[ICPay Widget] Fetch payment intent failed',
+          res.status,
+          retryable ? '(will retry)' : '',
+          errBody.slice(0, 200)
+        );
+      }
+      if (retryable) {
+        await sleep(200 * (1 << attempt));
+        continue;
+      }
       return null;
     }
-    const data = (await res.json()) as PaymentIntentResponse;
-    if (!data?.paymentIntent?.id) return null;
-    return data;
+    return null;
   } catch (e) {
     if (debug) console.log('[ICPay Widget] Fetch payment intent error', e);
     return null;

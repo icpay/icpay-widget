@@ -271,6 +271,13 @@ export class ICPayProgressBar extends LitElement {
       visibility: visible;
     }
 
+    /* After .modal-overlay.active: wallet picker is on top; keep progress in DOM for Stripe polling + success */
+    .modal-overlay.active.icpay-progress-suspended-under-wallet {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
     .modal-container {
       background: var(--icpay-background);
       border: 1px solid var(--icpay-border);
@@ -1007,8 +1014,20 @@ export class ICPayProgressBar extends LitElement {
 
     debugLog(this.debug, 'ICPay Progress: Method start event received:', e.detail);
 
-    // Stripe Checkout runs in another tab after pay flow already opened the progress UI — do not reset.
-    if (isStripeCheckoutCreate && this.open && !this.failed && !this.completed) {
+    // Stripe Checkout: open progress even if the pay flow never set open yet (race), or after reset — do not fall through to generic createPayment reset.
+    if (isStripeCheckoutCreate && !this.failed && !this.completed) {
+      if (!this.open) {
+        this.open = true;
+        this.activeIndex = 0;
+        this.failed = false;
+        this.errorMessage = null;
+        this.showSuccess = false;
+        this.showConfetti = false;
+        this.completed = false;
+        this.showWalletSelector = false;
+        this.isTransitioning = false;
+        this.currentSteps = [...this.steps].map((step) => ({ ...step, status: 'pending' as StepStatus }));
+      }
       this.isStripeFlow = true;
       this.isOnrampFlow = false;
       const map: Record<string, { label: string; tooltip: string }> = {
@@ -2153,13 +2172,14 @@ export class ICPayProgressBar extends LitElement {
   }
 
   render() {
-    if (this.suspended) {
+    if (!this.open) {
       return null as any;
     }
+    const hideUnderWalletModal = this.suspended;
     return html`
       ${this.open ? html`
         ${this.renderConfetti()}
-        <div class="modal-overlay active">
+        <div class="modal-overlay active ${hideUnderWalletModal ? 'icpay-progress-suspended-under-wallet' : ''}">
           <div class="modal-container">
             ${!this.showSuccess ? html`<button class="close-button" @click=${() => this.closeProgress()} aria-label="Close" title="Close">✕</button>` : null}
             <div class="modal-content ${this.isTransitioning ? 'transitioning' : ''}">
