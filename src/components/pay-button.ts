@@ -305,16 +305,25 @@ export class ICPayPayButton extends LitElement {
     };
     try { window.addEventListener('icpay-sdk-transaction-completed', this.onTransactionCompleted as EventListener); } catch {}
     this.onStripeReturnMessageBound = (ev: MessageEvent) => {
-      const configuredReturnUrl =
-        (this.config as any)?.stripeReturnUrl || 'https://icpay.org/payment/success';
+      const configuredReturnUrl = (this.config as any)?.stripeReturnUrl;
       let returnOrigin: string | null = null;
       try {
-        returnOrigin = new URL(configuredReturnUrl).origin;
+        if (typeof configuredReturnUrl === 'string' && configuredReturnUrl.trim()) {
+          returnOrigin = new URL(configuredReturnUrl).origin;
+        }
       } catch {}
-      if (ev.origin !== window.location.origin && (!returnOrigin || ev.origin !== returnOrigin)) {
+      const d = ev.data;
+      const trustedCrossOriginSignal =
+        d &&
+        d.type === 'icpay-stripe-checkout-return' &&
+        d.source === 'icpay-web-success';
+      if (
+        ev.origin !== window.location.origin &&
+        (!returnOrigin || ev.origin !== returnOrigin) &&
+        !trustedCrossOriginSignal
+      ) {
         return;
       }
-      const d = ev.data;
       if (!d || d.type !== 'icpay-stripe-checkout-return') return;
       const msgIntentId =
         typeof d.paymentIntentId === 'string' && d.paymentIntentId
@@ -686,15 +695,16 @@ export class ICPayPayButton extends LitElement {
       try {
         const sdk = this.getSdk();
         const amountUsd = Number(this.config?.amountUsd ?? 0);
-        const stripeReturnUrl =
-          (this.config as any)?.stripeReturnUrl ||
-          'https://icpay.org/payment/success';
+        const stripeReturnUrl = (this.config as any)?.stripeReturnUrl;
         const result = await (sdk.client as any).createPayment({
           amountUsd,
           networkType: 'stripe',
           metadata: (this.config as any)?.metadata || {},
           fiat_currency: (this.config as any)?.fiat_currency,
-          returnUrl: stripeReturnUrl,
+          returnUrl:
+            typeof stripeReturnUrl === 'string' && stripeReturnUrl.trim()
+              ? stripeReturnUrl
+              : undefined,
         });
         const checkoutUrl = (result as any)?.checkoutUrl;
         const paymentIntentId = (result as any)?.paymentIntentId as string | undefined;
