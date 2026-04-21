@@ -48,18 +48,16 @@ export async function fetchPaymentIntent(
 ): Promise<PaymentIntentResponse | null> {
   if (!isBrowser || !intentId || !publishableKey) return null;
   const base = (apiUrl || 'https://api.icpay.org').replace(/\/$/, '');
-  const url = `${base}/sdk/public/payments/intents/${encodeURIComponent(intentId)}`;
+  // Use publishable key in query string so the browser sends a "simple" cross-origin GET
+  // (no Authorization / non-simple Content-Type) — avoids CORS preflight (OPTIONS), which some
+  // proxies mis-handle with 502. Publishable keys are public by design.
+  const qs = new URLSearchParams({ publishableKey });
+  const url = `${base}/sdk/public/payments/intents/${encodeURIComponent(intentId)}?${qs.toString()}`;
   try {
     if (debug) {
       console.log('[ICPay Widget] Fetching payment intent', { intentId, url: url.replace(publishableKey, '***') });
     }
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${publishableKey}`,
-      },
-    });
+    const res = await fetch(url, { method: 'GET' });
     if (!res.ok) {
       if (debug) console.log('[ICPay Widget] Fetch payment intent failed', res.status, await res.text());
       return null;
