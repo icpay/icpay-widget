@@ -170,7 +170,8 @@ export class ICPayPayButton extends LitElement {
     if (!paymentIntentId || !this.config?.publishableKey) return;
     if (this.activeIntentPollIds.has(paymentIntentId)) return;
     this.activeIntentPollIds.add(paymentIntentId);
-    const maxAttempts = 60;
+    // Stripe webhooks can be delayed; keep polling longer so progress stays alive.
+    const maxAttempts = 900; // ~30 minutes at 2s interval
     const delayMs = 2000;
     const debug = !!this.config?.debug;
     const apiUrl = (this.config as any)?.apiUrl || '';
@@ -235,7 +236,6 @@ export class ICPayPayButton extends LitElement {
         }
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
-      this.processing = false;
       if (debug) {
         console.log('[ICPay Widget] pollUntilIntentTerminal exhausted', paymentIntentId);
       }
@@ -305,11 +305,23 @@ export class ICPayPayButton extends LitElement {
     };
     try { window.addEventListener('icpay-sdk-transaction-completed', this.onTransactionCompleted as EventListener); } catch {}
     this.onStripeReturnMessageBound = (ev: MessageEvent) => {
-      if (ev.origin !== window.location.origin) return;
+      const configuredReturnUrl =
+        (this.config as any)?.stripeReturnUrl || 'https://icpay.org/payment/success';
+      let returnOrigin: string | null = null;
+      try {
+        returnOrigin = new URL(configuredReturnUrl).origin;
+      } catch {}
+      if (ev.origin !== window.location.origin && (!returnOrigin || ev.origin !== returnOrigin)) {
+        return;
+      }
       const d = ev.data;
       if (!d || d.type !== 'icpay-stripe-checkout-return') return;
-      if (typeof d.paymentIntentId === 'string' && d.paymentIntentId) {
-        void this.pollUntilIntentTerminal(d.paymentIntentId);
+      const msgIntentId =
+        typeof d.paymentIntentId === 'string' && d.paymentIntentId
+          ? d.paymentIntentId
+          : (this.config as any)?.paymentIntentId;
+      if (typeof msgIntentId === 'string' && msgIntentId) {
+        void this.pollUntilIntentTerminal(msgIntentId);
       }
     };
     try {
@@ -674,12 +686,15 @@ export class ICPayPayButton extends LitElement {
       try {
         const sdk = this.getSdk();
         const amountUsd = Number(this.config?.amountUsd ?? 0);
+        const stripeReturnUrl =
+          (this.config as any)?.stripeReturnUrl ||
+          'https://icpay.org/payment/success';
         const result = await (sdk.client as any).createPayment({
           amountUsd,
           networkType: 'stripe',
           metadata: (this.config as any)?.metadata || {},
           fiat_currency: (this.config as any)?.fiat_currency,
-          returnUrl: typeof window !== 'undefined' ? window.location.href : undefined,
+          returnUrl: stripeReturnUrl,
         });
         const checkoutUrl = (result as any)?.checkoutUrl;
         const paymentIntentId = (result as any)?.paymentIntentId as string | undefined;
