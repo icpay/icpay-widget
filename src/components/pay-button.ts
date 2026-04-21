@@ -683,7 +683,28 @@ export class ICPayPayButton extends LitElement {
     const sel = (this.walletBalances || []).find(b => (b as any)?.tokenShortcode === shortcode);
     if (sel?.ledgerSymbol) this.selectedSymbol = sel.ledgerSymbol;
 
-    // Close wallet modal before starting progress to reveal progress bar
+    // Stripe (credit card) flow: prime progress steps while wallet modal is still up, then close modal so overlay appears
+    if (shortcode === 'stripe_usd' || (this.lastWalletId || '').toLowerCase() === 'stripe') {
+      try {
+        window.dispatchEvent(
+          new CustomEvent('icpay-sdk-method-start', {
+            detail: {
+              name: 'createPayment',
+              args: {
+                request: {
+                  networkType: 'stripe',
+                  amountUsd: Number(this.config?.amountUsd ?? 0),
+                  metadata: (this.config as any)?.metadata || {},
+                },
+              },
+            },
+            bubbles: true,
+          })
+        );
+      } catch {}
+    }
+
+    // Close wallet modal before continuing (progress bar stays mounted; was hidden under modal while suspended)
     this.showBalanceModal = false;
     this.showWalletModal = false;
 
