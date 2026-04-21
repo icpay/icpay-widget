@@ -845,6 +845,7 @@ export class ICPayProgressBar extends LitElement {
   @state() private showWalletSelector = false;
   @state() private isTransitioning = false;
   @state() private isOnrampFlow = false;
+  @state() private isStripeFlow = false;
 
   @property({ type: Object }) theme?: 'light' | 'dark' | { mode?: 'light' | 'dark'; primaryColor?: string; secondaryColor?: string };
 
@@ -987,6 +988,7 @@ export class ICPayProgressBar extends LitElement {
     this.showSuccess = false;
     this.showConfetti = false;
     this.isOnrampFlow = false;
+    this.isStripeFlow = false;
     this.currentSteps = [...this.steps].map(step => ({ ...step, status: 'pending' as StepStatus }));
     this.requestUpdate();
   };
@@ -999,11 +1001,25 @@ export class ICPayProgressBar extends LitElement {
       methodName === 'createPayment' &&
       requestArgs &&
       (requestArgs.networkType === 'stripe' || requestArgs.paymentMethod === 'stripe');
+    const isStripeTopLevel =
+      methodName === 'pay' &&
+      String(e?.detail?.currency || '').toUpperCase() === 'USD';
 
     debugLog(this.debug, 'ICPay Progress: Method start event received:', e.detail);
 
     // Stripe Checkout runs in another tab after pay flow already opened the progress UI — do not reset.
     if (isStripeCheckoutCreate && this.open && !this.failed && !this.completed) {
+      this.isStripeFlow = true;
+      this.isOnrampFlow = false;
+      const map: Record<string, { label: string; tooltip: string }> = {
+        wallet: { label: 'Opening checkout', tooltip: 'Preparing Stripe checkout session' },
+        await: { label: 'Waiting for payment', tooltip: 'Complete payment in the Stripe tab' },
+        transfer: { label: 'Processing webhook', tooltip: 'Awaiting Stripe webhook confirmation' },
+        verify: { label: 'Finalizing payment', tooltip: 'Finalizing and verifying your payment' },
+      };
+      this.currentSteps = this.currentSteps.map(s => (map[s.key]
+        ? { ...s, label: map[s.key].label, tooltip: map[s.key].tooltip }
+        : s));
       this.completeByKey('wallet');
       this.completeByKey('await');
       this.setLoadingByKey('transfer');
@@ -1024,6 +1040,7 @@ export class ICPayProgressBar extends LitElement {
       this.errorMessage = null;
       this.showSuccess = false;
       this.showConfetti = false;
+      this.isStripeFlow = false;
 
       // Do not show an internal wallet selector; parent widgets handle wallet modal
       this.showWalletSelector = false;
@@ -1035,12 +1052,26 @@ export class ICPayProgressBar extends LitElement {
       // Step 0: Wallet connect loading (rename/setup if onramp)
       if (methodType === 'onramp') {
         this.isOnrampFlow = true;
+        this.isStripeFlow = false;
         // Remap step labels/tooltips for onramp flow
         const map: Record<string, { label: string; tooltip: string }> = {
           wallet: { label: 'Payment initiated', tooltip: 'Please pay in the new tab' },
           await: { label: 'Onramp process started', tooltip: 'Verifying funds with provider' },
           transfer: { label: 'Funds received', tooltip: 'Payment in progress' },
           verify: { label: 'Payment completed', tooltip: 'Finalizing your payment' },
+        };
+        this.currentSteps = this.currentSteps.map(s => (map[s.key]
+          ? { ...s, label: map[s.key].label, tooltip: map[s.key].tooltip }
+          : s));
+      }
+      if (isStripeTopLevel) {
+        this.isStripeFlow = true;
+        this.isOnrampFlow = false;
+        const map: Record<string, { label: string; tooltip: string }> = {
+          wallet: { label: 'Opening checkout', tooltip: 'Preparing Stripe checkout session' },
+          await: { label: 'Waiting for payment', tooltip: 'Complete payment in the Stripe tab' },
+          transfer: { label: 'Processing webhook', tooltip: 'Awaiting Stripe webhook confirmation' },
+          verify: { label: 'Finalizing payment', tooltip: 'Finalizing and verifying your payment' },
         };
         this.currentSteps = this.currentSteps.map(s => (map[s.key]
           ? { ...s, label: map[s.key].label, tooltip: map[s.key].tooltip }
@@ -1190,6 +1221,7 @@ export class ICPayProgressBar extends LitElement {
         this.setLoadingByKey('verify');
       } else if (methodName === 'createPayment' && e?.detail?.result?.checkoutUrl) {
         // Stripe hosted Checkout: session ready; user completes payment in another tab
+        this.isStripeFlow = true;
         this.completeByKey('wallet');
         this.completeByKey('await');
         this.completeByKey('transfer');
@@ -1291,6 +1323,7 @@ export class ICPayProgressBar extends LitElement {
     this.showSuccess = true;
     this.showConfetti = true;
     this.isOnrampFlow = false;
+    this.isStripeFlow = false;
 
     // Dispatch completion event
     this.dispatchEvent(new CustomEvent('icpay-progress-completed', {
@@ -1334,6 +1367,7 @@ export class ICPayProgressBar extends LitElement {
     this.stopAutomaticProgression();
     this.open = true;
     this.isOnrampFlow = false;
+    this.isStripeFlow = false;
 
     // Dispatch transaction failed event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-failed', {
@@ -1388,6 +1422,7 @@ export class ICPayProgressBar extends LitElement {
       this.stopAutomaticProgression();
       this.open = true;
       this.isOnrampFlow = false;
+      this.isStripeFlow = false;
 
       // Dispatch method error event for external listeners
       this.dispatchEvent(new CustomEvent('icpay-progress-error', {
@@ -1413,6 +1448,7 @@ export class ICPayProgressBar extends LitElement {
     this.stopAutomaticProgression();
     this.open = true;
     this.isOnrampFlow = false;
+    this.isStripeFlow = false;
 
     // Dispatch SDK error event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-sdk-error', {
@@ -1965,6 +2001,10 @@ export class ICPayProgressBar extends LitElement {
 
   private onWalletCancelled = (e: any) => {
     try {
+      if (this.isStripeFlow) {
+        // Stripe is not a wallet-connect flow; keep modal open while polling.
+        return;
+      }
       // Check if any step beyond wallet connection has started (indicating actual payment transaction started)
       // If only wallet step is active, it means user cancelled before connecting, so close the modal
       const walletIdx = this.getStepIndexByKey('wallet');
