@@ -10,6 +10,7 @@ import type { WidgetSdk } from '../utils/sdk';
 import './ui/progress-bar';
 import { renderWalletSelectorModal } from './ui/wallet-selector-modal';
 import { getWalletBalanceEntries, buildWalletEntries, isEvmWalletId, ensureEvmChain } from '../utils/balances';
+import { stripeWalletIconUrl } from '../wallet-select/internal/StripeAdapter.js';
 import type { WalletBalanceEntry } from '../utils/balances';
 import { renderWalletBalanceModal } from './ui/wallet-balance-modal';
 import { applyOisyNewTabConfig, normalizeConnectedWallet, detectOisySessionViaAdapter } from '../utils/pnp';
@@ -536,6 +537,19 @@ export class ICPayPayButton extends LitElement {
   private getWalletLabel(w: any): string { return (w && (w.label || w.name || w.title || w.id)) || 'Wallet'; }
   private getWalletIcon(w: any): string | null { return (w && (w.icon || w.logo || w.image)) || null; }
 
+  /** Window events can fire before <icpay-progress-bar> has upgraded — ensure the overlay opens. */
+  private syncProgressBarOpen(): void {
+    const run = () => {
+      try {
+        const el = (this.renderRoot as ShadowRoot | undefined)?.querySelector?.('icpay-progress-bar') as any;
+        if (!el) return;
+        if (!el.open) el.open = true;
+      } catch {}
+    };
+    queueMicrotask(run);
+    requestAnimationFrame(run);
+  }
+
   private connectWithWallet(walletId: string) {
     if (!this.pnp) return;
     try {
@@ -557,7 +571,17 @@ export class ICPayPayButton extends LitElement {
         this.sdk = null;
         // Keep wallet modal open; advance to balances step and load balances inside it
         this.walletModalStep = 'balances';
-        this.fetchAndShowBalances('pay');
+        void this.fetchAndShowBalances('pay').then(() => {
+          if ((walletId || '').toLowerCase() === 'stripe') {
+            const list = this.walletBalances || [];
+            if (
+              list.length === 1 &&
+              String((list[0] as any)?.tokenShortcode || '').toLowerCase() === 'stripe_usd'
+            ) {
+              void this.onSelectBalanceSymbol('stripe_usd');
+            }
+          }
+        });
       }).catch((error: any) => {
         debugLog(this.config?.debug || false, 'Wallet connection error', error);
         const isOisy = (walletId || '').toLowerCase() === 'oisy';
@@ -653,6 +677,7 @@ export class ICPayPayButton extends LitElement {
           requiredAmount: String(Math.round(amountUsd * 100)),
           requiredAmountFormatted: amountUsd.toFixed(2),
           hasSufficientBalance: true,
+          logoUrl: stripeWalletIconUrl,
         } as WalletBalanceEntry];
         this.pendingAction = action;
         this.balancesLoading = false;
@@ -702,6 +727,7 @@ export class ICPayPayButton extends LitElement {
           })
         );
       } catch {}
+      this.syncProgressBarOpen();
     }
 
     // Close wallet modal before continuing (progress bar stays mounted; was hidden under modal while suspended)
@@ -1164,6 +1190,7 @@ export class ICPayPayButton extends LitElement {
 
     // Emit method start to open progress modal and set first step
     try { window.dispatchEvent(new CustomEvent('icpay-sdk-method-start', { detail: { name: 'pay', type: 'sendUsd', amount: this.config?.amountUsd, currency: this.selectedSymbol || 'ICP' } })); } catch {}
+    this.syncProgressBarOpen();
 
     this.processing = true;
     try {

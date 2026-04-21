@@ -79,7 +79,7 @@ import { SolflareAdapter } from './internal/SolflareAdapter.js';
 import { OkxAdapter } from './internal/OkxAdapter.js';
 import { TrustAdapter } from './internal/TrustAdapter.js';
 import { BackpackAdapter } from './internal/BackpackAdapter.js';
-import { StripeAdapter } from './internal/StripeAdapter.js';
+import { StripeAdapter, stripeWalletIconUrl } from './internal/StripeAdapter.js';
 import { getIcon } from './img/icons.js';
 
 
@@ -119,7 +119,7 @@ export class WalletSelect {
     baseAdapters.trust = { id: 'trust', label: 'Trust Wallet', icon: null, enabled: true, adapter: TrustAdapter };
     baseAdapters.oisy = { id: 'oisy', label: 'Oisy', icon: null, enabled: true, adapter: OisyAdapter };
     baseAdapters.nfid = { id: 'nfid', label: 'NFID', icon: null, enabled: false, adapter: NfidAdapter };
-    baseAdapters.stripe = { id: 'stripe', label: 'Credit card', icon: null, enabled: true, adapter: StripeAdapter };
+    baseAdapters.stripe = { id: 'stripe', label: 'Credit card', icon: stripeWalletIconUrl, enabled: true, adapter: StripeAdapter };
     baseAdapters.ii = { id: 'ii', label: 'Internet Identity', icon: null, enabled: false, adapter: IIAdapter };
     baseAdapters.plug = { id: 'plug', label: 'Plug', icon: null, enabled: true, adapter: PlugAdapter };
     // Initialize adapters config with sane defaults and allow overrides

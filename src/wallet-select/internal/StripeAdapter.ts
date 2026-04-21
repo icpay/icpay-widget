@@ -1,5 +1,9 @@
 import type { WalletSelectConfig } from '../index.js';
 import type { AdapterInterface, WalletAccount, GetActorOptions } from '../index.js';
+import stripeWalletIconUrl from '../img/stripe.js';
+
+/** Data-URI logo for the Credit card wallet row (WalletSelect / wallet modal). */
+export { stripeWalletIconUrl };
 
 /**
  * Synthetic adapter for Stripe (credit card) payments.
