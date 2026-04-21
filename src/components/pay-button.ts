@@ -736,6 +736,8 @@ export class ICPayPayButton extends LitElement {
 
     // Stripe (credit card) flow: create hosted Stripe Checkout session and open in new tab
     if (shortcode === 'stripe_usd' || (this.lastWalletId || '').toLowerCase() === 'stripe') {
+      // Was set in ensureWallet(); leaving it set can let config updates + stale step interact with updated() pay() scheduling.
+      this.pendingAction = null;
       this.processing = true;
       this.errorMessage = null;
       this.errorSeverity = null;
@@ -1246,9 +1248,8 @@ export class ICPayPayButton extends LitElement {
   render() {
     if (!this.config) return html`<div class="icpay-card icpay-section">Loading...</div>`;
 
-    if (this.paymentIntentLoading && (this.config as any)?.paymentIntentId) {
-      return html`<div class="icpay-card icpay-section">Loading payment...</div>`;
-    }
+    /** Must not replace the whole template here: that unmounts <icpay-progress-bar>, drops window listeners, and clears Stripe progress before success. */
+    const intentLoading = this.paymentIntentLoading && !!(this.config as any)?.paymentIntentId;
 
     const selectedSymbol = this.selectedSymbol || 'ICP';
     const amountUsd = typeof this.config?.amountUsd === 'number' ? this.config.amountUsd : (this.loadedPaymentIntent?.paymentIntent?.amountUsd != null ? Number(this.loadedPaymentIntent.paymentIntent.amountUsd) : undefined);
@@ -1261,6 +1262,11 @@ export class ICPayPayButton extends LitElement {
 
     return html`
       <div class="icpay-card icpay-section icpay-widget-base">
+        ${intentLoading ? html`
+          <div class="icpay-intent-loading" style="margin-bottom:10px;padding:8px 12px;border-radius:8px;font-size:13px;text-align:center;background:var(--icpay-muted, #f3f4f6);color:var(--icpay-muted-foreground, #6b7280);">
+            Loading payment details…
+          </div>
+        ` : null}
         ${showProgressBar ? html`
           <icpay-progress-bar
             .debug=${!!this.config?.debug}
