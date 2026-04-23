@@ -847,7 +847,16 @@ export class ICPayPayButton extends LitElement {
                   icpay_context: 'pay-button:x402'
                 }
               };
-              debugLog(this.config?.debug || false, 'Attempting X402 flow (EVM selection)', { amountUsd, tokenShortcode: sel?.tokenShortcode, x402Accepts: sel?.x402Accepts });
+              debugLog(this.config?.debug || false, 'Attempting X402 flow (EVM selection)', {
+                amountUsd,
+                tokenShortcode: sel?.tokenShortcode,
+                x402Accepts: sel?.x402Accepts,
+                x402Upto: Boolean((this.config as any)?.x402Upto),
+              });
+              const requestedX402Scheme =
+                ((this.config as any)?.x402Scheme === 'upto' || (this.config as any)?.x402Scheme === 'exact')
+                  ? (this.config as any).x402Scheme
+                  : (Boolean((this.config as any)?.x402Upto) ? 'upto' : 'exact');
               const x402Resp: any = await (sdk.client as any).createPaymentX402Usd({
                 usdAmount: amountUsd,
                 tokenShortcode: (sel as any)?.tokenShortcode,
@@ -855,6 +864,7 @@ export class ICPayPayButton extends LitElement {
                 recipientAddress: evmDest,
                 fiat_currency: (this.config as any)?.fiat_currency,
                 x402Upto: Boolean((this.config as any)?.x402Upto),
+                x402Scheme: requestedX402Scheme,
               });
               if ((this.config as any)?.x402Upto && typeof (this.config as any)?.onX402UptoIntent === 'function') {
                 try {
@@ -865,11 +875,15 @@ export class ICPayPayButton extends LitElement {
                     paymentData?.intentId ||
                     '';
                   const accepts: any[] = Array.isArray(paymentData?.accepts) ? paymentData.accepts : [];
+                  const paymentHeader: string | undefined = paymentData?.paymentHeader;
+                  const paymentRequirements: any = paymentData?.paymentRequirements ?? (accepts.length > 0 ? accepts[0] : undefined);
                   (this.config as any).onX402UptoIntent({
                     paymentIntentId,
                     amountUsd,
                     metadata,
                     accepts,
+                    paymentHeader,
+                    paymentRequirements,
                   });
                   // After notifying host, poll intent until terminal so UI can reflect completion.
                   if (paymentIntentId) {
@@ -884,6 +898,11 @@ export class ICPayPayButton extends LitElement {
               debugLog(this.config?.debug || false, 'X402 payment failed (EVM selection), falling back', {
                 message: x402Err?.message, code: x402Err?.code, data: x402Err?.details || x402Err?.data
               });
+              // For upto flows, do not silently fallback to normal flow.
+              // Caller expects signed x402 payload and deferred secret-key settlement.
+              if (Boolean((this.config as any)?.x402Upto)) {
+                throw x402Err;
+              }
             }
           } else {
             debugLog(this.config?.debug || false, 'Skipping X402 path', {
@@ -970,6 +989,10 @@ export class ICPayPayButton extends LitElement {
               recipientAddress: chosen || '',
               fiat_currency: (this.config as any)?.fiat_currency,
               x402Upto: Boolean((this.config as any)?.x402Upto),
+              x402Scheme:
+                ((this.config as any)?.x402Scheme === 'upto' || (this.config as any)?.x402Scheme === 'exact')
+                  ? (this.config as any).x402Scheme
+                  : (Boolean((this.config as any)?.x402Upto) ? 'upto' : 'exact'),
             });
             if ((this.config as any)?.x402Upto && typeof (this.config as any)?.onX402UptoIntent === 'function') {
               try {

@@ -173,6 +173,8 @@ export type PayButtonConfig = CommonConfig & {
   }) => void;
   // When true, x402 payments created by this button use the 'upto' scheme instead of 'exact'
   x402Upto?: boolean;
+  // Optional explicit x402 scheme override; if omitted, derived from x402Upto.
+  x402Scheme?: 'exact' | 'upto';
   /**
    * Optional: callback invoked when an X402 up-to intent is created.
    * Use this to start long-running work and settle later via secret-key SDK.
