@@ -397,6 +397,41 @@ export class ICPayProgressBar extends LitElement {
       background: var(--icpay-error-bg);
       border: 1px solid var(--icpay-error-border);
     }
+    .step.pending-settlement {
+      border: 1px dashed var(--icpay-warning-border);
+      background: var(--icpay-warning-bg);
+    }
+    .pending-ring {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px dashed var(--icpay-warning-text);
+      box-sizing: border-box;
+      flex-shrink: 0;
+    }
+    .upto-early-banner {
+      margin-bottom: 16px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: var(--icpay-success-bg);
+      border: 1px solid var(--icpay-success-border);
+      color: var(--icpay-foreground);
+    }
+    .upto-early-banner-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .upto-early-banner-sub {
+      color: var(--icpay-muted-foreground);
+      font-size: 13px;
+    }
+    .upto-early-done {
+      align-self: flex-start;
+      margin-top: 4px;
+    }
     .step-icon {
       width: 40px;
       height: 40px;
@@ -853,6 +888,13 @@ export class ICPayProgressBar extends LitElement {
   @state() private isTransitioning = false;
   @state() private isOnrampFlow = false;
   @state() private isStripeFlow = false;
+  /** EVM x402 up-to: distinct progress labels and optional early-success path */
+  @state() private isX402UptoFlow = false;
+  /** x402 up-to + skip settlement wait: banner + last step pending until user closes (or terminal completion upgrades UI) */
+  @state() private uptoEarlySuccess = false;
+  /** Prefer this for success copy when API returns settled USD (e.g. after merchant settlement) */
+  @state() private completedDisplayAmount: number | null = null;
+  @property({ type: Boolean }) x402UptoSkipSettlementWait = false;
 
   @property({ type: Object }) theme?: 'light' | 'dark' | { mode?: 'light' | 'dark'; primaryColor?: string; secondaryColor?: string };
 
@@ -884,10 +926,12 @@ export class ICPayProgressBar extends LitElement {
 
     // Attach global listeners for ICPay SDK events
     this.attachSDKEventListeners();
+    window.addEventListener('icpay-x402-upto-submitted', this.onX402UptoSubmitted as EventListener);
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    window.removeEventListener('icpay-x402-upto-submitted', this.onX402UptoSubmitted as EventListener);
     this.detachSDKEventListeners();
     this.stopAutomaticProgression();
   }
@@ -996,7 +1040,56 @@ export class ICPayProgressBar extends LitElement {
     this.showConfetti = false;
     this.isOnrampFlow = false;
     this.isStripeFlow = false;
+    this.isX402UptoFlow = false;
+    this.uptoEarlySuccess = false;
+    this.completedDisplayAmount = null;
     this.currentSteps = [...this.steps].map(step => ({ ...step, status: 'pending' as StepStatus }));
+    this.requestUpdate();
+  };
+
+  private onX402UptoSubmitted = (e: Event) => {
+    if (this.failed || this.completed) return;
+    const detail = (e as CustomEvent<{ paymentIntentId?: string; amountUsdMax?: number }>)?.detail || {};
+    if (!detail.paymentIntentId || !this.isX402UptoFlow) return;
+
+    if (this.x402UptoSkipSettlementWait) {
+      this.completeByKey('wallet');
+      this.completeByKey('await');
+      this.completeByKey('transfer');
+      const vIdx = this.getStepIndexByKey('verify');
+      if (vIdx >= 0) {
+        this.currentSteps[vIdx] = {
+          ...this.currentSteps[vIdx],
+          label: 'Pending settlement',
+          tooltip: 'The merchant will charge up to your authorized amount; this can take a while.',
+          status: 'pending',
+        } as Step;
+        this.activeIndex = vIdx;
+      }
+      const maxUsd = detail.amountUsdMax;
+      if (maxUsd != null && Number.isFinite(Number(maxUsd))) {
+        this.completedDisplayAmount = Number(maxUsd);
+      }
+      this.uptoEarlySuccess = true;
+      this.showConfetti = false;
+      this.requestUpdate();
+      return;
+    }
+
+    // Authorization saved on API; keep progress open until poll / transaction-completed
+    this.completeByKey('wallet');
+    this.completeByKey('await');
+    this.completeByKey('transfer');
+    const vIdx = this.getStepIndexByKey('verify');
+    if (vIdx >= 0) {
+      this.currentSteps[vIdx] = {
+        ...this.currentSteps[vIdx],
+        label: 'Settlement',
+        tooltip: 'Waiting for the merchant to finalize the charged amount on-chain.',
+        status: 'loading',
+      } as Step;
+      this.activeIndex = vIdx;
+    }
     this.requestUpdate();
   };
 
@@ -1030,6 +1123,7 @@ export class ICPayProgressBar extends LitElement {
       }
       this.isStripeFlow = true;
       this.isOnrampFlow = false;
+      this.isX402UptoFlow = false;
       const map: Record<string, { label: string; tooltip: string }> = {
         wallet: { label: 'Opening checkout', tooltip: 'Preparing Stripe checkout session' },
         await: { label: 'Waiting for payment', tooltip: 'Complete payment in the Stripe tab' },
@@ -1060,6 +1154,7 @@ export class ICPayProgressBar extends LitElement {
       this.showSuccess = false;
       this.showConfetti = false;
       this.isStripeFlow = false;
+      this.isX402UptoFlow = false;
 
       // Do not show an internal wallet selector; parent widgets handle wallet modal
       this.showWalletSelector = false;
@@ -1072,6 +1167,7 @@ export class ICPayProgressBar extends LitElement {
       if (methodType === 'onramp') {
         this.isOnrampFlow = true;
         this.isStripeFlow = false;
+        this.isX402UptoFlow = false;
         // Remap step labels/tooltips for onramp flow
         const map: Record<string, { label: string; tooltip: string }> = {
           wallet: { label: 'Payment initiated', tooltip: 'Please pay in the new tab' },
@@ -1129,7 +1225,24 @@ export class ICPayProgressBar extends LitElement {
     // Mid-flow granular starts for internal SDK steps (independent of top-level starts)
     if (!this.failed && !this.completed) {
       if (methodName === 'createPaymentX402Usd') {
-        // X402 signature step: awaiting confirmation
+        const req = requestArgs;
+        const isUptoReq =
+          Boolean(req?.x402Upto) || String(req?.x402Scheme || '').toLowerCase() === 'upto';
+        if (isUptoReq) {
+          this.isX402UptoFlow = true;
+          const map: Record<string, { label: string; tooltip: string }> = {
+            wallet: { label: 'Wallet ready', tooltip: 'Connected for x402 up-to payment' },
+            await: { label: 'Sign authorization', tooltip: 'Sign the payment header (authorizes up to the maximum amount).' },
+            transfer: { label: 'Submit authorization', tooltip: 'Sending the signed header to ICPay.' },
+            verify: { label: 'Settlement', tooltip: 'Waiting for the merchant to finalize the charged amount.' },
+          };
+          this.currentSteps = this.currentSteps.map(s =>
+            map[s.key] ? { ...s, label: map[s.key].label, tooltip: map[s.key].tooltip } : s,
+          );
+        } else {
+          this.isX402UptoFlow = false;
+        }
+        // X402 signature step: awaiting wallet confirmation / signing
         this.completeByKey('wallet');
         this.setLoadingByKey('await');
       } else if (methodName === 'sendFundsToLedger') {
@@ -1233,11 +1346,18 @@ export class ICPayProgressBar extends LitElement {
         // Keep verify loading until completion
         this.setLoadingByKey('verify');
       } else if (methodName === 'createPaymentX402Usd') {
-        // IC x402: settle response received — mark Transferring funds as done, show verifying
-        this.completeByKey('wallet');
-        this.completeByKey('await');
-        this.completeByKey('transfer');
-        this.setLoadingByKey('verify');
+        if (this.isX402UptoFlow) {
+          // Up-to: signing finished; merchant confirm runs outside SDK — show "submit authorization" next
+          this.completeByKey('wallet');
+          this.completeByKey('await');
+          this.setLoadingByKey('transfer');
+        } else {
+          // IC x402 exact: settle response received — mark transfer done, show verifying
+          this.completeByKey('wallet');
+          this.completeByKey('await');
+          this.completeByKey('transfer');
+          this.setLoadingByKey('verify');
+        }
       } else if (methodName === 'createPayment' && e?.detail?.result?.checkoutUrl) {
         // Stripe hosted Checkout: session ready; user completes payment in another tab
         this.isStripeFlow = true;
@@ -1324,6 +1444,10 @@ export class ICPayProgressBar extends LitElement {
       if (paymentIntent.fiatCurrencySymbol != null && paymentIntent.fiatCurrencySymbol !== '') {
         this.currentFiatSymbol = String(paymentIntent.fiatCurrencySymbol);
       }
+      const piUsd = (paymentIntent as any).amountUsd;
+      if (piUsd != null && Number.isFinite(Number(piUsd)) && Number(piUsd) >= 0) {
+        this.completedDisplayAmount = Number(piUsd);
+      }
     }
 
     debugLog(this.debug, 'ICPay Progress: Transaction completed event received:', e.detail);
@@ -1338,11 +1462,13 @@ export class ICPayProgressBar extends LitElement {
     this.completeByKey('transfer');
     this.completeByKey('await');
     this.completeByKey('verify');
+    this.uptoEarlySuccess = false;
     this.completed = true;
     this.showSuccess = true;
     this.showConfetti = true;
     this.isOnrampFlow = false;
     this.isStripeFlow = false;
+    this.isX402UptoFlow = false;
 
     // Dispatch completion event
     this.dispatchEvent(new CustomEvent('icpay-progress-completed', {
@@ -1387,6 +1513,8 @@ export class ICPayProgressBar extends LitElement {
     this.open = true;
     this.isOnrampFlow = false;
     this.isStripeFlow = false;
+    this.isX402UptoFlow = false;
+    this.uptoEarlySuccess = false;
 
     // Dispatch transaction failed event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-failed', {
@@ -1412,6 +1540,8 @@ export class ICPayProgressBar extends LitElement {
     this.stopAutomaticProgression();
     this.open = true;
     this.isOnrampFlow = false;
+    this.isX402UptoFlow = false;
+    this.uptoEarlySuccess = false;
 
     // Dispatch failed event with mismatch context
     this.dispatchEvent(new CustomEvent('icpay-progress-failed', {
@@ -1442,6 +1572,9 @@ export class ICPayProgressBar extends LitElement {
       this.open = true;
       this.isOnrampFlow = false;
       this.isStripeFlow = false;
+      if (methodName === 'createPaymentX402Usd') {
+        this.isX402UptoFlow = false;
+      }
 
       // Dispatch method error event for external listeners
       this.dispatchEvent(new CustomEvent('icpay-progress-error', {
@@ -1468,6 +1601,7 @@ export class ICPayProgressBar extends LitElement {
     this.open = true;
     this.isOnrampFlow = false;
     this.isStripeFlow = false;
+    this.isX402UptoFlow = false;
 
     // Dispatch SDK error event for external listeners
     this.dispatchEvent(new CustomEvent('icpay-progress-sdk-error', {
@@ -1753,6 +1887,13 @@ export class ICPayProgressBar extends LitElement {
     if (step.status === 'error') {
       return html`<div class="error-x">✕</div>`;
     }
+    if (
+      this.uptoEarlySuccess &&
+      step.key === 'verify' &&
+      step.status === 'pending'
+    ) {
+      return html`<div class="pending-ring" aria-hidden="true"></div>`;
+    }
     return html`<div class="spinner"></div>`;
   }
 
@@ -1836,11 +1977,16 @@ export class ICPayProgressBar extends LitElement {
   }
 
   private renderSuccessState() {
-    const displayAmount = this.currentAmount || this.amount;
+    const rawAmt =
+      this.completedDisplayAmount != null && Number.isFinite(this.completedDisplayAmount)
+        ? this.completedDisplayAmount
+        : (this.currentAmount || this.amount);
+    const displayAmount = Number(rawAmt).toFixed(2);
     const fiatLabel = (this.currentFiatCode ?? this.currentFiatSymbol) || 'USD';
 
     debugLog(this.debug, 'ICPay Progress: Rendering success state with:', {
       displayAmount,
+      completedDisplayAmount: this.completedDisplayAmount,
       currentAmount: this.currentAmount,
       amount: this.amount,
       currentCurrency: this.currentCurrency,
@@ -1991,16 +2137,36 @@ export class ICPayProgressBar extends LitElement {
       return this.renderErrorState();
     }
 
+    const fiatEarly = (this.currentFiatCode ?? this.currentFiatSymbol) || 'USD';
+    const maxEarlyRaw =
+      this.completedDisplayAmount != null && Number.isFinite(this.completedDisplayAmount)
+        ? this.completedDisplayAmount
+        : (this.currentAmount || this.amount);
+    const maxEarly = Number(maxEarlyRaw).toFixed(2);
+
     return html`
       <div class="progress-container">
         <div class="progress-header">
           <span class="progress-spacer"></span>
-          <h3 class="progress-title">Processing</h3>
+          <h3 class="progress-title">${this.uptoEarlySuccess ? 'Authorization saved' : 'Processing'}</h3>
         </div>
+        ${this.uptoEarlySuccess
+          ? html`
+            <div class="upto-early-banner" role="status">
+              <div class="upto-early-banner-inner">
+                <div><strong>You're done on your side.</strong> Settlement can take a while.</div>
+                <div class="upto-early-banner-sub">
+                  You authorized up to <strong>${maxEarly} ${fiatEarly}</strong>. The final charge appears when the merchant settles.
+                </div>
+                <button type="button" class="btn btn-primary upto-early-done" @click=${() => this.closeProgress()}>Close</button>
+              </div>
+            </div>
+          `
+          : null}
         ${this.renderConfirmTip()}
         <div class="progress-steps">
           ${this.currentSteps.map((step, index) => html`
-            <div class="step ${index === this.activeIndex ? 'active' : ''} ${step.status === 'completed' ? 'completed' : ''} ${step.status === 'error' ? 'error' : ''}">
+            <div class="step ${index === this.activeIndex ? 'active' : ''} ${step.status === 'completed' ? 'completed' : ''} ${step.status === 'error' ? 'error' : ''} ${this.uptoEarlySuccess && step.key === 'verify' && step.status === 'pending' ? 'pending-settlement' : ''}">
               <div class="step-icon">
                 ${this.getStepIcon(step)}
               </div>
@@ -2020,6 +2186,9 @@ export class ICPayProgressBar extends LitElement {
 
   private onWalletCancelled = (e: any) => {
     try {
+      if (this.uptoEarlySuccess) {
+        return;
+      }
       if (this.isStripeFlow) {
         // Stripe is not a wallet-connect flow; keep modal open while polling.
         return;
@@ -2115,6 +2284,9 @@ export class ICPayProgressBar extends LitElement {
     this.errorMessage = null;
     this.showSuccess = false;
     this.showConfetti = false;
+    this.isX402UptoFlow = false;
+    this.uptoEarlySuccess = false;
+    this.completedDisplayAmount = null;
 
     // Preserve dynamic values from the current transaction
     // Don't reset currentAmount, currentCurrency, currentLedgerSymbol
@@ -2135,6 +2307,9 @@ export class ICPayProgressBar extends LitElement {
     this.open = false;
     this.showWalletSelector = false;
     this.isTransitioning = false;
+    if (this.uptoEarlySuccess) {
+      this.uptoEarlySuccess = false;
+    }
   }
 
   private renderStep(step: Step, index: number) {

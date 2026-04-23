@@ -191,6 +191,69 @@ export class ICPayPayButton extends LitElement {
     });
   }
 
+  private emitX402UptoSubmitted(paymentIntentId: string, amountUsdMax: number): void {
+    try {
+      window.dispatchEvent(
+        new CustomEvent('icpay-x402-upto-submitted', {
+          bubbles: true,
+          composed: true,
+          detail: { paymentIntentId, amountUsdMax },
+        }),
+      );
+    } catch {}
+  }
+
+  /**
+   * After SDK returns signed x402 header: persist on API (EVM), notify progress, optional poll.
+   */
+  private async finalizeX402UptoAfterConfirm(
+    sdk: any,
+    opts: {
+      paymentIntentId: string;
+      amountUsd: number;
+      metadata: Record<string, any>;
+      accepts: any[];
+      paymentHeader?: string;
+      paymentRequirements?: any;
+    },
+  ): Promise<void> {
+    const { paymentIntentId, amountUsd, metadata, accepts, paymentHeader, paymentRequirements } = opts;
+    await this.confirmX402UptoOnServerIfEvm(sdk, {
+      paymentIntentId,
+      paymentHeader,
+      paymentRequirements,
+    });
+    if (paymentIntentId) {
+      this.emitX402UptoSubmitted(paymentIntentId, amountUsd);
+    }
+    if (typeof (this.config as any)?.onX402UptoIntent === 'function') {
+      await Promise.resolve(
+        (this.config as any).onX402UptoIntent({
+          paymentIntentId,
+          amountUsd,
+          metadata,
+          accepts,
+          paymentHeader,
+          paymentRequirements,
+        }),
+      );
+    }
+    const skip = Boolean((this.config as any)?.x402UptoSkipSettlementWait);
+    if (paymentIntentId && !skip) {
+      await this.pollUntilIntentTerminal(paymentIntentId);
+    } else if (skip && paymentIntentId) {
+      this.succeeded = true;
+      this.processing = false;
+      try {
+        this.config.onSuccess?.({
+          id: 0,
+          status: 'authorized_pending_settlement',
+          paymentIntentId,
+        });
+      } catch {}
+    }
+  }
+
   private async pollUntilIntentTerminal(paymentIntentId: string): Promise<void> {
     if (!paymentIntentId || !this.config?.publishableKey) return;
     if (this.activeIntentPollIds.has(paymentIntentId)) return;
@@ -905,24 +968,14 @@ export class ICPayPayButton extends LitElement {
                   if (isEvmX402 && !paymentHeader) {
                     throw new Error('Missing signed x402 paymentHeader for EVM upto flow');
                   }
-                  await this.confirmX402UptoOnServerIfEvm(sdk, {
+                  await this.finalizeX402UptoAfterConfirm(sdk, {
                     paymentIntentId,
+                    amountUsd,
+                    metadata,
+                    accepts,
                     paymentHeader,
                     paymentRequirements,
                   });
-                  if (typeof (this.config as any)?.onX402UptoIntent === 'function') {
-                    (this.config as any).onX402UptoIntent({
-                      paymentIntentId,
-                      amountUsd,
-                      metadata,
-                      accepts,
-                      paymentHeader,
-                      paymentRequirements,
-                    });
-                  }
-                  if (paymentIntentId) {
-                    await this.pollUntilIntentTerminal(paymentIntentId);
-                  }
                 } catch (uptoErr) {
                   debugLog(this.config?.debug || false, 'x402 upto confirm / callback failed', { error: String(uptoErr) });
                   throw uptoErr;
@@ -1044,24 +1097,14 @@ export class ICPayPayButton extends LitElement {
                 if (isEvmX402 && !paymentHeader) {
                   throw new Error('Missing signed x402 paymentHeader for EVM upto flow');
                 }
-                await this.confirmX402UptoOnServerIfEvm(sdk, {
+                await this.finalizeX402UptoAfterConfirm(sdk, {
                   paymentIntentId,
+                  amountUsd,
+                  metadata,
+                  accepts,
                   paymentHeader,
                   paymentRequirements,
                 });
-                if (typeof (this.config as any)?.onX402UptoIntent === 'function') {
-                  (this.config as any).onX402UptoIntent({
-                    paymentIntentId,
-                    amountUsd,
-                    metadata,
-                    accepts,
-                    paymentHeader,
-                    paymentRequirements,
-                  });
-                }
-                if (paymentIntentId) {
-                  await this.pollUntilIntentTerminal(paymentIntentId);
-                }
               } catch (uptoErr) {
                 debugLog(this.config?.debug || false, 'x402 upto confirm / callback failed', { error: String(uptoErr) });
                 throw uptoErr;
@@ -1344,6 +1387,7 @@ export class ICPayPayButton extends LitElement {
             .amount=${Number(this.config?.amountUsd ?? this.loadedPaymentIntent?.paymentIntent?.amountUsd ?? 0)}
             .ledgerSymbol=${selectedSymbol}
             .suspended=${suspendProgress}
+            .x402UptoSkipSettlementWait=${Boolean((this.config as any)?.x402UptoSkipSettlementWait)}
           ></icpay-progress-bar>
         ` : null}
 

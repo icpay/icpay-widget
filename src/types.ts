@@ -187,6 +187,12 @@ export type PayButtonConfig = CommonConfig & {
     paymentHeader?: string;
     paymentRequirements?: any;
   }) => void | Promise<void>;
+  /**
+   * When true with x402Upto (EVM), show success after the signed authorization is saved on the API
+   * without polling for on-chain settlement (which can take hours). Progress keeps the last step as
+   * “pending settlement” and the user can close the modal.
+   */
+  x402UptoSkipSettlementWait?: boolean;
 };
 
 // Amount input with inline pay button: enter USD amount, optional ledger dropdown
