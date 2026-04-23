@@ -167,6 +167,30 @@ export class ICPayPayButton extends LitElement {
    * Poll a payment intent until it reaches a terminal status so the button can
    * reflect completion for X402 up-to flows where settlement happens server-side.
    */
+  /**
+   * Persist EVM x402 up-to authorization on the API and trigger merchant webhook (publishable key).
+   */
+  private async confirmX402UptoOnServerIfEvm(
+    sdk: any,
+    args: {
+      paymentIntentId: string;
+      paymentHeader?: string;
+      paymentRequirements?: any;
+    },
+  ): Promise<void> {
+    const { paymentIntentId, paymentHeader, paymentRequirements } = args;
+    const net = String(paymentRequirements?.network || '').toLowerCase();
+    if (!net.startsWith('eip155:')) return;
+    if (!paymentIntentId || !paymentHeader) return;
+    const fn = sdk.client?.confirmX402UptoAuthorization;
+    if (typeof fn !== 'function') return;
+    await fn.call(sdk.client, {
+      paymentIntentId,
+      paymentHeader,
+      paymentRequirements,
+    });
+  }
+
   private async pollUntilIntentTerminal(paymentIntentId: string): Promise<void> {
     if (!paymentIntentId || !this.config?.publishableKey) return;
     if (this.activeIntentPollIds.has(paymentIntentId)) return;
@@ -866,7 +890,7 @@ export class ICPayPayButton extends LitElement {
                 x402Upto: Boolean((this.config as any)?.x402Upto),
                 x402Scheme: requestedX402Scheme,
               });
-              if ((this.config as any)?.x402Upto && typeof (this.config as any)?.onX402UptoIntent === 'function') {
+              if ((this.config as any)?.x402Upto) {
                 try {
                   const paymentData: any = x402Resp?.payment || {};
                   const paymentIntentId: string =
@@ -877,20 +901,31 @@ export class ICPayPayButton extends LitElement {
                   const accepts: any[] = Array.isArray(paymentData?.accepts) ? paymentData.accepts : [];
                   const paymentHeader: string | undefined = paymentData?.paymentHeader;
                   const paymentRequirements: any = paymentData?.paymentRequirements ?? (accepts.length > 0 ? accepts[0] : undefined);
-                  (this.config as any).onX402UptoIntent({
+                  const isEvmX402 = String((paymentRequirements as any)?.network || (accepts[0] as any)?.network || '').toLowerCase().startsWith('eip155:');
+                  if (isEvmX402 && !paymentHeader) {
+                    throw new Error('Missing signed x402 paymentHeader for EVM upto flow');
+                  }
+                  await this.confirmX402UptoOnServerIfEvm(sdk, {
                     paymentIntentId,
-                    amountUsd,
-                    metadata,
-                    accepts,
                     paymentHeader,
                     paymentRequirements,
                   });
-                  // After notifying host, poll intent until terminal so UI can reflect completion.
+                  if (typeof (this.config as any)?.onX402UptoIntent === 'function') {
+                    (this.config as any).onX402UptoIntent({
+                      paymentIntentId,
+                      amountUsd,
+                      metadata,
+                      accepts,
+                      paymentHeader,
+                      paymentRequirements,
+                    });
+                  }
                   if (paymentIntentId) {
                     await this.pollUntilIntentTerminal(paymentIntentId);
                   }
-                } catch (cbErr) {
-                  debugLog(this.config?.debug || false, 'onX402UptoIntent callback failed', { error: String(cbErr) });
+                } catch (uptoErr) {
+                  debugLog(this.config?.debug || false, 'x402 upto confirm / callback failed', { error: String(uptoErr) });
+                  throw uptoErr;
                 }
               }
               return;
@@ -994,7 +1029,7 @@ export class ICPayPayButton extends LitElement {
                   ? (this.config as any).x402Scheme
                   : (Boolean((this.config as any)?.x402Upto) ? 'upto' : 'exact'),
             });
-            if ((this.config as any)?.x402Upto && typeof (this.config as any)?.onX402UptoIntent === 'function') {
+            if ((this.config as any)?.x402Upto) {
               try {
                 const paymentData: any = x402Resp?.payment || {};
                 const paymentIntentId: string =
@@ -1005,19 +1040,31 @@ export class ICPayPayButton extends LitElement {
                 const accepts: any[] = Array.isArray(paymentData?.accepts) ? paymentData.accepts : [];
                 const paymentHeader: string | undefined = paymentData?.paymentHeader;
                 const paymentRequirements: any = paymentData?.paymentRequirements ?? (accepts.length > 0 ? accepts[0] : undefined);
-                (this.config as any).onX402UptoIntent({
+                const isEvmX402 = String((paymentRequirements as any)?.network || (accepts[0] as any)?.network || '').toLowerCase().startsWith('eip155:');
+                if (isEvmX402 && !paymentHeader) {
+                  throw new Error('Missing signed x402 paymentHeader for EVM upto flow');
+                }
+                await this.confirmX402UptoOnServerIfEvm(sdk, {
                   paymentIntentId,
-                  amountUsd,
-                  metadata,
-                  accepts,
                   paymentHeader,
                   paymentRequirements,
                 });
+                if (typeof (this.config as any)?.onX402UptoIntent === 'function') {
+                  (this.config as any).onX402UptoIntent({
+                    paymentIntentId,
+                    amountUsd,
+                    metadata,
+                    accepts,
+                    paymentHeader,
+                    paymentRequirements,
+                  });
+                }
                 if (paymentIntentId) {
                   await this.pollUntilIntentTerminal(paymentIntentId);
                 }
-              } catch (cbErr) {
-                debugLog(this.config?.debug || false, 'onX402UptoIntent callback failed', { error: String(cbErr) });
+              } catch (uptoErr) {
+                debugLog(this.config?.debug || false, 'x402 upto confirm / callback failed', { error: String(uptoErr) });
+                throw uptoErr;
               }
             }
             return;
