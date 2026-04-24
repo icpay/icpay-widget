@@ -59,10 +59,94 @@ export class OisyAdapter implements AdapterInterface {
     return {
       ...rawAgent,
       update: async (canisterId: string, request: any) => {
+        const req = request || {};
+        const resolvedArg =
+          req.arg ??
+          req.args ??
+          req?.body?.arg ??
+          req?.content?.arg ??
+          req?.request?.arg;
+        const resolvedMethodName =
+          req.methodName ??
+          req.method_name ??
+          req?.body?.methodName ??
+          req?.content?.methodName ??
+          req?.request?.methodName;
+        const resolvedEffectiveCanisterId =
+          req.effectiveCanisterId ??
+          req.effective_canister_id ??
+          req?.body?.effectiveCanisterId ??
+          req?.content?.effectiveCanisterId ??
+          req?.request?.effectiveCanisterId;
+        const normalizedReq = {
+          ...req,
+          arg: resolvedArg,
+          args: resolvedArg,
+          methodName: resolvedMethodName,
+          effectiveCanisterId: resolvedEffectiveCanisterId,
+          canisterId,
+        };
         try {
-          return await rawAgent.call(canisterId, request);
-        } catch {
-          return await rawAgent.call({ canisterId, ...(request || {}) });
+          console.debug('[ICPay Widget][OisyAdapter] update() normalized request', {
+            canisterId,
+            methodName: normalizedReq.methodName,
+            effectiveCanisterId: normalizedReq.effectiveCanisterId,
+            hasArg: typeof normalizedReq.arg !== 'undefined',
+            hasArgs: typeof normalizedReq.args !== 'undefined',
+            argType: normalizedReq.arg?.constructor?.name || typeof normalizedReq.arg,
+            argByteLength:
+              typeof normalizedReq.arg?.byteLength === 'number'
+                ? normalizedReq.arg.byteLength
+                : (typeof normalizedReq.arg?.length === 'number' ? normalizedReq.arg.length : undefined),
+            requestKeys: Object.keys(req || {}),
+          });
+        } catch {}
+        if (typeof normalizedReq.arg === 'undefined') {
+          try {
+            console.error('[ICPay Widget][OisyAdapter] update() missing candid arg payload', {
+              canisterId,
+              methodName: normalizedReq.methodName,
+              requestKeys: Object.keys(req || {}),
+            });
+          } catch {}
+          throw new Error('Oisy update() missing candid arg payload');
+        }
+        try {
+          const res = await rawAgent.call(canisterId, normalizedReq);
+          try {
+            console.debug('[ICPay Widget][OisyAdapter] call(canisterId, req) success', {
+              methodName: normalizedReq.methodName,
+              resultType: res?.constructor?.name || typeof res,
+              resultKeys: res && typeof res === 'object' ? Object.keys(res) : undefined,
+            });
+          } catch {}
+          return res;
+        } catch (err1) {
+          try {
+            console.warn('[ICPay Widget][OisyAdapter] call(canisterId, req) failed; trying call(req)', {
+              methodName: normalizedReq.methodName,
+              error: (err1 as any)?.message || String(err1),
+            });
+          } catch {}
+          try {
+            const res = await rawAgent.call(normalizedReq);
+            try {
+              console.debug('[ICPay Widget][OisyAdapter] call(req) success', {
+                methodName: normalizedReq.methodName,
+                resultType: res?.constructor?.name || typeof res,
+                resultKeys: res && typeof res === 'object' ? Object.keys(res) : undefined,
+              });
+            } catch {}
+            return res;
+          } catch (err2) {
+            try {
+              console.error('[ICPay Widget][OisyAdapter] call(req) failed', {
+                methodName: normalizedReq.methodName,
+                error: (err2 as any)?.message || String(err2),
+              });
+            } catch {}
+            throw err2;
+          }
         }
       },
     };
