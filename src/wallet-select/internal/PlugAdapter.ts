@@ -1,6 +1,6 @@
-import type { ActorSubclass } from '@dfinity/agent';
-import { Actor } from '@dfinity/agent';
-import type { IDL } from '@dfinity/candid';
+import type { ActorSubclass } from '@icp-sdk/core/agent';
+import { Actor } from '@icp-sdk/core/agent';
+import type { IDL } from '@icp-sdk/core/candid';
 import type { AdapterInterface, WalletSelectConfig, GetActorOptions, WalletAccount, AdapterConfig } from '../index';
 
 declare global {

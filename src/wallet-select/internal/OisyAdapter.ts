@@ -1,4 +1,4 @@
-import { Actor, HttpAgent } from '@dfinity/agent';
+import { Actor, HttpAgent } from '@icp-sdk/core/agent';
 // Avoid importing IDL types to prevent cross-version type conflicts
 import type { AdapterInterface, WalletSelectConfig, GetActorOptions, WalletAccount } from '../index';
 import { PostMessageTransport } from '@slide-computer/signer-web';
