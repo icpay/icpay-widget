@@ -2,6 +2,7 @@ import type { ActorSubclass } from '@icp-sdk/core/agent';
 import { Actor } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { AdapterInterface, WalletSelectConfig, GetActorOptions, WalletAccount, AdapterConfig } from '../index';
+import { normalizeIcpSdkActorUpdateResult, wrapAgentUpdateResultForIcpSdkActor } from './icAgentShim.js';
 
 declare global {
   interface Window {
@@ -122,7 +123,7 @@ export class PlugAdapter implements AdapterInterface {
               resultKeys: res && typeof res === 'object' ? Object.keys(res) : undefined,
             });
           } catch {}
-          return res;
+          return normalizeIcpSdkActorUpdateResult(res);
         } catch (err1) {
           try {
             console.warn('[ICPay Widget][PlugAdapter] call(canisterId, req) failed; trying call(req)', {
@@ -140,7 +141,7 @@ export class PlugAdapter implements AdapterInterface {
                 resultKeys: res && typeof res === 'object' ? Object.keys(res) : undefined,
               });
             } catch {}
-            return res;
+            return normalizeIcpSdkActorUpdateResult(res);
           } catch (err2) {
             try {
               console.error('[ICPay Widget][PlugAdapter] call(req) failed', {
@@ -161,7 +162,7 @@ export class PlugAdapter implements AdapterInterface {
     if (!rawAgent) {
       throw new Error('Plug agent not initialized');
     }
-    const agent: any = this.normalizeAgent(rawAgent);
+    const agent: any = this.normalizeAgent(wrapAgentUpdateResultForIcpSdkActor(rawAgent));
     if (typeof agent.update !== 'function') {
       throw new Error('Plug agent is missing update() and call() methods');
     }

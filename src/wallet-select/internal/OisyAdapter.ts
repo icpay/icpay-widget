@@ -1,6 +1,7 @@
 import { Actor, HttpAgent } from '@icp-sdk/core/agent';
 // Avoid importing IDL types to prevent cross-version type conflicts
 import type { AdapterInterface, WalletSelectConfig, GetActorOptions, WalletAccount } from '../index';
+import { normalizeIcpSdkActorUpdateResult, wrapAgentUpdateResultForIcpSdkActor } from './icAgentShim.js';
 import { PostMessageTransport } from '@slide-computer/signer-web';
 import { Signer } from '@slide-computer/signer';
 import { SignerAgent } from '@slide-computer/signer-agent';
@@ -120,7 +121,7 @@ export class OisyAdapter implements AdapterInterface {
               resultKeys: res && typeof res === 'object' ? Object.keys(res) : undefined,
             });
           } catch {}
-          return res;
+          return normalizeIcpSdkActorUpdateResult(res);
         } catch (err1) {
           try {
             console.warn('[ICPay Widget][OisyAdapter] call(canisterId, req) failed; trying call(req)', {
@@ -137,7 +138,7 @@ export class OisyAdapter implements AdapterInterface {
                 resultKeys: res && typeof res === 'object' ? Object.keys(res) : undefined,
               });
             } catch {}
-            return res;
+            return normalizeIcpSdkActorUpdateResult(res);
           } catch (err2) {
             try {
               console.error('[ICPay Widget][OisyAdapter] call(req) failed', {
@@ -156,7 +157,7 @@ export class OisyAdapter implements AdapterInterface {
     if (!this._agent) throw new Error('Oisy agent not initialized');
     // Create actor through the signer agent compatible path
     const rawAgent: any = this._agent;
-    const agent: any = this.normalizeAgent(rawAgent);
+    const agent: any = this.normalizeAgent(wrapAgentUpdateResultForIcpSdkActor(rawAgent));
     if (typeof agent.update !== 'function') {
       throw new Error('Oisy signer agent is missing update() and call() methods');
     }
