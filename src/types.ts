@@ -67,6 +67,10 @@ export type CommonConfig = {
   // Optional derivation origin override used by wallet connectors like Internet Identity
   derivationOrigin?: string;
   actorProvider?: (canisterId: string, idl: any) => any;
+  /** Set by widget from selected wallet id (`plug`, `oisy`, …) so IC x402 Plug whitelist runs only for Plug. */
+  icWalletAdapterId?: string;
+  /** Alias for `icWalletAdapterId` when creating the SDK from components that store `lastWalletId` here. */
+  lastWalletId?: string;
   connectedWallet?: any;
   useOwnWallet?: boolean; // If true, widget will not handle wallet connection
   plugNPlay?: PlugNPlayConfig; // Configuration for built-in Plug N Play

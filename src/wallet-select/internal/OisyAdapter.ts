@@ -58,8 +58,8 @@ export class OisyAdapter implements AdapterInterface {
     const rawAgent: any = this._agent;
     // SignerAgent: call() → 202 + stored cert; Actor needs update() → pollForResponse (see icAgentShim).
     const agent: any = wrapAgentUpdateResultForIcpSdkActor(wrapCallOnlyAgentWithIcpSdkUpdate(rawAgent));
-    if (typeof agent.update !== 'function' || typeof agent.call !== 'function') {
-      throw new Error('Oisy signer agent is missing call()');
+    if (typeof agent.update !== 'function') {
+      throw new Error('Oisy signer agent is missing update() after shim');
     }
     return Actor.createActor(options.idl, { agent, canisterId: options.canisterId });
   }
