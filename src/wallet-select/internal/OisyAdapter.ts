@@ -51,18 +51,28 @@ export class OisyAdapter implements AdapterInterface {
   }
   async disconnect(): Promise<void> { this._agent = null; this._principal = null; }
   async getPrincipal(): Promise<string | null> { return this._principal; }
+
+  private normalizeAgent(rawAgent: any): any {
+    if (!rawAgent) return rawAgent;
+    if (typeof rawAgent.update === 'function') return rawAgent;
+    if (typeof rawAgent.call !== 'function') return rawAgent;
+    return {
+      ...rawAgent,
+      update: async (canisterId: string, request: any) => {
+        try {
+          return await rawAgent.call(canisterId, request);
+        } catch {
+          return await rawAgent.call({ canisterId, ...(request || {}) });
+        }
+      },
+    };
+  }
+
   getActor(options: GetActorOptions): any {
     if (!this._agent) throw new Error('Oisy agent not initialized');
     // Create actor through the signer agent compatible path
     const rawAgent: any = this._agent;
-    const agent: any =
-      typeof rawAgent?.update === 'function'
-        ? rawAgent
-        : {
-            ...rawAgent,
-            // @icp-sdk/core actor path expects update(); older signer agents expose call().
-            update: typeof rawAgent?.call === 'function' ? rawAgent.call.bind(rawAgent) : undefined,
-          };
+    const agent: any = this.normalizeAgent(rawAgent);
     if (typeof agent.update !== 'function') {
       throw new Error('Oisy signer agent is missing update() and call() methods');
     }
