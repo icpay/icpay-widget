@@ -48,14 +48,20 @@ export function normalizeIcpSdkActorUpdateResult(res: unknown): unknown {
  */
 export function wrapAgentUpdateResultForIcpSdkActor(rawAgent: any): any {
   if (!rawAgent || typeof rawAgent.update !== 'function') return rawAgent;
-  const inner = rawAgent.update.bind(rawAgent);
-  return {
-    ...rawAgent,
-    update: async (canisterId: unknown, fields: unknown, polling?: unknown) => {
-      const out = await inner(canisterId, fields, polling);
-      return normalizeIcpSdkActorUpdateResult(out);
+  return new Proxy(rawAgent, {
+    get(target, prop, receiver) {
+      if (prop === 'update') {
+        const orig = Reflect.get(target, 'update', receiver);
+        if (typeof orig !== 'function') return orig;
+        const bound = orig.bind(target);
+        return async (canisterId: unknown, fields: unknown, polling?: unknown) => {
+          const out = await bound(canisterId, fields, polling);
+          return normalizeIcpSdkActorUpdateResult(out);
+        };
+      }
+      return Reflect.get(target, prop, receiver);
     },
-  };
+  });
 }
 
 /**
@@ -68,24 +74,28 @@ export function wrapCallOnlyAgentWithIcpSdkUpdate(inner: any): any {
   if (typeof inner.update === 'function') {
     return inner;
   }
-  return {
-    ...inner,
-    update: async (canisterId: unknown, fields: any, pollingOptions: unknown = {}) => {
-      const polling = typeof pollingOptions === 'object' && pollingOptions !== null ? pollingOptions : {};
-      const ecid = Principal.from(fields?.effectiveCanisterId ?? canisterId);
-      const { requestId, response, requestDetails } = await inner.call(canisterId, fields);
-      const status = response?.status;
-      if (status === HTTP_STATUS_ACCEPTED || status === 202) {
-        const pollResult = await pollForResponse(inner, ecid, requestId, polling as any);
-        return normalizeIcpSdkActorUpdateResult({
-          ...pollResult,
-          requestDetails,
-          callResponse: response,
-        });
+  return new Proxy(inner, {
+    get(target, prop, receiver) {
+      if (prop === 'update') {
+        return async (canisterId: unknown, fields: any, pollingOptions: unknown = {}) => {
+          const polling = typeof pollingOptions === 'object' && pollingOptions !== null ? pollingOptions : {};
+          const ecid = Principal.from(fields?.effectiveCanisterId ?? canisterId);
+          const { requestId, response, requestDetails } = await target.call(canisterId, fields);
+          const status = response?.status;
+          if (status === HTTP_STATUS_ACCEPTED || status === 202) {
+            const pollResult = await pollForResponse(target, ecid, requestId, polling as any);
+            return normalizeIcpSdkActorUpdateResult({
+              ...pollResult,
+              requestDetails,
+              callResponse: response,
+            });
+          }
+          throw new Error(
+            `ICPay agent shim: call-only agent returned status ${String(status)} (expected 202); cannot complete update()`,
+          );
+        };
       }
-      throw new Error(
-        `ICPay agent shim: call-only agent returned status ${String(status)} (expected 202); cannot complete update()`,
-      );
+      return Reflect.get(target, prop, receiver);
     },
-  };
+  });
 }

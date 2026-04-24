@@ -52,6 +52,10 @@ export function createSdk(config: CommonConfig): WidgetSdk {
   if (config.icHost) sdkConfig.icHost = config.icHost;
   if (config.actorProvider) sdkConfig.actorProvider = config.actorProvider;
   if (config.connectedWallet) sdkConfig.connectedWallet = config.connectedWallet;
+  const icAdapterRaw = (config as any).icWalletAdapterId ?? (config as any).lastWalletId;
+  if (icAdapterRaw != null && String(icAdapterRaw).trim() !== '') {
+    (sdkConfig as any).icWalletAdapterId = String(icAdapterRaw).toLowerCase();
+  }
   // Pass selected EVM provider from widget to SDK so signatures use the chosen wallet
   if ((config as any).evmProvider) (sdkConfig as any).evmProvider = (config as any).evmProvider;
   // Pass selected Solana provider from widget to SDK so signatures use the chosen wallet
