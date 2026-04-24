@@ -1,5 +1,5 @@
 import type { AdapterInterface, GetActorOptions, WalletSelectConfig, WalletAccount } from '../index.js';
-import { Actor, HttpAgent } from '@dfinity/agent';
+import { Actor, HttpAgent } from '@icp-sdk/core/agent';
 
 declare global {
 	interface Window {

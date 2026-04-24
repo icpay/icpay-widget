@@ -1,6 +1,6 @@
 {
   "name": "@ic-pay/icpay-widget",
-  "version": "1.2.137",
+  "version": "1.2.138",
   "description": "ICPay embeddable payment widgets for multi-chain crypto payments (EVM, Solana, Internet Computer)",
   "keywords": [
     "icpay",
@@ -67,15 +67,12 @@
     "noExternal": []
   },
   "dependencies": {
-    "@dfinity/agent": "^3.4.3",
-    "@dfinity/auth-client": "^3.4.3",
-    "@dfinity/candid": "^3.4.3",
-    "@dfinity/identity": "^3.4.3",
-    "@dfinity/principal": "^3.4.3",
+    "@icp-sdk/auth": "^6.2.0",
+    "@icp-sdk/core": "^5.3.1",
     "@ic-pay/icpay-sdk": "^1.4.109",
-    "@slide-computer/signer": "4.2.0",
-    "@slide-computer/signer-agent": "4.2.0",
-    "@slide-computer/signer-web": "4.2.0",
+    "@slide-computer/signer": "4.2.2",
+    "@slide-computer/signer-agent": "4.2.2",
+    "@slide-computer/signer-web": "4.2.2",
     "lit": "^3.3.2",
     "qrcode": "^1.5.4"
   },

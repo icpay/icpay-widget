@@ -8,33 +8,24 @@ importers:
 
   .:
     dependencies:
-      '@dfinity/agent':
-        specifier: ^3.4.3
-        version: 3.4.3(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/hashes@1.8.0)
-      '@dfinity/auth-client':
-        specifier: ^3.4.3
-        version: 3.4.3(@dfinity/agent@3.4.3(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/hashes@1.8.0))(@dfinity/identity@3.4.3(@dfinity/agent@3.4.3(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/hashes@1.8.0))(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/curves@1.9.7)(@noble/hashes@1.8.0))(@dfinity/principal@3.4.3)
-      '@dfinity/candid':
-        specifier: ^3.4.3
-        version: 3.4.3(@dfinity/principal@3.4.3)
-      '@dfinity/identity':
-        specifier: ^3.4.3
-        version: 3.4.3(@dfinity/agent@3.4.3(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/hashes@1.8.0))(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/curves@1.9.7)(@noble/hashes@1.8.0)
-      '@dfinity/principal':
-        specifier: ^3.4.3
-        version: 3.4.3
       '@ic-pay/icpay-sdk':
         specifier: ^1.4.109
         version: 1.4.109(@dfinity/identity@3.4.3(@dfinity/agent@3.4.3(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/hashes@1.8.0))(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/curves@1.9.7)(@noble/hashes@1.8.0))(@noble/hashes@1.8.0)
+      '@icp-sdk/auth':
+        specifier: ^6.2.0
+        version: 6.2.0(@icp-sdk/core@5.3.1)
+      '@icp-sdk/core':
+        specifier: ^5.3.1
+        version: 5.3.1
       '@slide-computer/signer':
-        specifier: 4.2.0
-        version: 4.2.0
+        specifier: 4.2.2
+        version: 4.2.2
       '@slide-computer/signer-agent':
-        specifier: 4.2.0
-        version: 4.2.0(@slide-computer/signer@4.2.0)
+        specifier: 4.2.2
+        version: 4.2.2(@slide-computer/signer@4.2.2)
       '@slide-computer/signer-web':
-        specifier: 4.2.0
-        version: 4.2.0(@slide-computer/signer@4.2.0)
+        specifier: 4.2.2
+        version: 4.2.2(@slide-computer/signer@4.2.2)
       lit:
         specifier: ^3.3.2
         version: 3.3.2
@@ -94,6 +85,9 @@ packages:
 
   '@dfinity/cbor@0.2.2':
     resolution: {integrity: sha512-GPJpH73kDEKbUBdUjY80lz7cq9l0vm1h/7ppejPV6O0ZTqCLrYspssYvqjRmK4aNnJ/SKXsP0rg9LYX7zpegaA==}
+
+  '@dfinity/cbor@0.2.3':
+    resolution: {integrity: sha512-5GX+9tAf29r94Pxv8nCzrv2/t+AkOfem/c/G61+FA2Wadq7THvc5cvr/AVLH0LpukVfNSWRRHvl1fkCdiB9MMQ==}
 
   '@dfinity/identity@3.4.3':
     resolution: {integrity: sha512-mAsdmlaZPe7UkPL8AKNq7801pYve3LWnXQLOq39Nu+pzAUWRnZcKO3Ao+xouym5VnQnBwO68BnSSvQ044bEyTA==}
@@ -268,8 +262,18 @@ packages:
   '@ic-pay/icpay-sdk@1.4.109':
     resolution: {integrity: sha512-z0TeQMMJWYKFhBoNwpRPHE8jjLiIojbXPMUO+ZbNIYPHxoil9eqJH/58e4vAEEjYIV93+gm6or1F3gueJj3Qvg==}
 
-  '@icp-sdk/core@5.0.0':
-    resolution: {integrity: sha512-t6iRbdylHG57MicWRpR1uMTFXRW7GCzec6KAg55CBwDHbHLQDKikQ252lmlcEa80DrKa3LPvMKYZEUYjEq5XUQ==}
+  '@icp-sdk/auth@6.2.0':
+    resolution: {integrity: sha512-9d3XkH+AOL1STyUPkMhvogIwSk4jJdglOmqsm9eSbOQnOFpMx+eEmJYe5oopmLIe2KQV1VxOblwVLwLWPrRj7w==}
+    peerDependencies:
+      '@icp-sdk/core': ^5
+
+  '@icp-sdk/core@5.3.1':
+    resolution: {integrity: sha512-UImYNHsx9Xt+m8Kj1nbYOSqWtfIYC+jyGnHeogvA8fg0lKRRR4jk70RHRchD8riujZNbDuSn4GKhMvhRvudG3Q==}
+
+  '@icp-sdk/signer@5.3.0':
+    resolution: {integrity: sha512-ZBRzoMudjLqMGAUp7RUKa5rl13OR+XmHFfvGi4Qib1LoT8XFH7r+HdNYg+MgbWoRXwnO+a4e5OP3cwJ/jQhdMQ==}
+    peerDependencies:
+      '@icp-sdk/core': ^5
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -444,18 +448,18 @@ packages:
   '@scure/bip39@1.6.0':
     resolution: {integrity: sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==}
 
-  '@slide-computer/signer-agent@4.2.0':
-    resolution: {integrity: sha512-3XQcWENR3JHQLd1juuBeSM3cHjVNXbrZMeAsv5cBnCOZhy8fP3622J8Z4tsn/l9ajYScRE69Y8LKlabEy9mQaA==}
+  '@slide-computer/signer-agent@4.2.2':
+    resolution: {integrity: sha512-WKAnkW59EwpJRV2kBJA20Lpgik1JB4qyJTH0fc9SGoUSukdHWgvebM54sfgrDHyTN1W3OtVHKf1jSJz2sXifsA==}
     peerDependencies:
-      '@slide-computer/signer': ^4.2.0
+      '@slide-computer/signer': ^4.2.2
 
-  '@slide-computer/signer-web@4.2.0':
-    resolution: {integrity: sha512-IOUwxW+F9sqgWhwxQex1Lq+gD4eV9f6eK4qqxrH86IK+xts5IW1df+q9V6hB8A1y/qfsNG30iEmbjMhOXDmJnA==}
+  '@slide-computer/signer-web@4.2.2':
+    resolution: {integrity: sha512-sPgj6Gabz7lXz6JbPXU5Dw2lRhmyFKFsqlx4yFLl5D7l65LOyPGMp+iNSxyhCrH4MlXiKJHoYugIkoYi6KWL3Q==}
     peerDependencies:
-      '@slide-computer/signer': ^4.2.0
+      '@slide-computer/signer': ^4.2.2
 
-  '@slide-computer/signer@4.2.0':
-    resolution: {integrity: sha512-D4+Rv/q3A+mQMIO2FpDUobo6H8E4AHt0Ux7Dshym3jflYSRvalG/uggsLo1p/5lDAgFMAvp8DTUmqrGMV047Dw==}
+  '@slide-computer/signer@4.2.2':
+    resolution: {integrity: sha512-K3gf2xZNUapCWsmNrJz3/o83ejvxHZxE812xEsaFof5olnEXHsbaOtmg0mDVOXSxezun67U3XOvHQR/CvqLqRA==}
 
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
@@ -1061,6 +1065,8 @@ snapshots:
 
   '@dfinity/cbor@0.2.2': {}
 
+  '@dfinity/cbor@0.2.3': {}
+
   '@dfinity/identity@3.4.3(@dfinity/agent@3.4.3(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/hashes@1.8.0))(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/curves@1.9.7)(@noble/hashes@1.8.0)':
     dependencies:
       '@dfinity/agent': 3.4.3(@dfinity/candid@3.4.3(@dfinity/principal@3.4.3))(@dfinity/principal@3.4.3)(@noble/hashes@1.8.0)
@@ -1161,14 +1167,24 @@ snapshots:
       - '@dfinity/identity'
       - '@noble/hashes'
 
-  '@icp-sdk/core@5.0.0':
+  '@icp-sdk/auth@6.2.0(@icp-sdk/core@5.3.1)':
     dependencies:
-      '@dfinity/cbor': 0.2.2
+      '@icp-sdk/core': 5.3.1
+      '@icp-sdk/signer': 5.3.0(@icp-sdk/core@5.3.1)
+      idb: 7.1.1
+
+  '@icp-sdk/core@5.3.1':
+    dependencies:
+      '@dfinity/cbor': 0.2.3
       '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
       asn1js: 3.0.7
+
+  '@icp-sdk/signer@5.3.0(@icp-sdk/core@5.3.1)':
+    dependencies:
+      '@icp-sdk/core': 5.3.1
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
@@ -1296,18 +1312,18 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
-  '@slide-computer/signer-agent@4.2.0(@slide-computer/signer@4.2.0)':
+  '@slide-computer/signer-agent@4.2.2(@slide-computer/signer@4.2.2)':
     dependencies:
-      '@icp-sdk/core': 5.0.0
-      '@slide-computer/signer': 4.2.0
+      '@icp-sdk/core': 5.3.1
+      '@slide-computer/signer': 4.2.2
 
-  '@slide-computer/signer-web@4.2.0(@slide-computer/signer@4.2.0)':
+  '@slide-computer/signer-web@4.2.2(@slide-computer/signer@4.2.2)':
     dependencies:
-      '@slide-computer/signer': 4.2.0
+      '@slide-computer/signer': 4.2.2
 
-  '@slide-computer/signer@4.2.0':
+  '@slide-computer/signer@4.2.2':
     dependencies:
-      '@icp-sdk/core': 5.0.0
+      '@icp-sdk/core': 5.3.1
 
   '@types/estree@1.0.8': {}
 

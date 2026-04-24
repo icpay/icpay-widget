@@ -1,6 +1,6 @@
-import type { ActorSubclass } from '@dfinity/agent';
-import { Actor, HttpAgent } from '@dfinity/agent';
-import { AuthClient } from '@dfinity/auth-client';
+import type { ActorSubclass } from '@icp-sdk/core/agent';
+import { Actor, HttpAgent } from '@icp-sdk/core/agent';
+import { AuthClient } from '@icp-sdk/auth/client';
 import type { AdapterInterface, WalletSelectConfig, GetActorOptions, WalletAccount } from '../index';
 
 export class IIAdapter implements AdapterInterface {
@@ -17,7 +17,9 @@ export class IIAdapter implements AdapterInterface {
 
   private async client(): Promise<AuthClient> {
     if (this._client) return this._client;
-    this._client = await AuthClient.create();
+    this._client = new AuthClient(
+      this._config.derivationOrigin ? { identityProvider: this._config.derivationOrigin } : undefined
+    );
     return this._client;
   }
 
@@ -25,16 +27,16 @@ export class IIAdapter implements AdapterInterface {
 
   async isConnected(): Promise<boolean> {
     const c = await this.client();
-    return await c.isAuthenticated();
+    return c.isAuthenticated();
   }
 
   async connect(): Promise<WalletAccount> {
     const c = await this.client();
-    const connected = await c.isAuthenticated();
+    const connected = c.isAuthenticated();
     if (!connected) {
-      await c.login({ identityProvider: this._config.derivationOrigin, maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000) });
+      await c.signIn({ maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000) });
     }
-    const identity = c.getIdentity();
+    const identity = await c.getIdentity();
     this._agent = new HttpAgent({ host: this._config.icHost, identity });
     const principal = identity.getPrincipal().toText();
     return { owner: principal, principal, connected: true };
@@ -46,7 +48,7 @@ export class IIAdapter implements AdapterInterface {
   }
 
   async getPrincipal(): Promise<string | null> {
-    try { return (await this.client()).getIdentity().getPrincipal().toText(); } catch { return null; }
+    try { return (await (await this.client()).getIdentity()).getPrincipal().toText(); } catch { return null; }
   }
 
   getActor<T>(options: GetActorOptions): ActorSubclass<T> {

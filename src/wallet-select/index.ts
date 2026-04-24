@@ -1,5 +1,5 @@
-import type { HttpAgentOptions } from '@dfinity/agent';
-import { Actor, HttpAgent } from '@dfinity/agent';
+import type { HttpAgentOptions } from '@icp-sdk/core/agent';
+import { Actor, HttpAgent } from '@icp-sdk/core/agent';
 // Avoid importing IDL types to prevent cross-version type conflicts
 
 export type WalletSelectConfig = {
