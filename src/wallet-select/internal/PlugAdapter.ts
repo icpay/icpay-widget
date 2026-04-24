@@ -16,6 +16,8 @@ export class PlugAdapter implements AdapterInterface {
   readonly icon: string | null = null;
   private _config: WalletSelectConfig;
   private _adapterCfg?: AdapterConfig;
+  /** Plug `createActor` promises keyed by canister (Plug-native actor; avoids @icp-sdk/core Actor + Plug agent mismatch). */
+  private _plugCreateActorByCanister = new Map<string, Promise<any>>();
 
   constructor(args: { config?: WalletSelectConfig; adapter?: AdapterConfig }) {
     this._config = args.config || {};
@@ -43,6 +45,7 @@ export class PlugAdapter implements AdapterInterface {
   }
 
   async disconnect(): Promise<void> {
+    this._plugCreateActorByCanister.clear();
     try { await window.ic?.plug?.disconnect?.(); } catch {}
   }
 
@@ -156,9 +159,62 @@ export class PlugAdapter implements AdapterInterface {
     };
   }
 
+  /**
+   * Prefer Plug's own `createActor` (same stack as @dfinity/agent inside the extension). Pairing
+   * `@icp-sdk/core` Actor with Plug's injected HttpAgent breaks update/reply decoding (`byteLength`
+   * on undefined) in production; icpay.org works because both sides use the legacy dfinity stack.
+   */
+  private getOrCreatePlugExtensionActor(options: GetActorOptions): Promise<any> {
+    const key = options.canisterId;
+    let p = this._plugCreateActorByCanister.get(key);
+    if (!p) {
+      const plug = window.ic?.plug;
+      if (!plug || typeof plug.createActor !== 'function') {
+        throw new Error('Plug createActor not available');
+      }
+      const factory = options.idl;
+      const created = plug.createActor({
+        canisterId: options.canisterId,
+        interfaceFactory: factory,
+        idlFactory: factory,
+      });
+      p = Promise.resolve(created).catch((e: unknown) => {
+        this._plugCreateActorByCanister.delete(key);
+        throw e;
+      });
+      this._plugCreateActorByCanister.set(key, p);
+    }
+    return p;
+  }
+
+  private createPlugExtensionActorProxy<T>(options: GetActorOptions): ActorSubclass<T> {
+    const run = (prop: string | symbol, args: unknown[]) =>
+      this.getOrCreatePlugExtensionActor(options).then((actor: any) => {
+        const v = actor[prop as keyof typeof actor] as unknown;
+        if (typeof v !== 'function') {
+          throw new Error(`Plug actor has no method ${String(prop)}`);
+        }
+        return (v as (...a: unknown[]) => unknown).apply(actor, args);
+      });
+
+    return new Proxy({} as ActorSubclass<T>, {
+      get: (_target, prop: string | symbol) => {
+        if (typeof prop === 'symbol') {
+          if (prop === Symbol.toStringTag) return 'PlugActor';
+          return undefined;
+        }
+        if (prop === 'then' || prop === 'catch' || prop === 'finally') return undefined;
+        return (...args: unknown[]) => run(prop, args);
+      },
+    });
+  }
+
   getActor<T>(options: GetActorOptions): ActorSubclass<T> {
-    // Use Plug's agent synchronously if available
-    const rawAgent = window.ic?.plug?.agent;
+    const plug = window.ic?.plug;
+    if (plug && typeof plug.createActor === 'function') {
+      return this.createPlugExtensionActorProxy<T>(options);
+    }
+    const rawAgent = plug?.agent;
     if (!rawAgent) {
       throw new Error('Plug agent not initialized');
     }
