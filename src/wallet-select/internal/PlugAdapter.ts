@@ -54,9 +54,21 @@ export class PlugAdapter implements AdapterInterface {
 
   getActor<T>(options: GetActorOptions): ActorSubclass<T> {
     // Use Plug's agent synchronously if available
-    const agent = window.ic?.plug?.agent;
-    if (!agent) {
+    const rawAgent = window.ic?.plug?.agent;
+    if (!rawAgent) {
       throw new Error('Plug agent not initialized');
+    }
+    const agent: any =
+      typeof rawAgent?.update === 'function'
+        ? rawAgent
+        : {
+            ...rawAgent,
+            // @icp-sdk/core actor path expects an update() method.
+            // Plug exposes call() in some versions; map it for compatibility.
+            update: typeof rawAgent?.call === 'function' ? rawAgent.call.bind(rawAgent) : undefined,
+          };
+    if (typeof agent.update !== 'function') {
+      throw new Error('Plug agent is missing update() and call() methods');
     }
     return Actor.createActor<T>(options.idl as IDL.InterfaceFactory, { agent, canisterId: options.canisterId });
   }

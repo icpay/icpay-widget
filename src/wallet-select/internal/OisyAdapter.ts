@@ -54,7 +54,19 @@ export class OisyAdapter implements AdapterInterface {
   getActor(options: GetActorOptions): any {
     if (!this._agent) throw new Error('Oisy agent not initialized');
     // Create actor through the signer agent compatible path
-    return Actor.createActor(options.idl, { agent: this._agent, canisterId: options.canisterId });
+    const rawAgent: any = this._agent;
+    const agent: any =
+      typeof rawAgent?.update === 'function'
+        ? rawAgent
+        : {
+            ...rawAgent,
+            // @icp-sdk/core actor path expects update(); older signer agents expose call().
+            update: typeof rawAgent?.call === 'function' ? rawAgent.call.bind(rawAgent) : undefined,
+          };
+    if (typeof agent.update !== 'function') {
+      throw new Error('Oisy signer agent is missing update() and call() methods');
+    }
+    return Actor.createActor(options.idl, { agent, canisterId: options.canisterId });
   }
 }
 
