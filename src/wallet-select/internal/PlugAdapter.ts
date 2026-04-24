@@ -59,12 +59,20 @@ export class PlugAdapter implements AdapterInterface {
     return {
       ...rawAgent,
       update: async (canisterId: string, request: any) => {
+        const req = request || {};
+        const normalizedReq = {
+          ...req,
+          // Different agent implementations expect either `arg` or `args`.
+          arg: req.arg ?? req.args,
+          args: req.args ?? req.arg,
+          canisterId,
+        };
         try {
           // Legacy shape used by many injected Plug agents
-          return await rawAgent.call(canisterId, request);
+          return await rawAgent.call(canisterId, normalizedReq);
         } catch {
           // Some agents expect a single object payload instead
-          return await rawAgent.call({ canisterId, ...(request || {}) });
+          return await rawAgent.call(normalizedReq);
         }
       },
     };
