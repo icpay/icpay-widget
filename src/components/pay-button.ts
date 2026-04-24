@@ -1112,7 +1112,7 @@ export class ICPayPayButton extends LitElement {
             }
             return;
           } catch (x402Err: any) {
-            debugLog(this.config?.debug || false, 'X402 payment failed (SOL selection), falling back', {
+            debugLog(this.config?.debug || false, 'X402 payment failed (IC/SOL selection), falling back', {
               message: x402Err?.message, code: x402Err?.code, data: x402Err?.details || x402Err?.data
             });
             // Do not fallback to normal flow for Solana x402; require relayer settlement
