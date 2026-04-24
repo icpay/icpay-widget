@@ -52,21 +52,31 @@ export class PlugAdapter implements AdapterInterface {
     } catch { return null; }
   }
 
+  private normalizeAgent(rawAgent: any): any {
+    if (!rawAgent) return rawAgent;
+    if (typeof rawAgent.update === 'function') return rawAgent;
+    if (typeof rawAgent.call !== 'function') return rawAgent;
+    return {
+      ...rawAgent,
+      update: async (canisterId: string, request: any) => {
+        try {
+          // Legacy shape used by many injected Plug agents
+          return await rawAgent.call(canisterId, request);
+        } catch {
+          // Some agents expect a single object payload instead
+          return await rawAgent.call({ canisterId, ...(request || {}) });
+        }
+      },
+    };
+  }
+
   getActor<T>(options: GetActorOptions): ActorSubclass<T> {
     // Use Plug's agent synchronously if available
     const rawAgent = window.ic?.plug?.agent;
     if (!rawAgent) {
       throw new Error('Plug agent not initialized');
     }
-    const agent: any =
-      typeof rawAgent?.update === 'function'
-        ? rawAgent
-        : {
-            ...rawAgent,
-            // @icp-sdk/core actor path expects an update() method.
-            // Plug exposes call() in some versions; map it for compatibility.
-            update: typeof rawAgent?.call === 'function' ? rawAgent.call.bind(rawAgent) : undefined,
-          };
+    const agent: any = this.normalizeAgent(rawAgent);
     if (typeof agent.update !== 'function') {
       throw new Error('Plug agent is missing update() and call() methods');
     }
