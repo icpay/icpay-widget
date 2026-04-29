@@ -93,7 +93,30 @@ export class MetaMaskAdapter implements AdapterInterface {
       throw new Error('MetaMask not available');
     }
 
-    // Robust account request flow with retries and permissions fallback
+    // Desktop: one clean `eth_requestAccounts` flow. Do not chain `wallet_requestPermissions` or multi-retry
+    // here — that stacks MetaMask notification prompts and makes the popup flicker / never settle (bad UX + E2E).
+    if (!this.isMobileBrowser()) {
+      try {
+        const existing = await provider.request?.({ method: 'eth_accounts' });
+        if (Array.isArray(existing) && existing.length > 0 && existing[0]) {
+          return { owner: existing[0], principal: existing[0], connected: true };
+        }
+      } catch {}
+      let requested: string[];
+      try {
+        requested = await provider.request?.({ method: 'eth_requestAccounts' });
+      } catch (err: any) {
+        if (err && (err.code === 4001 || err.code === '4001')) {
+          throw new Error('Connection request was rejected');
+        }
+        throw err instanceof Error ? err : new Error(String(err));
+      }
+      const addr0 = Array.isArray(requested) && requested[0] ? String(requested[0]) : '';
+      if (!addr0) throw new Error('No account returned by MetaMask');
+      return { owner: addr0, principal: addr0, connected: true };
+    }
+
+    // Mobile: retries + permissions fallback (slow injection / in-app browser)
     const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const getAccountsOnce = async (): Promise<string[]> => {
       try {
@@ -117,10 +140,8 @@ export class MetaMaskAdapter implements AdapterInterface {
       return [];
     };
 
-    // Try a few times to account for slow injection/UX on mobile
     let accounts: string[] = [];
     for (let i = 0; i < 3 && accounts.length === 0; i++) {
-      // Refresh provider reference in case injection changed
       provider = this.getProvider() || provider;
       accounts = await getAccountsOnce();
       if (accounts.length === 0) await delay(300);
