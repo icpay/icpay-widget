@@ -1470,7 +1470,7 @@ export class ICPayProgressBar extends LitElement {
     this.isStripeFlow = false;
     this.isX402UptoFlow = false;
 
-    // Dispatch completion event
+    // Dispatch completion event (composed so host pages e.g. icpay-web /pay can listen on `window`)
     this.dispatchEvent(new CustomEvent('icpay-progress-completed', {
       detail: {
         transactionId,
@@ -1479,7 +1479,8 @@ export class ICPayProgressBar extends LitElement {
         currency: this.currentCurrency || this.currency,
         ledgerSymbol: this.currentLedgerSymbol || this.ledgerSymbol
       },
-      bubbles: true
+      bubbles: true,
+      composed: true,
     }));
 
     // Auto-close after 2 seconds if user hasn't closed it manually
