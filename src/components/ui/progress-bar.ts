@@ -1234,7 +1234,7 @@ export class ICPayProgressBar extends LitElement {
             wallet: { label: 'Wallet ready', tooltip: 'Connected for x402 up-to payment' },
             await: { label: 'Sign authorization', tooltip: 'Sign the payment header (authorizes up to the maximum amount).' },
             transfer: { label: 'Submit authorization', tooltip: 'Sending the signed header to ICPay.' },
-            verify: { label: 'Settlement', tooltip: 'Waiting for the merchant to finalize the charged amount.' },
+            verify: { label: 'Settlement', tooltip: 'Waiting for the merchant to finalize payment.' },
           };
           this.currentSteps = this.currentSteps.map(s =>
             map[s.key] ? { ...s, label: map[s.key].label, tooltip: map[s.key].tooltip } : s,
