@@ -1232,7 +1232,7 @@ export class ICPayProgressBar extends LitElement {
           this.isX402UptoFlow = true;
           const map: Record<string, { label: string; tooltip: string }> = {
             wallet: { label: 'Wallet ready', tooltip: 'Connected for x402 up-to payment' },
-            await: { label: 'Sign authorization', tooltip: 'Sign the payment header (authorizes up to the maximum amount).' },
+            await: { label: 'Sign authorization', tooltip: 'Sign the payment (up-to maximum amount).' },
             transfer: { label: 'Submit authorization', tooltip: 'Sending the signed header to ICPay.' },
             verify: { label: 'Settlement', tooltip: 'Waiting for the merchant to finalize payment.' },
           };
