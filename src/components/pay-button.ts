@@ -170,9 +170,10 @@ export class ICPayPayButton extends LitElement {
    * reflect completion for X402 up-to flows where settlement happens server-side.
    */
   /**
-   * Persist EVM x402 up-to authorization on the API and trigger merchant webhook (publishable key).
+   * Persist x402 up-to authorization on the API and trigger merchant webhook (publishable key).
+   * Currently supports EVM; Solana support is plumbed through the same endpoint.
    */
-  private async confirmX402UptoOnServerIfEvm(
+  private async confirmX402UptoOnServer(
     sdk: any,
     args: {
       paymentIntentId: string;
@@ -182,7 +183,7 @@ export class ICPayPayButton extends LitElement {
   ): Promise<void> {
     const { paymentIntentId, paymentHeader, paymentRequirements } = args;
     const net = String(paymentRequirements?.network || '').toLowerCase();
-    if (!net.startsWith('eip155:')) return;
+    if (!net.startsWith('eip155:') && !net.startsWith('solana:')) return;
     if (!paymentIntentId || !paymentHeader) return;
     const fn = sdk.client?.confirmX402UptoAuthorization;
     if (typeof fn !== 'function') return;
@@ -206,7 +207,7 @@ export class ICPayPayButton extends LitElement {
   }
 
   /**
-   * After SDK returns signed x402 header: persist on API (EVM), notify progress, optional poll.
+   * After SDK returns signed x402 payload/header: persist on API, notify progress, optional poll.
    */
   private async finalizeX402UptoAfterConfirm(
     sdk: any,
@@ -220,7 +221,7 @@ export class ICPayPayButton extends LitElement {
     },
   ): Promise<void> {
     const { paymentIntentId, amountUsd, metadata, accepts, paymentHeader, paymentRequirements } = opts;
-    await this.confirmX402UptoOnServerIfEvm(sdk, {
+    await this.confirmX402UptoOnServer(sdk, {
       paymentIntentId,
       paymentHeader,
       paymentRequirements,
@@ -966,9 +967,11 @@ export class ICPayPayButton extends LitElement {
                   const accepts: any[] = Array.isArray(paymentData?.accepts) ? paymentData.accepts : [];
                   const paymentHeader: string | undefined = paymentData?.paymentHeader;
                   const paymentRequirements: any = paymentData?.paymentRequirements ?? (accepts.length > 0 ? accepts[0] : undefined);
-                  const isEvmX402 = String((paymentRequirements as any)?.network || (accepts[0] as any)?.network || '').toLowerCase().startsWith('eip155:');
-                  if (isEvmX402 && !paymentHeader) {
-                    throw new Error('Missing signed x402 paymentHeader for EVM upto flow');
+                  const net = String((paymentRequirements as any)?.network || (accepts[0] as any)?.network || '').toLowerCase();
+                  const isEvmX402 = net.startsWith('eip155:');
+                  const isSolX402 = net.startsWith('solana:');
+                  if ((isEvmX402 || isSolX402) && !paymentHeader) {
+                    throw new Error('Missing signed x402 paymentHeader for up-to flow');
                   }
                   await this.finalizeX402UptoAfterConfirm(sdk, {
                     paymentIntentId,
@@ -1095,9 +1098,11 @@ export class ICPayPayButton extends LitElement {
                 const accepts: any[] = Array.isArray(paymentData?.accepts) ? paymentData.accepts : [];
                 const paymentHeader: string | undefined = paymentData?.paymentHeader;
                 const paymentRequirements: any = paymentData?.paymentRequirements ?? (accepts.length > 0 ? accepts[0] : undefined);
-                const isEvmX402 = String((paymentRequirements as any)?.network || (accepts[0] as any)?.network || '').toLowerCase().startsWith('eip155:');
-                if (isEvmX402 && !paymentHeader) {
-                  throw new Error('Missing signed x402 paymentHeader for EVM upto flow');
+                const net = String((paymentRequirements as any)?.network || (accepts[0] as any)?.network || '').toLowerCase();
+                const isEvmX402 = net.startsWith('eip155:');
+                const isSolX402 = net.startsWith('solana:');
+                if ((isEvmX402 || isSolX402) && !paymentHeader) {
+                  throw new Error('Missing signed x402 paymentHeader for up-to flow');
                 }
                 await this.finalizeX402UptoAfterConfirm(sdk, {
                   paymentIntentId,
