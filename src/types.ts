@@ -60,6 +60,8 @@ export type CommonConfig = {
   tokenShortcodes?: string[];  // e.g., ['icp','pay']
   // Optional wallet selection filter: which chain types to show wallets for ('stripe' = Credit card)
   chainTypes?: Array<'ic' | 'evm' | 'sol' | 'stripe'>;
+  // Stripe credit card option visibility in wallet picker (default: false)
+  stripeEnabled?: boolean;
   // Optional: fiat currency for display (id or code, e.g. USD, EUR). Defaults to USD if missing.
   fiat_currency?: string;
   // Optional metadata to include on created payment intents
