@@ -7,6 +7,7 @@ export type WalletSelectConfig = {
   derivationOrigin?: string;
   adapters?: Partial<Record<string, { adapter?: any; config?: any; enabled?: boolean; label?: string; icon?: string }>>;
   chainTypes?: Array<'ic' | 'evm' | 'sol' | 'stripe'>; // optional: restrict which wallets to show; 'stripe' = Credit card
+  stripeEnabled?: boolean; // global Stripe wallet visibility (default: false)
 };
 
 export type GetActorOptions = {
@@ -119,7 +120,8 @@ export class WalletSelect {
     baseAdapters.trust = { id: 'trust', label: 'Trust Wallet', icon: null, enabled: true, adapter: TrustAdapter };
     baseAdapters.oisy = { id: 'oisy', label: 'Oisy', icon: null, enabled: true, adapter: OisyAdapter };
     baseAdapters.nfid = { id: 'nfid', label: 'NFID', icon: null, enabled: false, adapter: NfidAdapter };
-    baseAdapters.stripe = { id: 'stripe', label: 'Credit card', icon: stripeWalletIconUrl, enabled: true, adapter: StripeAdapter };
+    const stripeEnabled = this._config.stripeEnabled === true;
+    baseAdapters.stripe = { id: 'stripe', label: 'Credit card', icon: stripeWalletIconUrl, enabled: stripeEnabled, adapter: StripeAdapter };
     baseAdapters.ii = { id: 'ii', label: 'Internet Identity', icon: null, enabled: false, adapter: IIAdapter };
     baseAdapters.plug = { id: 'plug', label: 'Plug', icon: null, enabled: true, adapter: PlugAdapter };
     // Initialize adapters config with sane defaults and allow overrides
